@@ -87,11 +87,18 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         estimated_value, currency = extract_financial_info(tedeu_obj.additional_information)
     
     # Extract location information - first try direct fields, then use helper function
-    country = tedeu_obj.country
+    country = None
     city = None
     
+    # Try direct attribute access first
+    if hasattr(tedeu_obj, 'country') and tedeu_obj.country:
+        country = tedeu_obj.country
+    
+    if hasattr(tedeu_obj, 'city') and tedeu_obj.city:
+        city = tedeu_obj.city
+    
     # Try to extract from lots if available
-    if tedeu_obj.lots and isinstance(tedeu_obj.lots, list) and len(tedeu_obj.lots) > 0:
+    if hasattr(tedeu_obj, 'lots') and tedeu_obj.lots and isinstance(tedeu_obj.lots, list) and len(tedeu_obj.lots) > 0:
         for lot in tedeu_obj.lots:
             if isinstance(lot, dict):
                 # Extract country
@@ -150,25 +157,25 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     # Construct the UnifiedTender
     unified = UnifiedTender(
         # Required fields
-        title=tedeu_obj.title or f"TED Notice - {tedeu_obj.publication_number}",
+        title=getattr(tedeu_obj, 'title', None) or f"TED Notice - {tedeu_obj.publication_number}",
         source_table="ted_eu",
         source_id=tedeu_obj.publication_number,  # Using publication_number as the ID
         
         # Additional fields
-        description=tedeu_obj.summary or tedeu_obj.additional_information,
-        tender_type=tedeu_obj.notice_type,
-        status=tedeu_obj.notice_status,
+        description=getattr(tedeu_obj, 'summary', None) or getattr(tedeu_obj, 'additional_information', None),
+        tender_type=getattr(tedeu_obj, 'notice_type', None),
+        status=getattr(tedeu_obj, 'notice_status', None),
         publication_date=publication_dt,
         deadline_date=deadline_dt,
         country=country,
         city=city,
-        organization_name=tedeu_obj.organisation_name,
-        organization_id=tedeu_obj.organisation_id,
-        contact_email=tedeu_obj.contact_email,
-        contact_phone=tedeu_obj.contact_phone,
-        url=tedeu_obj.contact_url,
+        organization_name=getattr(tedeu_obj, 'organisation_name', None),
+        organization_id=getattr(tedeu_obj, 'organisation_id', None),
+        contact_email=getattr(tedeu_obj, 'contact_email', None),
+        contact_phone=getattr(tedeu_obj, 'contact_phone', None),
+        url=getattr(tedeu_obj, 'contact_url', None),
         language=language,
-        notice_id=tedeu_obj.notice_identifier or tedeu_obj.publication_number,
+        notice_id=getattr(tedeu_obj, 'notice_identifier', None) or tedeu_obj.publication_number,
         document_links=document_links,
         procurement_method=procurement_method,
         estimated_value=estimated_value,

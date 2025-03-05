@@ -68,6 +68,18 @@ FALLBACK_DICTIONARY: Dict[str, str] = {
     "Travaux": "Works",
     "Date de publication": "Publication date",
     "Montant": "Amount",
+    "Acquisitions": "Acquisitions",
+    "Installation": "Installation",
+    "Matériels": "Materials",
+    "Sonorisation": "Sound System",
+    "Alerte": "Alert",
+    "Cabinet": "Cabinet",
+    "pour": "for",
+    "Audit": "Audit",
+    "Comptable": "Accounting",
+    "Financier": "Financial",
+    "Exercices": "Fiscal Years",
+    "et": "and",
     
     # Spanish
     "Aviso": "Notice",
@@ -276,43 +288,74 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
             TRANSLATION_STATS["already_english"] += 1
             return text, "already_english"
     
+    # Check for specific non-English words that indicate it's definitely not English
+    if any(french_word in text.lower() for french_word in ["acquisitions", "materiels", "sonorisation", 
+                                                          "comptable", "sénégal", "financier", "alerte"]):
+        # Definitely not English - record language as French
+        detected_lang = "fr"
+        if "fr" not in TRANSLATION_STATS["languages"]:
+            TRANSLATION_STATS["languages"]["fr"] = 0
+        TRANSLATION_STATS["languages"]["fr"] += 1
+    
     # Try primary translation method
     if TRANSLATOR_AVAILABLE:
-        try:
-            start_time = time.time()
-            translated = GoogleTranslator(source=src_lang, target='en').translate(text)
-            logger.debug(f"Translation completed in {time.time() - start_time:.2f} seconds")
-            
-            if translated and translated.strip():
-                TRANSLATION_STATS["success"] += 1
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                start_time = time.time()
                 
-                # Log detected language
-                if src_lang == "auto":
-                    detected = detect_language(text)
-                    if detected:
-                        TRANSLATION_STATS["languages"][detected] = TRANSLATION_STATS["languages"].get(detected, 0) + 1
-                else:
-                    TRANSLATION_STATS["languages"][src_lang] = TRANSLATION_STATS["languages"].get(src_lang, 0) + 1
+                # Use a try-block for importing in case library isn't available
+                try:
+                    from deep_translator import GoogleTranslator
+                    translator = GoogleTranslator(source=detected_lang if detected_lang != "auto" else "fr", target='en')
+                    translated = translator.translate(text[:4000])  # Limit size to prevent API errors
+                except ImportError:
+                    logger.warning("GoogleTranslator not available - falling back")
+                    raise Exception("GoogleTranslator import failed")
                 
-                return translated, "deep_translator"
-        except Exception as e:
-            logger.warning(f"Primary translation method failed: {e}")
+                logger.debug(f"Translation attempt {attempt+1} completed in {time.time() - start_time:.2f} seconds")
+                
+                if translated and translated.strip():
+                    TRANSLATION_STATS["success"] += 1
+                    
+                    # Log detected language
+                    if detected_lang and detected_lang != "auto":
+                        if detected_lang not in TRANSLATION_STATS["languages"]:
+                            TRANSLATION_STATS["languages"][detected_lang] = 0
+                        TRANSLATION_STATS["languages"][detected_lang] += 1
+                    
+                    return translated, "deep_translator"
+                
+                # Sleep before retry
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+                    
+            except Exception as e:
+                logger.warning(f"Translation attempt {attempt+1} failed: {e}")
+                # Sleep before retry
+                if attempt < max_retries - 1:
+                    time.sleep(1)
     
     # Fallback to dictionary-based translation if enabled
     if use_fallback:
         try:
             TRANSLATION_STATS["fallback_used"] += 1
-            # Simple word replacement using the fallback dictionary
+            
+            # Use more thorough dictionary-based replacement
             translated_text = text
+            
+            # Apply word-by-word replacement
             for src_word, tgt_word in FALLBACK_DICTIONARY.items():
-                translated_text = translated_text.replace(src_word, tgt_word)
+                # Replace full words with word boundaries
+                translated_text = re.sub(r'\b' + re.escape(src_word) + r'\b', tgt_word, translated_text, flags=re.IGNORECASE)
             
             # Only return the fallback translation if it's actually different from the original
             if translated_text != text:
+                logger.info(f"Fallback translation applied successfully")
                 return translated_text, "fallback_dictionary"
             
-            # If fallback didn't change anything, log as failure
-            logger.warning(f"Fallback translation didn't modify text: {text[:50]}...")
+            # If fallback didn't change anything, log as failure with specific text info
+            logger.warning(f"Fallback translation didn't modify text: {text[:50]}... Language: {detected_lang}")
         except Exception as e:
             logger.error(f"Fallback translation failed: {e}")
     
