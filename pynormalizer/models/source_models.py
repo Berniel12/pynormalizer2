@@ -53,7 +53,7 @@ class AFDBTender(BaseModel):
     publication_date: Optional[str] = None
     description: Optional[str] = None
     url: str
-    document_links: Optional[Dict[str, Any]] = None
+    document_links: Optional[Any] = None
     created_at: datetime
     closing_date: Optional[date] = None
     status: Optional[str] = None
@@ -143,13 +143,13 @@ class UNGMTender(BaseModel):
     published_on: Optional[str] = None
     deadline_on: Optional[str] = None
     description: Optional[str] = None
-    documents: Optional[Dict] = None
-    contacts: Optional[Dict] = None
-    sustainability: Optional[Dict] = None
-    links: Optional[Dict] = None
-    unspscs: Optional[Dict] = None
-    revisions: Optional[Dict] = None
-    countries: Optional[Dict] = None
+    documents: Optional[Any] = None
+    contacts: Optional[Any] = None
+    sustainability: Optional[Any] = None
+    links: Optional[Any] = None
+    unspscs: Optional[Any] = None
+    revisions: Optional[Any] = None
+    countries: Optional[Any] = None
     created_at: datetime
     updated_at: datetime
 
@@ -162,7 +162,7 @@ class WBTender(BaseModel):
     deadline: Optional[datetime] = None
     tender_type: Optional[str] = None
     description: Optional[str] = None
-    document_links: Optional[dict] = None
+    document_links: Optional[Any] = None
     url: Optional[str] = None
     bid_reference_no: Optional[str] = None
     contact_email: Optional[str] = None

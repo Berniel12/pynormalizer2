@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Dict, Any
 
@@ -15,6 +16,16 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
     Returns:
         Normalized UnifiedTender instance
     """
+    # Handle document_links if it's a string
+    if isinstance(row.get('document_links'), str):
+        try:
+            if row['document_links'].strip():
+                row['document_links'] = json.loads(row['document_links'])
+            else:
+                row['document_links'] = None
+        except (json.JSONDecodeError, ValueError):
+            row['document_links'] = None
+    
     # Validate with Pydantic
     try:
         afdb_obj = AFDBTender(**row)

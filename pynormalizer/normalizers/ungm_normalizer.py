@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -15,6 +16,24 @@ def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
     Returns:
         Normalized UnifiedTender instance
     """
+    # Handle JSON fields that might be lists or strings
+    for field in ['links', 'unspscs', 'revisions', 'documents', 'contacts', 'sustainability', 'countries']:
+        if field in row and isinstance(row[field], list):
+            # Convert list to a dictionary with an 'items' key
+            row[field] = {'items': row[field]}
+        elif field in row and isinstance(row[field], str):
+            try:
+                if row[field].strip():
+                    data = json.loads(row[field])
+                    if isinstance(data, list):
+                        row[field] = {'items': data}
+                    else:
+                        row[field] = data
+                else:
+                    row[field] = None
+            except (json.JSONDecodeError, ValueError):
+                row[field] = None
+    
     # Validate with Pydantic
     try:
         ungm_obj = UNGMTender(**row)

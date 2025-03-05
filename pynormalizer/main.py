@@ -123,16 +123,31 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
             # Log normalized data for comparison
             detail_logger.info(f"--- NORMALIZED DATA: {source} ID: {row_id} ---")
             detail_logger.info(f"AFTER - title: {unified_tender.title}")
-            detail_logger.info(f"AFTER - description: {unified_tender.description[:100]}...")
-            detail_logger.info(f"AFTER - category: {unified_tender.category}")
-            detail_logger.info(f"AFTER - source_country: {unified_tender.source_country}")
-            detail_logger.info(f"AFTER - value_usd: {unified_tender.value_usd}")
-            detail_logger.info(f"AFTER - status: {unified_tender.status}")
             
-            if unified_tender.deadline:
+            # Handle description that might be None
+            if unified_tender.description:
+                detail_logger.info(f"AFTER - description: {unified_tender.description[:100]}...")
+            else:
+                detail_logger.info(f"AFTER - description: None")
+            
+            # These attributes might not exist in UnifiedTender model, so check with hasattr
+            if hasattr(unified_tender, 'category'):
+                detail_logger.info(f"AFTER - category: {unified_tender.category}")
+                
+            if hasattr(unified_tender, 'source_country'):
+                detail_logger.info(f"AFTER - source_country: {unified_tender.source_country}")
+                
+            if hasattr(unified_tender, 'value_usd'):
+                detail_logger.info(f"AFTER - value_usd: {unified_tender.value_usd}")
+            
+            if unified_tender.status:
+                detail_logger.info(f"AFTER - status: {unified_tender.status}")
+            
+            # Check for deadline and publication_date which exist in the model but might be None
+            if hasattr(unified_tender, 'deadline') and unified_tender.deadline:
                 detail_logger.info(f"AFTER - deadline: {unified_tender.deadline}")
             
-            if unified_tender.publication_date:
+            if hasattr(unified_tender, 'publication_date') and unified_tender.publication_date:
                 detail_logger.info(f"AFTER - publication_date: {unified_tender.publication_date}")
             
             if unified_tender.tags:
@@ -228,8 +243,10 @@ def normalize_all_tenders(db_config: Dict[str, Any],
     except Exception as e:
         logger.warning(f"Could not retrieve translation statistics: {e}")
     
-    # Close the connection
-    conn.close()
+    # Close the connection if it's a PostgreSQL connection
+    # Supabase client doesn't need/have a close method
+    if hasattr(conn, 'close'):
+        conn.close()
     
     return results
 

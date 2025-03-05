@@ -75,19 +75,22 @@ def main():
             logger.info("PRODUCTION MODE: Processing all records")
         
         # Run normalization with the specified parameters
-        results = normalize_all_tenders(
-            db_config,
-            tables=args.tables,  # None means all tables
-            batch_size=args.batch_size,
-            limit_per_table=limit_per_table
-        )
-        
-        # Print summary
-        total_processed = sum(results.values())
-        logger.info(f"Normalization complete. Processed {total_processed} tenders.")
-        for table_name, count in results.items():
-            logger.info(f"  {table_name}: {count} tenders processed")
-        
+        try:
+            results = normalize_all_tenders(
+                db_config,
+                tables=args.tables,  # None means all tables
+                batch_size=args.batch_size,
+                limit_per_table=limit_per_table
+            )
+            
+            # Print summary
+            total_processed = sum(results.values())
+            logger.info(f"Normalization complete. Processed {total_processed} tenders.")
+            for table_name, count in results.items():
+                logger.info(f"  {table_name}: {count} tenders processed")
+        except Exception as e:
+            logger.error(f"Error during normalization: {e}")
+            raise
     except Exception as e:
         logger.exception(f"Error during normalization: {e}")
     finally:
