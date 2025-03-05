@@ -56,7 +56,7 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     unified = UnifiedTender(
         # Required fields
         title=tedeu_obj.title or f"TED Notice - {tedeu_obj.publication_number}",
-        source_table="tedeu",
+        source_table="ted_eu",
         source_id=tedeu_obj.publication_number,  # Using publication_number as the ID
         
         # Additional fields

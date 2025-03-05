@@ -13,6 +13,11 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
     Returns:
         Normalized UnifiedTender instance
     """
+    # Pre-process contacts field if it's a list instead of a dict
+    if 'contacts' in row and isinstance(row['contacts'], list) and row['contacts']:
+        # Convert list to dict by using the first contact
+        row['contacts'] = row['contacts'][0]
+    
     # Validate with Pydantic
     try:
         samgov_obj = SamGovTender(**row)
@@ -66,7 +71,7 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
     unified = UnifiedTender(
         # Required fields
         title=samgov_obj.opportunity_title or f"Opportunity {samgov_obj.opportunity_id}",
-        source_table="samgov",
+        source_table="sam_gov",  # Updated to use the correct table name
         source_id=samgov_obj.opportunity_id,
         
         # Additional fields
