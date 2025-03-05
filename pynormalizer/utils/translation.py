@@ -300,58 +300,45 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto") 
         TRANSLATION_STATS["failed"] += 1
         return text, "translator_unavailable"
     
-    # Detect language if set to auto
-    if src_lang == "auto":
-        # Use our heuristic detection as a reliable alternative
-        detected = detect_language_heuristic(text[:1000])
-        if detected:
-            src_lang = detected
-            # Log the detected language
-            if detected not in TRANSLATION_STATS["languages"]:
-                TRANSLATION_STATS["languages"][detected] = 0
-            TRANSLATION_STATS["languages"][detected] += 1
+    # If source language is English, set to auto since English is the target language
+    if src_lang == "en":
+        src_lang = "auto"
     
-    # Primary translation with retry mechanism
-    for attempt in range(3):  # Try up to 3 times
-        try:
-            # Create translator with the appropriate source language
-            translator = GoogleTranslator(source=src_lang if src_lang != "auto" else "auto", target='en')
-            
-            # Split text into smaller chunks if it's too long
-            if len(text) > 5000:
-                chunks = []
-                for i in range(0, len(text), 4000):
-                    chunks.append(text[i:i+4000])
-                
-                # Translate each chunk and combine
-                translated_chunks = []
-                for chunk in chunks:
-                    translated_chunk = translator.translate(chunk)
-                    if translated_chunk:
-                        translated_chunks.append(translated_chunk)
-                    else:
-                        # If a chunk fails, try again with a different boundary
-                        logger.warning(f"Chunk translation failed, retrying with different boundary")
-                        continue
-                
-                # Combine translated chunks
-                if translated_chunks:
-                    TRANSLATION_STATS["success"] += 1
-                    return " ".join(translated_chunks), None
-            else:
-                # Translate the whole text at once for smaller texts
-                translated = translator.translate(text)
-                if translated:
-                    TRANSLATION_STATS["success"] += 1
-                    return translated, None
+    # If source language is None, use auto-detection
+    if src_lang is None:
+        src_lang = "auto"
+
+    # Get supported languages from GoogleTranslator
+    supported_languages = None
+    try:
+        supported_languages = GoogleTranslator().get_supported_languages(as_dict=True)
+    except Exception as e:
+        logger.warning(f"Could not get supported languages: {e}")
         
-        except Exception as e:
-            logger.warning(f"Translation attempt {attempt+1} failed: {e}")
-            if attempt < 2:  # Don't sleep on the last attempt
-                time.sleep(1)  # Wait before retry
-            continue
+    # Check if the source language is supported
+    if src_lang != "auto" and supported_languages and src_lang not in supported_languages.values():
+        logger.warning(f"Source language '{src_lang}' not supported, falling back to auto-detection")
+        src_lang = "auto"
     
-    # If all translation attempts fail
+    # Attempt translation with retries
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            translator = GoogleTranslator(source=src_lang, target='en')
+            translated = translator.translate(text)
+            
+            if translated and translated != text:
+                TRANSLATION_STATS["success"] += 1
+                return translated, "deep_translator"
+            else:
+                logger.warning(f"Translation produced same output as input, possible issue")
+                return text, "no_change"
+                
+        except Exception as e:
+            logger.warning(f"Translation attempt {attempt} failed: {src_lang} --> {str(e)}")
+            time.sleep(1)  # Add delay between retries
+    
+    # Translation failed after all retries
     TRANSLATION_STATS["failed"] += 1
     return text, "translation_failed"
 
