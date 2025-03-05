@@ -109,6 +109,163 @@ ENCODING_CORRECTIONS = {
     # Add other common patterns
 }
 
+# Improve the FALLBACK_DICT with significantly more common terms
+FALLBACK_DICT = {
+    # French terms
+    "appel d'offres": "call for tender",
+    "marché public": "public procurement",
+    "appel à manifestation d'intérêt": "call for expression of interest",
+    "développement": "development",
+    "française": "french",
+    "matériels": "equipment",
+    "sonorisation": "sound system",
+    "alerte": "alert",
+    "acquisition": "acquisition",
+    "installation": "installation",
+    "ministère": "ministry",
+    "projet": "project",
+    "fourniture": "supply",
+    "services": "services",
+    "travaux": "works",
+    "contrat": "contract",
+    "gestion": "management",
+    "administration": "administration",
+    "financière": "financial",
+    "construction": "construction",
+    "consulting": "consulting",
+    "étude": "study",
+    "recrutement": "recruitment",
+    "bureau": "office",
+    "avis": "notice",
+    "soumission": "submission",
+    "délai": "deadline",
+    "date limite": "deadline",
+    "procédure": "procedure",
+    "fermeture": "closure",
+    "ouverture": "opening",
+    "dépôt": "deposit",
+    "achat": "purchase",
+    "fournisseur": "supplier",
+    "pays": "country",
+    "ville": "city",
+    "région": "region",
+    "montant": "amount",
+    "valeur": "value",
+    "agence": "agency",
+    "banque": "bank",
+    "autorité": "authority",
+    "gouvernement": "government",
+    "international": "international",
+    "nationale": "national",
+    "publique": "public",
+    "privé": "private",
+    "général": "general",
+    "spécifique": "specific",
+    "local": "local",
+    "global": "global",
+    "méthode": "method",
+    "financement": "financing",
+    "coût": "cost",
+    "prix": "price",
+    "euros": "euros",
+    "dollars": "dollars",
+    "francs": "francs",
+    
+    # Spanish terms
+    "adquisición": "acquisition",
+    "licitación": "tender",
+    "contratación": "contracting",
+    "administración": "administration",
+    "proyecto": "project",
+    "modernización": "modernization",
+    "escritorio": "desktop",
+    "portátiles": "laptops",
+    "actualizado": "updated",
+    "servicio": "service",
+    "sistema": "system",
+    "información": "information",
+    "programa": "program",
+    "mejoramiento": "improvement",
+    "financiera": "financial",
+    "construcción": "construction",
+    "equipos": "equipment",
+    "trabajo": "work",
+    "estudio": "study",
+    "consulta": "consultation",
+    "oficial": "official",
+    "público": "public",
+    "privado": "private",
+    "internacional": "international",
+    "nacional": "national",
+    "desarrollo": "development",
+    "banco": "bank",
+    "ministerio": "ministry",
+    "gobierno": "government",
+    "fecha": "date",
+    "plazo": "deadline",
+    "valor": "value",
+    "precio": "price",
+    "compra": "purchase",
+    "venta": "sale",
+    "oferta": "offer",
+    "propuesta": "proposal",
+    "evaluación": "evaluation",
+    "selección": "selection",
+    "ejecutivo": "executive",
+    "director": "director",
+    "gerente": "manager",
+    "país": "country",
+    "ciudad": "city",
+    "región": "region",
+    "local": "local",
+    "global": "global",
+    "pesos": "pesos",
+    "euros": "euros",
+    "dólares": "dollars",
+    
+    # Organization names
+    "Agence Française de Développement": "French Development Agency",
+    "Banco Interamericano de Desarrollo": "Inter-American Development Bank",
+    "Rwanda Information Society Authority": "Rwanda Information Society Authority",
+    "Banque Africaine de Développement": "African Development Bank",
+    "Banque Mondiale": "World Bank",
+    "Ministère des Finances": "Ministry of Finance",
+    "Ministerio de Economía": "Ministry of Economy",
+    "Ministerio de Hacienda": "Ministry of Finance",
+    "Gobierno de": "Government of",
+    "Gobierno Nacional": "National Government",
+    "Banco Europeo de Inversiones": "European Investment Bank",
+    "Fondo Monetario Internacional": "International Monetary Fund",
+    "Commission Européenne": "European Commission",
+    "Nations Unies": "United Nations",
+    "Naciones Unidas": "United Nations",
+    
+    # Common accented character replacements
+    "à": "a",
+    "á": "a",
+    "â": "a",
+    "ä": "a",
+    "è": "e",
+    "é": "e",
+    "ê": "e",
+    "ë": "e",
+    "ì": "i",
+    "í": "i",
+    "î": "i",
+    "ï": "i",
+    "ò": "o",
+    "ó": "o",
+    "ô": "o",
+    "ö": "o",
+    "ù": "u",
+    "ú": "u",
+    "û": "u",
+    "ü": "u",
+    "ÿ": "y",
+    "ñ": "n",
+    "ç": "c"
+}
+
 # Extended fallback dictionary with common terms in multiple languages
 FALLBACK_DICT = {
     # French terms
@@ -235,53 +392,78 @@ def detect_language(text: Optional[str]) -> Optional[str]:
     # First, fix any character encoding issues
     text = fix_character_encoding(text)
     
-    # Check for French content specifically with common French words
+    # Count non-ASCII characters as a percentage of total characters
+    total_chars = len(text)
+    non_ascii_chars = sum(1 for c in text if ord(c) > 127)
+    
+    # If significant percentage of non-ASCII characters, it's likely not English
+    if total_chars > 0 and non_ascii_chars / total_chars > 0.05:
+        # It's likely not English, but need to determine which language
+        pass  # Continue with language detection below
+    
+    # Check for common words in various languages
     text_lower = text.lower()
+    
+    # French detection with word count threshold
     french_word_count = 0
     for word in FRENCH_WORDS:
         french_word_count += len(re.findall(r'\b' + re.escape(word) + r'\b', text_lower))
     
-    if french_word_count >= 3:
+    if french_word_count >= 2:
         logger.debug(f"Detected French with {french_word_count} French words")
         return "fr"
     
-    # Check for Spanish content specifically with common Spanish words
+    # Spanish detection with word count threshold
     spanish_word_count = 0
     for word in SPANISH_WORDS:
         spanish_word_count += len(re.findall(r'\b' + re.escape(word) + r'\b', text_lower))
     
-    if spanish_word_count >= 3:
+    if spanish_word_count >= 2:
         logger.debug(f"Detected Spanish with {spanish_word_count} Spanish words")
         return "es"
     
-    # Check if the text is predominantly English by looking for common English words
-    english_markers = ["the", "and", "for", "with", "this", "that", "from", "have", "will"]
-    total_english_markers = 0
-    english_threshold = 0.6  # 60% threshold for declaring text as English
+    # Check for accented characters that are common in specific languages
+    # For French
+    french_accents = ['é', 'è', 'ê', 'à', 'â', 'ô', 'ù', 'û', 'ç', 'ë', 'ï', 'ü']
+    french_accent_count = sum(text_lower.count(accent) for accent in french_accents)
+    if french_accent_count > 3:
+        return "fr"
     
-    # Count English markers
+    # For Spanish
+    spanish_accents = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ', '¿', '¡']
+    spanish_accent_count = sum(text_lower.count(accent) for accent in spanish_accents)
+    if spanish_accent_count > 3:
+        return "es"
+    
+    # Check for common English words to confirm it's likely English
+    english_markers = ["the", "and", "for", "with", "this", "that", "from", "have", "will", "are", "not", "but", "what", "all"]
+    english_marker_count = 0
+    
+    # Total word count for density calculation
     total_words = len([w for w in text_lower.split() if len(w) > 1])
     
     if total_words > 0:
         for marker in english_markers:
             pattern = r'\b' + re.escape(marker) + r'\b'
-            total_english_markers += len(re.findall(pattern, text_lower))
+            english_marker_count += len(re.findall(pattern, text_lower))
         
         # If significant proportion of words are English markers, treat as English
-        if total_english_markers / total_words > english_threshold:
+        if english_marker_count / total_words > 0.15:  # Lowered threshold from 0.6 to 0.15 for better sensitivity
             return "en"
     
+    # Skip deep-translator detection if not available
     if not TRANSLATOR_AVAILABLE:
         return "en"  # Default to English if translator not available
     
+    # Improve detection by using multiple strategies
     try:
         # Use deep-translator's detection with retry
         for attempt in range(3):  # Try up to 3 times
             try:
                 # Use our detection function that handles errors gracefully
-                detected = detect_language_func(text[:500])  # Limit detection to first 500 chars for speed
+                detected = detect_language_func(text[:1000])  # Increased from 500 to 1000 chars for better accuracy
                 if detected in SUPPORTED_LANGS:
-                    logger.debug(f"Detected language: {detected}")
+                    logger.debug(f"Detected language via API: {detected}")
                     return detected
             except Exception as e:
                 if attempt < 2:  # Don't sleep on the last attempt
@@ -290,39 +472,47 @@ def detect_language(text: Optional[str]) -> Optional[str]:
     except Exception as e:
         logger.warning(f"Language detection failed after retries: {e}")
     
-    # Fallback to our own detection method
+    # Enhanced fallback detection with weighted scoring
+    language_scores = {
+        "fr": 0,
+        "es": 0,
+        "de": 0,
+        "pt": 0,
+        "it": 0,
+        "en": 0
+    }
+    
+    # Check for language markers in a weighted manner
     language_markers = {
         "fr": ["le", "la", "les", "de", "et", "en", "pour", "dans", "un", "une", "est", "sont", "par", "sur"],
         "es": ["el", "la", "los", "las", "de", "y", "en", "para", "un", "una", "es", "son", "por", "sobre"],
         "de": ["der", "die", "das", "und", "in", "für", "ein", "eine", "mit", "von", "zu", "ist", "sind", "auf"],
         "pt": ["o", "a", "os", "as", "de", "e", "em", "para", "um", "uma", "é", "são", "por", "sobre"],
         "it": ["il", "la", "i", "le", "di", "e", "in", "per", "un", "una", "è", "sono", "con", "su"],
-        "ru": ["и", "в", "не", "на", "я", "что", "тот", "быть", "с", "он", "а", "весь", "это", "как"],
-        "ar": ["في", "من", "إلى", "على", "و", "ل", "ب", "ان", "هذا", "أن", "عن", "هو", "مع", "أو"],
-        "zh": ["的", "了", "和", "在", "是", "我", "有", "他", "这", "不", "人", "们", "一", "来"]
+        "en": ["the", "a", "an", "of", "in", "for", "to", "and", "is", "are", "be", "with", "on", "at"]
     }
     
-    word_counts = {}
-    
+    # Weighted detection based on marker words and their frequency
     for lang, markers in language_markers.items():
-        count = 0
+        # Start with bias toward English (default)
+        base_score = 1 if lang == "en" else 0
+        
         for marker in markers:
             # Count occurrences of marker words with word boundaries
-            count += len(re.findall(r'\b' + re.escape(marker) + r'\b', text_lower))
-        word_counts[lang] = count
+            count = len(re.findall(r'\b' + re.escape(marker) + r'\b', text_lower))
+            language_scores[lang] += count * 2  # Double weight for marker words
+        
+        # Add the base score
+        language_scores[lang] += base_score
     
-    # If no markers found, assume English
-    if max(word_counts.values(), default=0) == 0:
-        return "en"
+    # Return the language with highest score
+    most_likely_lang = max(language_scores.items(), key=lambda x: x[1])[0]
     
-    # Return the language with the most marker words
-    most_likely_lang = max(word_counts.items(), key=lambda x: x[1])[0]
-    
-    # Only return the language if it has a significant count
-    if word_counts[most_likely_lang] > 3:
+    # Only return a non-English language if its score is significant
+    if most_likely_lang != "en" and language_scores[most_likely_lang] > 3:
         return most_likely_lang
     
-    # Default to English if nothing else determined
+    # Default to English
     return "en"
 
 def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto", 
@@ -510,6 +700,7 @@ def apply_translations(unified_tender: Any, source_language: Optional[str] = Non
     
     # Store fallback reasons in the normalized_method field if available
     if hasattr(unified_tender, "fallback_reason") and fallback_reason:
-        unified_tender.fallback_reason = fallback_reason
+        # Store as a JSON string instead of a dict to avoid serialization issues
+        unified_tender.fallback_reason = json.dumps(fallback_reason)
     
     return unified_tender 

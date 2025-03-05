@@ -206,12 +206,11 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
     
     # Try to extract from description if not found directly
     if (not estimated_value or not currency) and hasattr(wb_obj, 'description') and wb_obj.description:
-        extracted_financial = extract_financial_info(wb_obj.description)
-        if extracted_financial:
-            if not estimated_value and extracted_financial.get('value'):
-                estimated_value = extracted_financial['value']
-            if not currency and extracted_financial.get('currency'):
-                currency = extracted_financial['currency']
+        extracted_value, extracted_curr = extract_financial_info(wb_obj.description)
+        if not estimated_value and extracted_value:
+            estimated_value = extracted_value
+        if not currency and extracted_curr:
+            currency = extracted_curr
     
     # Extract document links
     document_links = []

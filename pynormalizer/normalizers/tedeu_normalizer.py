@@ -104,15 +104,19 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     if not country:
         if hasattr(tedeu_obj, 'contact_address') and tedeu_obj.contact_address:
             # Extract country from contact address using helper function
-            extracted_location = extract_location_info(tedeu_obj.contact_address)
-            if extracted_location and extracted_location.get('country'):
-                country = extracted_location['country']
+            extracted_country, extracted_city = extract_location_info(tedeu_obj.contact_address)
+            if extracted_country:
+                country = extracted_country
+            if not city and extracted_city:
+                city = extracted_city
         
         # Try from the description as a last resort
         if not country and hasattr(tedeu_obj, 'description') and tedeu_obj.description:
-            extracted_location = extract_location_info(tedeu_obj.description)
-            if extracted_location and extracted_location.get('country'):
-                country = extracted_location['country']
+            extracted_country, extracted_city = extract_location_info(tedeu_obj.description)
+            if extracted_country:
+                country = extracted_country
+            if not city and extracted_city:
+                city = extracted_city
     
     # Safe attribute access for city
     if hasattr(tedeu_obj, 'city') and tedeu_obj.city:
@@ -124,15 +128,15 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     if not city:
         if hasattr(tedeu_obj, 'contact_address') and tedeu_obj.contact_address:
             # Extract city from contact address using helper function
-            extracted_location = extract_location_info(tedeu_obj.contact_address)
-            if extracted_location and extracted_location.get('city'):
-                city = extracted_location['city']
+            extracted_country, extracted_city = extract_location_info(tedeu_obj.contact_address)
+            if extracted_city:
+                city = extracted_city
                 
         # Try from the description as a last resort
         if not city and hasattr(tedeu_obj, 'description') and tedeu_obj.description:
-            extracted_location = extract_location_info(tedeu_obj.description)
-            if extracted_location and extracted_location.get('city'):
-                city = extracted_location['city']
+            extracted_country, extracted_city = extract_location_info(tedeu_obj.description)
+            if extracted_city:
+                city = extracted_city
     
     # Extract estimated value and currency from various fields
     estimated_value = None
