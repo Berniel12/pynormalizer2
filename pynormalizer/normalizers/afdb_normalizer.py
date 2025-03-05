@@ -223,7 +223,7 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
         
         # If still no status, try to extract from description
         if not status and hasattr(afdb_obj, 'description') and afdb_obj.description:
-            extracted_status = extract_status(afdb_obj.description)
+            extracted_status = extract_status(description=afdb_obj.description)
             if extracted_status:
                 status = extracted_status
         
