@@ -24,18 +24,49 @@ TRANSLATION_STATS = {
     "languages": {}
 }
 
-# Try to import deep-translator
+# Set up deep-translator imports with robust error handling
+TRANSLATOR_AVAILABLE = False
+GoogleTranslator = None
+detect_language_func = None
 try:
-    from deep_translator import (
-        GoogleTranslator, 
-        LingueeTranslator,
-        DeepL,
-        detect_language
-    )
-    TRANSLATOR_AVAILABLE = True
-except ImportError:
-    TRANSLATOR_AVAILABLE = False
-    logger.warning("deep-translator not available. Install with pip install deep-translator")
+    # First try importing the main components
+    from deep_translator import GoogleTranslator as dt_GoogleTranslator
+    GoogleTranslator = dt_GoogleTranslator
+    
+    # Then try importing the detect_language function separately
+    try:
+        from deep_translator import detect_language as dt_detect_language
+        def detect_language_func(text):
+            return dt_detect_language(text)
+        
+        TRANSLATOR_AVAILABLE = True
+        logger.info("Successfully imported deep-translator and detect_language function")
+    except (ImportError, AttributeError) as e:
+        # Sometimes the detect_language function might be missing or renamed
+        logger.warning(f"detect_language import failed: {e}. Will use fallback detection.")
+        # Define a fallback detection function
+        def detect_language_func(text):
+            logger.warning("Using fallback language detection due to import error")
+            return "en"  # Default to English
+except ImportError as e:
+    logger.warning(f"deep-translator not available: {e}. Install with pip install deep-translator")
+    
+    # Create dummy translator function for fallback
+    class DummyTranslator:
+        def __init__(self, source="auto", target="en"):
+            self.source = source
+            self.target = target
+        
+        def translate(self, text):
+            logger.warning("Using dummy translator due to import error")
+            return text  # Return the original text
+    
+    GoogleTranslator = DummyTranslator
+    
+    # Create dummy detection function
+    def detect_language_func(text):
+        logger.warning("Using dummy language detection due to import error")
+        return "en"  # Default to English
 
 # Define supported language codes
 SUPPORTED_LANGS = {
@@ -148,16 +179,29 @@ def fix_character_encoding(text: Optional[str]) -> Optional[str]:
 
 def setup_translation_models():
     """Initialize translation capabilities. No heavy downloads required with deep-translator."""
+    global TRANSLATOR_AVAILABLE, GoogleTranslator, detect_language_func
+    
     if not TRANSLATOR_AVAILABLE:
-        logger.warning("Translation not available. Install deep-translator with pip install deep-translator")
+        logger.warning("Translation not fully initialized. Some functionality may be limited.")
         return
     
     try:
         # Check translator is working by testing a simple translation
-        translated = GoogleTranslator(source='auto', target='en').translate("test")
+        translator = GoogleTranslator(source='auto', target='en')
+        translated = translator.translate("test")
         logger.info("Deep-translator initialized successfully")
+        
+        # Test detection function too
+        test_lang = detect_language_func("hello world")
+        if test_lang:
+            logger.info(f"Language detection test successful: detected '{test_lang}' for 'hello world'")
+        else:
+            logger.warning("Language detection test failed to return a result")
     except Exception as e:
-        logger.error(f"Error initializing deep-translator: {e}")
+        logger.error(f"Error testing deep-translator functionality: {e}")
+        
+        # If testing fails, revert to fallback methods
+        TRANSLATOR_AVAILABLE = False
 
 def detect_language(text: Optional[str]) -> Optional[str]:
     """
@@ -204,7 +248,7 @@ def detect_language(text: Optional[str]) -> Optional[str]:
     
     if total_words > 0:
         for marker in english_markers:
-            pattern = r'\b' + marker + r'\b'
+            pattern = r'\b' + re.escape(marker) + r'\b'
             total_english_markers += len(re.findall(pattern, text_lower))
         
         # If significant proportion of words are English markers, treat as English
@@ -212,13 +256,14 @@ def detect_language(text: Optional[str]) -> Optional[str]:
             return "en"
     
     if not TRANSLATOR_AVAILABLE:
-        return None
+        return "en"  # Default to English if translator not available
     
     try:
         # Use deep-translator's detection with retry
         for attempt in range(3):  # Try up to 3 times
             try:
-                detected = detect_language(text[:500])  # Limit detection to first 500 chars for speed
+                # Use our detection function that handles errors gracefully
+                detected = detect_language_func(text[:500])  # Limit detection to first 500 chars for speed
                 if detected in SUPPORTED_LANGS:
                     logger.debug(f"Detected language: {detected}")
                     return detected
@@ -320,10 +365,11 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
                 TRANSLATION_STATS["languages"]["en"] += 1
                 return text, "already_english"
     
-    # If no translator available, return original
+    # If no translator available, return original and log
     if not TRANSLATOR_AVAILABLE:
         TRANSLATION_STATS["failed"] += 1
-        return text, "failed"
+        logger.warning("Translation skipped: deep-translator not available")
+        return text, "translator_unavailable"
     
     # Record the detected language in stats
     if detected_lang:
@@ -336,7 +382,8 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
         try:
             # Use the detected language if available, otherwise use auto
             source_lang = detected_lang if detected_lang else "auto"
-            translated = GoogleTranslator(source=source_lang, target='en').translate(text)
+            translator = GoogleTranslator(source=source_lang, target='en')
+            translated = translator.translate(text)
             
             if translated:
                 TRANSLATION_STATS["success"] += 1
