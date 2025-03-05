@@ -73,20 +73,23 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
         normalized_method="offline-dictionary",
     )
 
-    # Apply translations
-    if language != 'en':
-        unified.title_english = translate_to_english(unified.title, language)
-        if unified.description:
-            unified.description_english = translate_to_english(unified.description, language)
-        if unified.project_name:
-            unified.project_name_english = translate_to_english(unified.project_name, language)
-        if unified.organization_name:
-            unified.organization_name_english = translate_to_english(unified.organization_name, language)
-    else:
-        # If language is English, keep as is
-        unified.title_english = unified.title
-        unified.description_english = unified.description
-        unified.project_name_english = unified.project_name
-        unified.organization_name_english = unified.organization_name
+    # Translate non-English fields if needed
+    language = unified.language or "en"
+    
+    # Translate title if needed
+    if unified.title:
+        unified.title_english, _ = translate_to_english(unified.title, language)
+    
+    # Translate description if needed
+    if unified.description:
+        unified.description_english, _ = translate_to_english(unified.description, language)
+    
+    # Translate project name if needed
+    if unified.project_name:
+        unified.project_name_english, _ = translate_to_english(unified.project_name, language)
+    
+    # Translate organization name if needed
+    if unified.organization_name:
+        unified.organization_name_english, _ = translate_to_english(unified.organization_name, language)
 
     return unified 

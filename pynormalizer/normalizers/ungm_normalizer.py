@@ -157,13 +157,15 @@ def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
         normalized_method="offline-dictionary",
     )
 
-    # Apply translations based on detected language
-    if language != 'en':
-        unified.title_english = translate_to_english(unified.title, language)
-        if unified.description:
-            unified.description_english = translate_to_english(unified.description, language)
-    else:
-        unified.title_english = unified.title
-        unified.description_english = unified.description
+    # Translate non-English fields if needed
+    language = unified.language or "en"
+    
+    # Translate title if needed
+    if unified.title:
+        unified.title_english, _ = translate_to_english(unified.title, language)
+    
+    # Translate description if needed
+    if unified.description:
+        unified.description_english, _ = translate_to_english(unified.description, language)
 
     return unified 

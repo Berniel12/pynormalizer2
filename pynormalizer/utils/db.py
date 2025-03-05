@@ -3,6 +3,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Dict, List, Any, Optional
 from pynormalizer.models.unified_model import UnifiedTender
+import json
+from datetime import datetime
 
 # Try to import supabase
 try:
@@ -10,6 +12,13 @@ try:
     SUPABASE_AVAILABLE = True
 except ImportError:
     SUPABASE_AVAILABLE = False
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder for datetime objects"""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 def get_supabase_client() -> Optional["Client"]:
     """
@@ -135,9 +144,12 @@ def upsert_unified_tender(conn, tender: UnifiedTender):
     
     # Check if using Supabase
     if SUPABASE_AVAILABLE and isinstance(conn, Client):
+        # Convert datetime objects to ISO format strings for JSON serialization
+        data_json_safe = json.loads(json.dumps(data, cls=DateTimeEncoder))
+        
         # Use Supabase upsert functionality
         # This requires the unique constraint to be set up in Supabase
-        response = conn.table("unified_tenders").upsert(data).execute()
+        response = conn.table("unified_tenders").upsert(data_json_safe).execute()
         return response
     
     # Otherwise use direct PostgreSQL connection

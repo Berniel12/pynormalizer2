@@ -68,11 +68,17 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
         normalized_method="offline-dictionary",
     )
 
-    # Apply translations
-    unified.title_english = translate_to_english(unified.title)
+    # Translate non-English fields if needed
+    # Translate title if needed
+    if unified.title:
+        unified.title_english, _ = translate_to_english(unified.title)
+    
+    # Translate description if needed
     if unified.description:
-        unified.description_english = translate_to_english(unified.description)
+        unified.description_english, _ = translate_to_english(unified.description)
+    
+    # Translate project name if needed
     if unified.project_name:
-        unified.project_name_english = translate_to_english(unified.project_name)
+        unified.project_name_english, _ = translate_to_english(unified.project_name)
 
     return unified 

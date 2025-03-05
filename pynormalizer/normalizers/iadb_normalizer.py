@@ -67,9 +67,15 @@ def normalize_iadb(row: Dict[str, Any]) -> UnifiedTender:
         normalized_method="offline-dictionary",
     )
 
-    # Apply translations
-    unified.title_english = translate_to_english(unified.title, language)
+    # Translate non-English fields if needed
+    language = unified.language or "en"
+    
+    # Translate title if needed
+    if unified.title:
+        unified.title_english, _ = translate_to_english(unified.title, language)
+    
+    # Translate project name if needed
     if unified.project_name:
-        unified.project_name_english = translate_to_english(unified.project_name, language)
+        unified.project_name_english, _ = translate_to_english(unified.project_name, language)
 
     return unified 

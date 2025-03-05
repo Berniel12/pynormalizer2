@@ -78,17 +78,19 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         normalized_method="offline-dictionary",
     )
 
-    # Apply translations based on language
-    if tedeu_obj.language and tedeu_obj.language.lower() != 'en':
-        unified.title_english = translate_to_english(unified.title, tedeu_obj.language)
-        if unified.description:
-            unified.description_english = translate_to_english(unified.description, tedeu_obj.language)
-        if unified.organization_name:
-            unified.organization_name_english = translate_to_english(unified.organization_name, tedeu_obj.language)
-    else:
-        # If language is English or not specified, keep as is
-        unified.title_english = unified.title
-        unified.description_english = unified.description
-        unified.organization_name_english = unified.organization_name
+    # Translate non-English fields if needed
+    language = tedeu_obj.language or "en"
+    
+    # Translate title if needed
+    if unified.title:
+        unified.title_english, _ = translate_to_english(unified.title, language)
+    
+    # Translate description if needed
+    if unified.description:
+        unified.description_english, _ = translate_to_english(unified.description, language)
+    
+    # Translate organization name if needed
+    if unified.organization_name:
+        unified.organization_name_english, _ = translate_to_english(unified.organization_name, language)
 
     return unified 
