@@ -1,40 +1,18 @@
 import json
 from datetime import datetime
 from typing import Dict, Any, Optional
-import re
 
 from pynormalizer.models.source_models import AFDBTender
 from pynormalizer.models.unified_model import UnifiedTender
-from pynormalizer.utils.translation import translate_to_english
-from pynormalizer.utils.normalizer_helpers import normalize_document_links, extract_financial_info
-
-def extract_organization(text: Optional[str]) -> Optional[str]:
-    """
-    Extract organization name from text.
-    
-    Args:
-        text: Text to extract from
-        
-    Returns:
-        Organization name if found, None otherwise
-    """
-    if not text:
-        return None
-        
-    # Common organization patterns
-    org_patterns = [
-        r"(?:Ministry of|Ministry)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
-        r"(?:Department of|Department)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
-        r"(?:Authority of|Authority)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
-        r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:Authority|Board|Agency|Commission)"
-    ]
-    
-    for pattern in org_patterns:
-        matches = re.findall(pattern, text)
-        if matches:
-            return matches[0]
-            
-    return None
+from pynormalizer.utils.translation import translate_to_english, detect_language
+from pynormalizer.utils.normalizer_helpers import (
+    normalize_document_links, 
+    extract_financial_info,
+    extract_location_info,
+    extract_organization,
+    extract_procurement_method,
+    apply_translations
+)
 
 def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
     """
@@ -52,7 +30,7 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
     except Exception as e:
         raise ValueError(f"Failed to validate AFDB tender: {e}")
 
-    # Extract city from country field if it contains format "Country - City"
+    # Extract city and country from country field if it contains format "Country - City"
     country = afdb_obj.country
     city = None
     
@@ -60,6 +38,15 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
         parts = country.split(" - ", 1)
         country = parts[0].strip()
         city = parts[1].strip() if len(parts) > 1 else None
+    
+    # If country or city still not found, try to extract from description
+    if not country or not city:
+        if afdb_obj.description:
+            extracted_country, extracted_city = extract_location_info(afdb_obj.description)
+            if not country and extracted_country:
+                country = extracted_country
+            if not city and extracted_city:
+                city = extracted_city
     
     # Try to extract organization name from description
     organization_name = None
@@ -77,6 +64,14 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
             estimated_value = value
             currency = curr
     
+    # Try to extract procurement method
+    procurement_method = None
+    if afdb_obj.tender_type:
+        procurement_method = extract_procurement_method(afdb_obj.tender_type)
+    
+    if not procurement_method and afdb_obj.description:
+        procurement_method = extract_procurement_method(afdb_obj.description)
+    
     # Convert date objects to datetime if needed
     publication_dt = None
     if afdb_obj.publication_date:
@@ -91,19 +86,46 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
                     publication_dt = datetime.strptime(afdb_obj.publication_date, "%Y-%m-%d")
             except ValueError:
                 pass
+    
+    # Convert closing date to deadline_date
+    deadline_dt = None
+    if afdb_obj.closing_date:
+        if isinstance(afdb_obj.closing_date, datetime):
+            deadline_dt = afdb_obj.closing_date
+        elif hasattr(afdb_obj.closing_date, 'strftime'):  # Check if it has date methods
+            deadline_dt = datetime.combine(afdb_obj.closing_date, datetime.min.time())
                 
     # Normalize document links to standardized format
     document_links = normalize_document_links(afdb_obj.document_links)
     
     # Determine status based on closing date
     status = None
-    if afdb_obj.closing_date:
-        if afdb_obj.closing_date < datetime.now().date():
+    if afdb_obj.status:
+        status = afdb_obj.status
+    elif afdb_obj.closing_date:
+        # Check if it's a datetime or date object
+        closing_date = None
+        if isinstance(afdb_obj.closing_date, datetime):
+            closing_date = afdb_obj.closing_date
+        elif hasattr(afdb_obj.closing_date, 'strftime'):  # Check if it's a date object
+            closing_date = datetime.combine(afdb_obj.closing_date, datetime.min.time())
+            
+        if closing_date and closing_date < datetime.now():
             status = "Closed"
         else:
             status = "Open"
-    elif afdb_obj.status:
-        status = afdb_obj.status
+
+    # Detect language from title and description
+    language = "en"  # Default for AFDB
+    
+    if afdb_obj.title:
+        detected = detect_language(afdb_obj.title)
+        if detected:
+            language = detected
+    elif afdb_obj.description and language == "en":
+        detected = detect_language(afdb_obj.description)
+        if detected:
+            language = detected
 
     # Construct the UnifiedTender
     unified = UnifiedTender(
@@ -117,7 +139,7 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
         tender_type=afdb_obj.tender_type,
         status=status,
         publication_date=publication_dt,
-        deadline_date=afdb_obj.closing_date,
+        deadline_date=deadline_dt,
         country=country,
         city=city,
         organization_name=organization_name,
@@ -127,59 +149,13 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
         currency=currency,
         url=afdb_obj.url,
         document_links=document_links,
+        procurement_method=procurement_method,
+        language=language,
         original_data=row,
         normalized_method="offline-dictionary",
     )
 
-    # Detect language from title and description
-    language = "en"  # Default for AFDB
-    
-    # Apply translations
-    if unified.title:
-        title_en, title_method = translate_to_english(unified.title, language)
-        unified.title_english = title_en
-        
-        # Set fallback_reason if already English
-        if title_method == "already_english":
-            unified.fallback_reason = json.dumps({"title": "already_english"})
-    
-    if unified.description:
-        desc_en, desc_method = translate_to_english(unified.description, language)
-        unified.description_english = desc_en
-        
-        # Update fallback_reason
-        if desc_method == "already_english":
-            if unified.fallback_reason:
-                fallback = json.loads(unified.fallback_reason)
-                fallback["description"] = "already_english"
-                unified.fallback_reason = json.dumps(fallback)
-            else:
-                unified.fallback_reason = json.dumps({"description": "already_english"})
-    
-    if unified.organization_name:
-        org_en, org_method = translate_to_english(unified.organization_name, language)
-        unified.organization_name_english = org_en
-        
-        # Update fallback_reason
-        if org_method == "already_english":
-            if unified.fallback_reason:
-                fallback = json.loads(unified.fallback_reason)
-                fallback["organization_name"] = "already_english"
-                unified.fallback_reason = json.dumps(fallback)
-            else:
-                unified.fallback_reason = json.dumps({"organization_name": "already_english"})
-                
-    if unified.project_name:
-        proj_en, proj_method = translate_to_english(unified.project_name, language)
-        unified.project_name_english = proj_en
-        
-        # Update fallback_reason
-        if proj_method == "already_english":
-            if unified.fallback_reason:
-                fallback = json.loads(unified.fallback_reason)
-                fallback["project_name"] = "already_english"
-                unified.fallback_reason = json.dumps(fallback)
-            else:
-                unified.fallback_reason = json.dumps({"project_name": "already_english"})
+    # Use the common apply_translations function for all fields
+    unified = apply_translations(unified, language)
 
     return unified 

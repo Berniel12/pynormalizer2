@@ -4,7 +4,14 @@ import json
 
 from pynormalizer.models.source_models import TEDEuTender
 from pynormalizer.models.unified_model import UnifiedTender
-from pynormalizer.utils.translation import translate_to_english
+from pynormalizer.utils.translation import translate_to_english, detect_language
+from pynormalizer.utils.normalizer_helpers import (
+    normalize_document_links, 
+    extract_financial_info, 
+    extract_location_info,
+    extract_procurement_method,
+    apply_translations
+)
 
 def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     """
@@ -37,7 +44,7 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         else:
             deadline_dt = datetime.combine(tedeu_obj.deadline_date, datetime.min.time())
 
-    # Determine procurement method from procedure_type
+    # Determine procurement method from procedure_type or description
     procurement_method = None
     if tedeu_obj.procedure_type:
         # Map TED procedure types to general procurement methods
@@ -52,47 +59,36 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
             "NEGOTIATED_WITHOUT_PRIOR_CALL": "Negotiated Procedure without Prior Call for Competition",
         }
         procurement_method = procurement_map.get(tedeu_obj.procedure_type.upper(), tedeu_obj.procedure_type)
+    
+    # If not found in procedure_type, try to extract from description or additional_information
+    if not procurement_method:
+        description_text = ""
+        if tedeu_obj.summary:
+            description_text += tedeu_obj.summary + " "
+        if tedeu_obj.additional_information:
+            description_text += tedeu_obj.additional_information
+            
+        if description_text:
+            extracted_method = extract_procurement_method(description_text)
+            if extracted_method:
+                procurement_method = extracted_method
 
-    # Extract estimated value and currency from links if present
+    # Extract estimated value and currency from various fields
     estimated_value = None
     currency = None
     
-    # Extract city and country information if not in the main fields
-    country = None
+    # Try to extract from description or additional_information
+    if tedeu_obj.summary:
+        estimated_value, currency = extract_financial_info(tedeu_obj.summary)
+    
+    if not estimated_value and tedeu_obj.additional_information:
+        estimated_value, currency = extract_financial_info(tedeu_obj.additional_information)
+    
+    # Extract location information - first try direct fields, then use helper function
+    country = tedeu_obj.country
     city = None
     
-    # Extract document links in consistent format
-    document_links = []
-    
-    if tedeu_obj.links and isinstance(tedeu_obj.links, dict):
-        # PDF links are often the most important, extract them
-        if "pdf" in tedeu_obj.links and isinstance(tedeu_obj.links["pdf"], dict):
-            for lang, link in tedeu_obj.links["pdf"].items():
-                document_links.append({
-                    "type": "pdf",
-                    "language": lang,
-                    "url": link
-                })
-                
-        # Include XML links
-        if "xml" in tedeu_obj.links and isinstance(tedeu_obj.links["xml"], dict):
-            for lang, link in tedeu_obj.links["xml"].items():
-                document_links.append({
-                    "type": "xml",
-                    "language": lang,
-                    "url": link
-                })
-                
-        # Include HTML links
-        if "html" in tedeu_obj.links and isinstance(tedeu_obj.links["html"], dict):
-            for lang, link in tedeu_obj.links["html"].items():
-                document_links.append({
-                    "type": "html",
-                    "language": lang,
-                    "url": link
-                })
-    
-    # Try to extract country from lots if available
+    # Try to extract from lots if available
     if tedeu_obj.lots and isinstance(tedeu_obj.lots, list) and len(tedeu_obj.lots) > 0:
         for lot in tedeu_obj.lots:
             if isinstance(lot, dict):
@@ -104,7 +100,7 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
                 if not city and 'city' in lot:
                     city = lot.get('city')
                     
-                # Extract value information
+                # Extract value information if not already extracted
                 if not estimated_value and 'value' in lot:
                     lot_value = lot.get('value')
                     if isinstance(lot_value, dict):
@@ -115,6 +111,39 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
                                 pass
                         if 'currency' in lot_value:
                             currency = lot_value.get('currency')
+    
+    # If country or city still not found, try to extract from description
+    if not country or not city:
+        description_text = ""
+        if tedeu_obj.summary:
+            description_text += tedeu_obj.summary + " "
+        if tedeu_obj.additional_information:
+            description_text += tedeu_obj.additional_information
+            
+        extracted_country, extracted_city = extract_location_info(description_text)
+        if not country and extracted_country:
+            country = extracted_country
+        if not city and extracted_city:
+            city = extracted_city
+    
+    # Use the normalize_document_links helper to standardize links
+    document_links = normalize_document_links(tedeu_obj.links)
+    
+    # Detect language and default to English if not specified
+    language = tedeu_obj.language or "en"
+    if not language or language == "None":
+        # Try to detect from title or summary
+        if tedeu_obj.title:
+            detected = detect_language(tedeu_obj.title)
+            if detected:
+                language = detected
+        elif tedeu_obj.summary and not language:
+            detected = detect_language(tedeu_obj.summary)
+            if detected:
+                language = detected
+        else:
+            # Default to English as a fallback
+            language = "en"
 
     # Construct the UnifiedTender
     unified = UnifiedTender(
@@ -136,9 +165,9 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         contact_email=tedeu_obj.contact_email,
         contact_phone=tedeu_obj.contact_phone,
         url=tedeu_obj.contact_url,
-        language=tedeu_obj.language,
+        language=language,
         notice_id=tedeu_obj.notice_identifier or tedeu_obj.publication_number,
-        document_links=document_links if document_links else tedeu_obj.links,
+        document_links=document_links,
         procurement_method=procurement_method,
         estimated_value=estimated_value,
         currency=currency,
@@ -146,44 +175,7 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         normalized_method="offline-dictionary",
     )
 
-    # Translate non-English fields if needed
-    language = tedeu_obj.language or "en"
-    
-    # Translate title if needed
-    if unified.title:
-        title_en, title_method = translate_to_english(unified.title, language)
-        unified.title_english = title_en
-        
-        # Set fallback_reason if already English
-        if title_method == "already_english":
-            unified.fallback_reason = json.dumps({"title": "already_english"})
-    
-    # Translate description if needed
-    if unified.description:
-        desc_en, desc_method = translate_to_english(unified.description, language)
-        unified.description_english = desc_en
-        
-        # Update fallback_reason if already English
-        if desc_method == "already_english":
-            if unified.fallback_reason:
-                fallback = json.loads(unified.fallback_reason)
-                fallback["description"] = "already_english"
-                unified.fallback_reason = json.dumps(fallback)
-            else:
-                unified.fallback_reason = json.dumps({"description": "already_english"})
-    
-    # Translate organization name if needed
-    if unified.organization_name:
-        org_en, org_method = translate_to_english(unified.organization_name, language)
-        unified.organization_name_english = org_en
-        
-        # Update fallback_reason if already English
-        if org_method == "already_english":
-            if unified.fallback_reason:
-                fallback = json.loads(unified.fallback_reason)
-                fallback["organization_name"] = "already_english"
-                unified.fallback_reason = json.dumps(fallback)
-            else:
-                unified.fallback_reason = json.dumps({"organization_name": "already_english"})
+    # Use the common apply_translations function for all fields
+    unified = apply_translations(unified, language)
 
     return unified 
