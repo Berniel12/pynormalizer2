@@ -4,7 +4,7 @@ Provides lightweight translation capabilities using deep-translator.
 """
 import os
 import logging
-from typing import Dict, Optional, List, Set, Any
+from typing import Dict, Optional, List, Set, Any, Tuple
 import json
 import time
 from pathlib import Path
@@ -20,6 +20,7 @@ TRANSLATION_STATS = {
     "fallback_used": 0,
     "already_english": 0,
     "failed": 0,
+    "encoding_fixed": 0,
     "languages": {}
 }
 
@@ -50,101 +51,100 @@ SUPPORTED_LANGS = {
     'es': 'Spanish'
 }
 
-# Fallback dictionary for very basic word replacements when translation fails
-FALLBACK_DICTIONARY: Dict[str, str] = {
-    # French
-    "Avis": "Notice",
-    "Contrat": "Contract",
-    "Projet": "Project",
-    "Titre": "Title",
-    "Fournisseur": "Supplier",
-    "Appel d'offres": "Call for Tenders",
-    "Marché": "Market",
-    "Date limite": "Deadline",
-    "Pays": "Country",
-    "Description": "Description",
-    "Services": "Services",
-    "Fournitures": "Supplies",
-    "Travaux": "Works",
-    "Date de publication": "Publication date",
-    "Montant": "Amount",
-    "Acquisitions": "Acquisitions",
-    "Installation": "Installation",
-    "Matériels": "Materials",
-    "Sonorisation": "Sound System",
-    "Alerte": "Alert",
-    "Cabinet": "Cabinet",
-    "pour": "for",
-    "Audit": "Audit",
-    "Comptable": "Accounting",
-    "Financier": "Financial",
-    "Exercices": "Fiscal Years",
-    "et": "and",
-    
-    # Spanish
-    "Aviso": "Notice",
-    "Contrato": "Contract",
-    "Proyecto": "Project",
-    "Título": "Title",
-    "Proveedor": "Supplier",
-    "Licitación": "Tender",
-    "Fecha límite": "Deadline",
-    "País": "Country",
-    "Descripción": "Description",
-    "Servicios": "Services",
-    "Suministros": "Supplies",
-    "Obras": "Works",
-    "Fecha de publicación": "Publication date",
-    "Importe": "Amount",
-    
-    # German
-    "Bekanntmachung": "Notice",
-    "Vertrag": "Contract",
-    "Projekt": "Project",
-    "Titel": "Title",
-    "Lieferant": "Supplier",
-    "Ausschreibung": "Tender",
-    "Frist": "Deadline",
-    "Land": "Country",
-    "Beschreibung": "Description",
-    "Dienstleistungen": "Services",
-    "Lieferungen": "Supplies",
-    "Arbeiten": "Works",
-    "Veröffentlichungsdatum": "Publication date",
-    "Betrag": "Amount",
-    
-    # Portuguese
-    "Aviso": "Notice",
-    "Contrato": "Contract",
-    "Projeto": "Project",
-    "Título": "Title",
-    "Fornecedor": "Supplier",
-    "Concurso": "Tender",
-    "Prazo": "Deadline",
-    "País": "Country",
-    "Descrição": "Description",
-    "Serviços": "Services",
-    "Fornecimentos": "Supplies",
-    "Obras": "Works",
-    "Data de publicação": "Publication date",
-    "Montante": "Amount",
-    
-    # Italian
-    "Avviso": "Notice",
-    "Contratto": "Contract",
-    "Progetto": "Project",
-    "Titolo": "Title",
-    "Fornitore": "Supplier",
-    "Gara d'appalto": "Tender",
-    "Scadenza": "Deadline",
-    "Paese": "Country",
-    "Descrizione": "Description",
-    "Servizi": "Services",
-    "Forniture": "Supplies",
-    "Lavori": "Works",
-    "Data di pubblicazione": "Publication date",
-    "Importo": "Amount",
+# Character encoding corrections
+ENCODING_CORRECTIONS = {
+    # French special characters
+    "Fran aise": "Française",
+    "D veloppement": "Développement",
+    "Developpement": "Développement",
+    "Francaise": "Française",
+    "a ": "à ",
+    "e ": "è ",
+    " a ": " à ",
+    " e ": " è ",
+    # Spanish special characters
+    "Adquisicion": "Adquisición",
+    "modernizacion": "modernización",
+    "Informacion": "Información",
+    "electronico": "electrónico",
+    "administracion": "administración",
+    # Organizations
+    "Agence Fran aise de D veloppement": "Agence Française de Développement",
+    "Agence Francaise de Developpement": "Agence Française de Développement",
+    # Add other common patterns
 }
+
+# Extended fallback dictionary with common terms in multiple languages
+FALLBACK_DICT = {
+    # French terms
+    "appel d'offres": "call for tender",
+    "marché public": "public procurement",
+    "appel à manifestation d'intérêt": "call for expression of interest",
+    "développement": "development",
+    "française": "french",
+    "matériels": "equipment",
+    "sonorisation": "sound system",
+    "alerte": "alert",
+    "acquisition": "acquisition",
+    "installation": "installation",
+    
+    # Spanish terms
+    "adquisición": "acquisition",
+    "licitación": "tender",
+    "contratación": "contracting",
+    "administración": "administration",
+    "proyecto": "project",
+    "modernización": "modernization",
+    "escritorio": "desktop",
+    "portátiles": "laptops",
+    "actualizado": "updated",
+    
+    # Organization names
+    "Agence Française de Développement": "French Development Agency",
+    "Banco Interamericano de Desarrollo": "Inter-American Development Bank",
+    "Rwanda Information Society Authority": "Rwanda Information Society Authority",
+    
+    # Add many more common terms
+}
+
+# Extended list of French words to detect French language
+FRENCH_WORDS = {
+    "le", "la", "les", "un", "une", "des", "et", "ou", "pour", "dans", "sur", 
+    "avec", "sans", "par", "du", "au", "aux", "de", "des", "appel", "offre", 
+    "développement", "française", "projet", "marché", "services", "travaux"
+}
+
+# Extended list of Spanish words to detect Spanish language
+SPANISH_WORDS = {
+    "el", "la", "los", "las", "un", "una", "unos", "unas", "y", "o", "para", 
+    "en", "sobre", "con", "sin", "por", "del", "al", "adquisición", "proyecto",
+    "servicios", "proceso", "contratación", "modernización"
+}
+
+def fix_character_encoding(text: Optional[str]) -> Optional[str]:
+    """
+    Fix common character encoding issues in the text.
+    
+    Args:
+        text: The text to fix character encoding in
+        
+    Returns:
+        The text with fixed character encoding
+    """
+    if not text:
+        return text
+    
+    original = text
+    # Apply all the encoding corrections
+    for incorrect, correct in ENCODING_CORRECTIONS.items():
+        text = text.replace(incorrect, correct)
+    
+    # Log if we made changes
+    if original != text:
+        TRANSLATION_STATS["encoding_fixed"] += 1
+        logger.debug(f"Fixed encoding: '{original}' -> '{text}'")
+    
+    return text
 
 def setup_translation_models():
     """Initialize translation capabilities. No heavy downloads required with deep-translator."""
@@ -161,7 +161,7 @@ def setup_translation_models():
 
 def detect_language(text: Optional[str]) -> Optional[str]:
     """
-    Detect the language of a text using deep-translator.
+    Detect the language of a text using deep-translator and enhanced language detection.
     
     Args:
         text: Text to detect language for
@@ -172,13 +172,34 @@ def detect_language(text: Optional[str]) -> Optional[str]:
     if not text or len(text) < 10:
         return None
     
-    # First, check if the text is predominantly English by looking for common English words
+    # First, fix any character encoding issues
+    text = fix_character_encoding(text)
+    
+    # Check for French content specifically with common French words
+    text_lower = text.lower()
+    french_word_count = 0
+    for word in FRENCH_WORDS:
+        french_word_count += len(re.findall(r'\b' + re.escape(word) + r'\b', text_lower))
+    
+    if french_word_count >= 3:
+        logger.debug(f"Detected French with {french_word_count} French words")
+        return "fr"
+    
+    # Check for Spanish content specifically with common Spanish words
+    spanish_word_count = 0
+    for word in SPANISH_WORDS:
+        spanish_word_count += len(re.findall(r'\b' + re.escape(word) + r'\b', text_lower))
+    
+    if spanish_word_count >= 3:
+        logger.debug(f"Detected Spanish with {spanish_word_count} Spanish words")
+        return "es"
+    
+    # Check if the text is predominantly English by looking for common English words
     english_markers = ["the", "and", "for", "with", "this", "that", "from", "have", "will"]
     total_english_markers = 0
     english_threshold = 0.6  # 60% threshold for declaring text as English
     
-    # Convert to lowercase and count English markers
-    text_lower = text.lower()
+    # Count English markers
     total_words = len([w for w in text_lower.split() if len(w) > 1])
     
     if total_words > 0:
@@ -194,13 +215,19 @@ def detect_language(text: Optional[str]) -> Optional[str]:
         return None
     
     try:
-        # Use deep-translator's detection 
-        detected = detect_language(text[:500])  # Limit detection to first 500 chars for speed
-        if detected in SUPPORTED_LANGS:
-            logger.debug(f"Detected language: {detected}")
-            return detected
+        # Use deep-translator's detection with retry
+        for attempt in range(3):  # Try up to 3 times
+            try:
+                detected = detect_language(text[:500])  # Limit detection to first 500 chars for speed
+                if detected in SUPPORTED_LANGS:
+                    logger.debug(f"Detected language: {detected}")
+                    return detected
+            except Exception as e:
+                if attempt < 2:  # Don't sleep on the last attempt
+                    time.sleep(1)  # Wait before retry
+                continue
     except Exception as e:
-        logger.warning(f"Language detection failed: {e}")
+        logger.warning(f"Language detection failed after retries: {e}")
     
     # Fallback to our own detection method
     language_markers = {
@@ -214,7 +241,6 @@ def detect_language(text: Optional[str]) -> Optional[str]:
         "zh": ["的", "了", "和", "在", "是", "我", "有", "他", "这", "不", "人", "们", "一", "来"]
     }
     
-    text_lower = text.lower()
     word_counts = {}
     
     for lang, markers in language_markers.items():
@@ -241,7 +267,7 @@ def detect_language(text: Optional[str]) -> Optional[str]:
 def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto", 
                          use_fallback: bool = True) -> tuple[Optional[str], Optional[str]]:
     """
-    Translate text to English using deep-translator.
+    Translate text to English using deep-translator with enhanced robustness.
     
     Args:
         text: Text to translate
@@ -260,13 +286,23 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
     if not text or len(text.strip()) == 0:
         return None, None
     
+    # First fix any character encoding issues
+    text = fix_character_encoding(text)
+    
     # Detect language if set to auto
     detected_lang = src_lang
     if src_lang == "auto":
         detected_lang = detect_language(text)
         
-    # Skip translation if already English
-    if detected_lang == "en":
+    # Check if language detection identified it as non-English
+    # by checking for specific non-English words that indicate it is not English
+    is_definitely_not_english = False
+    if any(word in text.lower().split() for word in FRENCH_WORDS) or \
+       any(word in text.lower().split() for word in SPANISH_WORDS):
+        is_definitely_not_english = True
+    
+    # Skip translation if already English and not definitely non-English
+    if detected_lang == "en" and not is_definitely_not_english:
         # But verify it's really English using our enhanced detection
         if len(text.split()) > 3:  # Only check if more than 3 words
             english_markers = ["the", "and", "for", "with", "this", "that", "from", "have", "will"]
@@ -279,89 +315,58 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
             # If English markers are found, it's likely English
             if english_marker_count > 0:
                 TRANSLATION_STATS["already_english"] += 1
-                # Log language detection
-                if detected_lang and detected_lang in TRANSLATION_STATS["languages"]:
-                    TRANSLATION_STATS["languages"][detected_lang] = TRANSLATION_STATS["languages"].get(detected_lang, 0) + 1
+                if "en" not in TRANSLATION_STATS["languages"]:
+                    TRANSLATION_STATS["languages"]["en"] = 0
+                TRANSLATION_STATS["languages"]["en"] += 1
                 return text, "already_english"
-        else:
-            # Short text - just assume it's English as detected
-            TRANSLATION_STATS["already_english"] += 1
-            return text, "already_english"
     
-    # Check for specific non-English words that indicate it's definitely not English
-    if any(french_word in text.lower() for french_word in ["acquisitions", "materiels", "sonorisation", 
-                                                          "comptable", "sénégal", "financier", "alerte"]):
-        # Definitely not English - record language as French
-        detected_lang = "fr"
-        if "fr" not in TRANSLATION_STATS["languages"]:
-            TRANSLATION_STATS["languages"]["fr"] = 0
-        TRANSLATION_STATS["languages"]["fr"] += 1
+    # If no translator available, return original
+    if not TRANSLATOR_AVAILABLE:
+        TRANSLATION_STATS["failed"] += 1
+        return text, "failed"
     
-    # Try primary translation method
-    if TRANSLATOR_AVAILABLE:
-        max_retries = 2
-        for attempt in range(max_retries):
-            try:
-                start_time = time.time()
-                
-                # Use a try-block for importing in case library isn't available
-                try:
-                    from deep_translator import GoogleTranslator
-                    translator = GoogleTranslator(source=detected_lang if detected_lang != "auto" else "fr", target='en')
-                    translated = translator.translate(text[:4000])  # Limit size to prevent API errors
-                except ImportError:
-                    logger.warning("GoogleTranslator not available - falling back")
-                    raise Exception("GoogleTranslator import failed")
-                
-                logger.debug(f"Translation attempt {attempt+1} completed in {time.time() - start_time:.2f} seconds")
-                
-                if translated and translated.strip():
-                    TRANSLATION_STATS["success"] += 1
-                    
-                    # Log detected language
-                    if detected_lang and detected_lang != "auto":
-                        if detected_lang not in TRANSLATION_STATS["languages"]:
-                            TRANSLATION_STATS["languages"][detected_lang] = 0
-                        TRANSLATION_STATS["languages"][detected_lang] += 1
-                    
-                    return translated, "deep_translator"
-                
-                # Sleep before retry
-                if attempt < max_retries - 1:
-                    time.sleep(1)
-                    
-            except Exception as e:
-                logger.warning(f"Translation attempt {attempt+1} failed: {e}")
-                # Sleep before retry
-                if attempt < max_retries - 1:
-                    time.sleep(1)
+    # Record the detected language in stats
+    if detected_lang:
+        if detected_lang not in TRANSLATION_STATS["languages"]:
+            TRANSLATION_STATS["languages"][detected_lang] = 0
+        TRANSLATION_STATS["languages"][detected_lang] += 1
     
-    # Fallback to dictionary-based translation if enabled
-    if use_fallback:
+    # Primary translation method with retry
+    for attempt in range(3):  # Try up to 3 times
         try:
-            TRANSLATION_STATS["fallback_used"] += 1
+            # Use the detected language if available, otherwise use auto
+            source_lang = detected_lang if detected_lang else "auto"
+            translated = GoogleTranslator(source=source_lang, target='en').translate(text)
             
-            # Use more thorough dictionary-based replacement
+            if translated:
+                TRANSLATION_STATS["success"] += 1
+                return translated, None
+        except Exception as e:
+            logger.warning(f"Translation attempt {attempt+1} failed: {e}")
+            if attempt < 2:  # Don't sleep on the last attempt
+                time.sleep(1)  # Wait before retry
+            continue
+    
+    # If primary translation failed and fallback is enabled
+    if use_fallback:
+        # Use our own word replacement method
+        try:
+            # Start with a copy of the original text
             translated_text = text
             
             # Apply word-by-word replacement
-            for src_word, tgt_word in FALLBACK_DICTIONARY.items():
+            for src_word, tgt_word in FALLBACK_DICT.items():
                 # Replace full words with word boundaries
                 translated_text = re.sub(r'\b' + re.escape(src_word) + r'\b', tgt_word, translated_text, flags=re.IGNORECASE)
             
-            # Only return the fallback translation if it's actually different from the original
-            if translated_text != text:
-                logger.info(f"Fallback translation applied successfully")
-                return translated_text, "fallback_dictionary"
-            
-            # If fallback didn't change anything, log as failure with specific text info
-            logger.warning(f"Fallback translation didn't modify text: {text[:50]}... Language: {detected_lang}")
+            TRANSLATION_STATS["fallback_used"] += 1
+            return translated_text, "offline_dictionary"
         except Exception as e:
             logger.error(f"Fallback translation failed: {e}")
     
-    # Track failed translations
+    # If all translation methods failed
     TRANSLATION_STATS["failed"] += 1
-    return text, "failed"  # Return original text if all methods fail
+    return text, "failed"
 
 def get_supported_languages() -> Dict[str, str]:
     """

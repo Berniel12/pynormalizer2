@@ -1,20 +1,24 @@
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import re
+import logging
+import uuid
 
 from pynormalizer.models.source_models import AFDBTender
 from pynormalizer.models.unified_model import UnifiedTender
-from pynormalizer.utils.translation import translate_to_english, detect_language
+from pynormalizer.utils.translation import translate_to_english, detect_language, apply_translations
 from pynormalizer.utils.normalizer_helpers import (
     normalize_document_links, 
     extract_financial_info,
     extract_location_info,
     extract_organization,
     extract_procurement_method,
-    apply_translations,
     extract_status
 )
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
     """
@@ -33,7 +37,7 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
         raise ValueError(f"Failed to validate AFDB tender: {e}")
 
     # Extract city and country from country field if it contains format "Country - City"
-    country = afdb_obj.country
+    country = getattr(afdb_obj, 'country', None)
     city = None
     
     if country and " - " in country:
@@ -43,171 +47,207 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
     
     # If country or city still not found, try to extract from description
     if not country or not city:
-        if afdb_obj.description:
-            extracted_country, extracted_city = extract_location_info(afdb_obj.description)
-            if not country and extracted_country:
-                country = extracted_country
-            if not city and extracted_city:
-                city = extracted_city
+        description = getattr(afdb_obj, 'description', '')
+        if description:
+            extracted_location = extract_location_info(description)
+            if extracted_location:
+                if not country and extracted_location.get('country'):
+                    country = extracted_location['country']
+                if not city and extracted_location.get('city'):
+                    city = extracted_location['city']
     
     # Try to extract organization name from description
-    organization_name = None
-    if afdb_obj.description:
-        organization_name = extract_organization(afdb_obj.description)
+    organization_name = getattr(afdb_obj, 'organization_name', None)
+    if not organization_name and hasattr(afdb_obj, 'description') and afdb_obj.description:
+        extracted_org = extract_organization(afdb_obj.description)
+        if extracted_org:
+            organization_name = extracted_org
     
     # Extract financial information
-    estimated_value = afdb_obj.estimated_value
-    currency = afdb_obj.currency
+    estimated_value = getattr(afdb_obj, 'estimated_value', None)
+    currency = getattr(afdb_obj, 'currency', None)
     
     # Try to extract from description if not available
-    if not estimated_value and afdb_obj.description:
-        value, curr = extract_financial_info(afdb_obj.description)
-        if value and curr:
-            estimated_value = value
-            currency = curr
+    if not estimated_value and hasattr(afdb_obj, 'description') and afdb_obj.description:
+        extracted_financial = extract_financial_info(afdb_obj.description)
+        if extracted_financial:
+            if not estimated_value and extracted_financial.get('value'):
+                estimated_value = extracted_financial['value']
+            if not currency and extracted_financial.get('currency'):
+                currency = extracted_financial['currency']
     
     # Try to extract procurement method
     procurement_method = None
-    if afdb_obj.tender_type:
+    if hasattr(afdb_obj, 'tender_type') and afdb_obj.tender_type:
         procurement_method = extract_procurement_method(afdb_obj.tender_type)
     
-    if not procurement_method and afdb_obj.description:
-        procurement_method = extract_procurement_method(afdb_obj.description)
+    if not procurement_method and hasattr(afdb_obj, 'description') and afdb_obj.description:
+        extracted_method = extract_procurement_method(afdb_obj.description)
+        if extracted_method:
+            procurement_method = extracted_method
     
-    # Convert date objects to datetime if needed
-    publication_dt = None
-    if afdb_obj.publication_date:
-        if isinstance(afdb_obj.publication_date, datetime):
-            publication_dt = afdb_obj.publication_date
-        elif isinstance(afdb_obj.publication_date, str):
-            try:
-                # Try parsing common date formats
-                if "/" in afdb_obj.publication_date:
-                    publication_dt = datetime.strptime(afdb_obj.publication_date, "%d/%m/%Y")
-                elif "-" in afdb_obj.publication_date:
-                    publication_dt = datetime.strptime(afdb_obj.publication_date, "%Y-%m-%d")
-            except ValueError:
-                pass
-    
-    # Try to extract publication date from description if still None
-    if not publication_dt and afdb_obj.description:
-        # Look for date patterns in the description
-        date_patterns = [
-            r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})',  # DD/MM/YYYY or DD-MM-YYYY
-            r'(\d{4})[/-](\d{1,2})[/-](\d{1,2})',  # YYYY/MM/DD or YYYY-MM-DD
-            r'(\d{1,2})[-\s]([A-Za-z]+)[-\s](\d{4})',  # DD Month YYYY
-            r'([A-Za-z]+)[-\s](\d{1,2})[-\s](\d{4})'   # Month DD YYYY
+    # Enhanced date extraction
+    def parse_date_string(date_str):
+        """Parse date string to datetime object with support for multiple formats"""
+        if not date_str:
+            return None
+        
+        # Clean the date string
+        date_str = date_str.strip()
+        
+        # Try various datetime formats
+        date_formats = [
+            '%Y-%m-%d',           # YYYY-MM-DD
+            '%d/%m/%Y',           # DD/MM/YYYY
+            '%B %d, %Y',          # January 31, 2022
+            '%d %B %Y',           # 31 January 2022
+            '%b %d, %Y',          # Jan 31, 2022
+            '%d %b %Y',           # 31 Jan 2022
+            '%d-%m-%Y',           # DD-MM-YYYY
+            '%Y/%m/%d',           # YYYY/MM/DD
         ]
         
-        # Check for date mentions in specific formats
-        for pattern in date_patterns:
-            matches = re.findall(pattern, afdb_obj.description)
-            if matches:
-                # Extract the first date found
-                for match in matches:
-                    try:
-                        if len(match) == 3:
-                            # Handle different date formats based on pattern
-                            if re.match(r'[A-Za-z]+', match[0]):  # Month name first
-                                month_str = match[0]
-                                day = int(match[1])
-                                year = int(match[2])
-                                month = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, 
-                                        "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
-                                month_num = month.get(month_str.lower()[:3])
-                                if month_num:
-                                    publication_dt = datetime(year, month_num, day)
-                                    break
-                            elif re.match(r'[A-Za-z]+', match[1]):  # Month name middle
-                                day = int(match[0])
-                                month_str = match[1]
-                                year = int(match[2])
-                                month = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, 
-                                        "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
-                                month_num = month.get(month_str.lower()[:3])
-                                if month_num:
-                                    publication_dt = datetime(year, month_num, day)
-                                    break
-                            elif re.match(r'\d{4}', match[0]):  # Year first
-                                year = int(match[0])
-                                month = int(match[1])
-                                day = int(match[2])
-                                publication_dt = datetime(year, month, day)
-                                break
-                            else:  # Assume day first
-                                day = int(match[0])
-                                month = int(match[1])
-                                year = int(match[2])
-                                publication_dt = datetime(year, month, day)
-                                break
-                    except (ValueError, IndexError):
-                        continue
-                
-                if publication_dt:
-                    break
+        for date_format in date_formats:
+            try:
+                return datetime.strptime(date_str, date_format)
+            except ValueError:
+                continue
         
-        # Try to extract from text mentioning "Feb-2025" or similar
-        if not publication_dt:
-            month_year_pattern = r'([A-Za-z]{3})[-\s](\d{4})'  # Feb-2025
-            matches = re.findall(month_year_pattern, afdb_obj.description)
-            if matches:
-                try:
-                    month_str, year_str = matches[0]
-                    month = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, 
-                            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
-                    month_num = month.get(month_str.lower()[:3])
-                    if month_num:
-                        publication_dt = datetime(int(year_str), month_num, 1)  # Default to 1st of month
-                except (ValueError, IndexError):
-                    pass
-    
-    # Convert closing date to deadline_date
-    deadline_dt = None
-    if afdb_obj.closing_date:
-        if isinstance(afdb_obj.closing_date, datetime):
-            deadline_dt = afdb_obj.closing_date
-        elif hasattr(afdb_obj.closing_date, 'strftime'):  # Check if it has date methods
-            deadline_dt = datetime.combine(afdb_obj.closing_date, datetime.min.time())
+        # Try to extract date from text format like "Feb-2025"
+        month_match = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ](\d{4})', date_str, re.IGNORECASE)
+        if month_match:
+            month_abbr = month_match.group(1).capitalize()
+            year = month_match.group(2)
+            try:
+                # Default to 1st of the month if only month and year are provided
+                return datetime.strptime(f"1 {month_abbr} {year}", "%d %b %Y")
+            except ValueError:
+                pass
                 
-    # Normalize document links to standardized format
-    document_links = normalize_document_links(afdb_obj.document_links)
+        return None
     
-    # Determine status based on closing date
-    status = None
-    if afdb_obj.status:
-        status = afdb_obj.status
-    elif afdb_obj.closing_date:
-        # Check if it's a datetime or date object
-        closing_date = None
+    # Extract publication date with enhanced support
+    publication_dt = None
+    if hasattr(afdb_obj, 'publication_date') and afdb_obj.publication_date:
+        if isinstance(afdb_obj.publication_date, datetime):
+            publication_dt = afdb_obj.publication_date
+        else:
+            publication_dt = parse_date_string(str(afdb_obj.publication_date))
+    
+    # If publication date not found, try to extract from description
+    if not publication_dt and hasattr(afdb_obj, 'description') and afdb_obj.description:
+        # Look for date patterns in the text
+        description = afdb_obj.description
+        date_patterns = [
+            r'published on (\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'published on (\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'publication date:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'publication date:?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'date of publication:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'date of publication:?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'published:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'published:?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'date:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'date:?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})',
+            r'((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4})',
+            r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})',
+            r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4})',
+        ]
+        
+        for pattern in date_patterns:
+            match = re.search(pattern, description, re.IGNORECASE)
+            if match:
+                date_str = match.group(1)
+                try:
+                    publication_dt = parse_date_string(date_str)
+                    if publication_dt:
+                        break
+                except:
+                    continue
+    
+    # Extract closing/deadline date
+    closing_date = None
+    if hasattr(afdb_obj, 'closing_date') and afdb_obj.closing_date:
         if isinstance(afdb_obj.closing_date, datetime):
             closing_date = afdb_obj.closing_date
-        elif hasattr(afdb_obj.closing_date, 'strftime'):  # Check if it's a date object
-            closing_date = datetime.combine(afdb_obj.closing_date, datetime.min.time())
-            
-        if closing_date and closing_date < datetime.now():
-            status = "Closed"
         else:
-            status = "Open"
+            closing_date = parse_date_string(str(afdb_obj.closing_date))
     
-    # If status is still None, try to determine from tender_type and description
-    if not status:
-        # First try using the extract_status helper
-        status = extract_status(description=afdb_obj.description)
+    # If closing date not found, try to extract from description
+    if not closing_date and hasattr(afdb_obj, 'description') and afdb_obj.description:
+        # Look for deadline patterns in the text
+        description = afdb_obj.description
+        deadline_patterns = [
+            r'deadline\s*(?:date|for|is|:)?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'deadline\s*(?:date|for|is|:)?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'closing\s*(?:date|on|is|:)?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'closing\s*(?:date|on|is|:)?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'due\s*(?:date|on|by|:)?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'due\s*(?:date|on|by|:)?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'submission\s*(?:date|by|deadline|:)?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'submission\s*(?:date|by|deadline|:)?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'(?:to be )?received by\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+            r'(?:to be )?received by\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
+            r'deadline\s*(?:date|for|is|:)?\s*(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})',
+            r'deadline\s*(?:date|for|is|:)?\s*((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4})',
+            r'deadline\s*(?:date|for|is|:)?\s*(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})',
+            r'deadline\s*(?:date|for|is|:)?\s*((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4})',
+        ]
         
-        # If still None, derive from tender_type
-        if not status and afdb_obj.tender_type:
+        for pattern in deadline_patterns:
+            match = re.search(pattern, description, re.IGNORECASE)
+            if match:
+                date_str = match.group(1)
+                try:
+                    closing_date = parse_date_string(date_str)
+                    if closing_date:
+                        break
+                except:
+                    continue
+    
+    # Determine status with enhanced logic
+    status = None
+    
+    # First check if status is explicitly set
+    if hasattr(afdb_obj, 'status') and afdb_obj.status:
+        status = afdb_obj.status
+    else:
+        # If closing date exists, check if tender is closed
+        if closing_date:
+            current_dt = datetime.now()
+            if current_dt > closing_date:
+                status = "Closed"
+            else:
+                status = "Open"
+        
+        # If still no status, try to extract from description
+        if not status and hasattr(afdb_obj, 'description') and afdb_obj.description:
+            extracted_status = extract_status(afdb_obj.description)
+            if extracted_status:
+                status = extracted_status
+        
+        # If still no status, try to derive from tender_type
+        if not status and hasattr(afdb_obj, 'tender_type') and afdb_obj.tender_type:
             tender_type_lower = afdb_obj.tender_type.lower()
             
-            # Procurement Plan tenders are usually in planning stage
+            # Check for planning/procurement plan
             if "plan" in tender_type_lower or "ppm" in tender_type_lower:
                 status = "Planning"
             
-            # Expression of Interest tenders are usually open
+            # Check for expressions of interest
             elif "expression of interest" in tender_type_lower or "eoi" in tender_type_lower:
-                status = "Open"
+                if closing_date:
+                    current_dt = datetime.now()
+                    if current_dt > closing_date:
+                        status = "Closed"
+                    else:
+                        status = "Open"
+                else:
+                    status = "Active"  # Default for EOIs
             
-            # Assume active if no other info available
-            else:
+            # Default status if we have publication date
+            elif publication_dt:
                 status = "Active"
 
     # Detect language from title and description
@@ -234,7 +274,7 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
         tender_type=afdb_obj.tender_type,
         status=status,
         publication_date=publication_dt,
-        deadline_date=deadline_dt,
+        deadline_date=closing_date,
         country=country,
         city=city,
         organization_name=organization_name,
@@ -243,7 +283,7 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
         estimated_value=estimated_value,
         currency=currency,
         url=afdb_obj.url,
-        document_links=document_links,
+        document_links=normalize_document_links(afdb_obj.document_links),
         procurement_method=procurement_method,
         language=language,
         original_data=row,
