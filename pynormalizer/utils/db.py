@@ -5,6 +5,7 @@ from typing import Dict, List, Any, Optional
 from pynormalizer.models.unified_model import UnifiedTender
 import json
 from datetime import datetime
+import uuid
 
 # Try to import supabase
 try:
@@ -147,6 +148,10 @@ def upsert_unified_tender(conn, tender: UnifiedTender):
         # Remove fields that don't exist in the database schema
         if 'tags' in data:
             del data['tags']
+        
+        # Generate a UUID for the id field if it's not set
+        if not data.get("id"):
+            data["id"] = str(uuid.uuid4())
             
         # Convert datetime objects to ISO format strings for JSON serialization
         data_json_safe = json.loads(json.dumps(data, cls=DateTimeEncoder))
