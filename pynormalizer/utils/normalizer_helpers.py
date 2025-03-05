@@ -742,6 +742,57 @@ def extract_procurement_method(text: str) -> Optional[str]:
     
     return None
 
+def extract_status(deadline: Optional[datetime] = None, 
+                   status_text: Optional[str] = None, 
+                   description: Optional[str] = None) -> Optional[str]:
+    """
+    Extract or determine status of a tender from various fields.
+    
+    Args:
+        deadline: Deadline date if available
+        status_text: Explicit status text if available
+        description: Description text to extract status from if other methods fail
+        
+    Returns:
+        Status string or None if unable to determine
+    """
+    # If explicit status is provided, use specific status mappings
+    if status_text:
+        status_text = status_text.lower()
+        
+        # Common status mappings
+        if any(term in status_text for term in ['active', 'open', 'ongoing', 'current', 'published']):
+            return 'Open'
+        elif any(term in status_text for term in ['closed', 'complete', 'awarded', 'finished', 'expired']):
+            return 'Closed'
+        elif any(term in status_text for term in ['cancel', 'withdrawn', 'suspend']):
+            return 'Canceled'
+        elif any(term in status_text for term in ['upcoming', 'planned', 'future']):
+            return 'Planned'
+    
+    # Check deadline if available
+    if deadline:
+        # If deadline has passed, mark as closed
+        if deadline < datetime.now():
+            return 'Closed'
+        else:
+            return 'Open'
+    
+    # Try to extract from description as last resort
+    if description:
+        description = description.lower()
+        
+        # Check for status indicators in description
+        if any(term in description for term in ['has been awarded', 'contract awarded', 'tender closed', 'bidding closed']):
+            return 'Closed'
+        elif any(term in description for term in ['is now open', 'bidding open', 'currently accepting', 'submit bid by']):
+            return 'Open'
+        elif any(term in description for term in ['has been canceled', 'tender canceled', 'bidding canceled']):
+            return 'Canceled'
+    
+    # Unable to determine    
+    return None
+
 def log_before_after(source_type: str, source_id: str, before: Dict[str, Any], after: UnifiedTender):
     """
     Log before and after data for a tender.

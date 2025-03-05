@@ -3,7 +3,16 @@ from typing import Dict, Any
 
 from pynormalizer.models.source_models import AIIBTender
 from pynormalizer.models.unified_model import UnifiedTender
-from pynormalizer.utils.translation import translate_to_english
+from pynormalizer.utils.translation import translate_to_english, detect_language
+from pynormalizer.utils.normalizer_helpers import (
+    normalize_document_links,
+    extract_financial_info,
+    extract_location_info,
+    extract_organization,
+    extract_procurement_method,
+    extract_status,
+    apply_translations
+)
 
 def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
     """
@@ -46,6 +55,58 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
 
     # Use project_notice as the title if available, otherwise use a placeholder
     title = aiib_obj.project_notice or f"AIIB Tender - {aiib_obj.id}"
+    
+    # Extract status from text or dates
+    status = None
+    if aiib_obj.type:
+        status = extract_status(status_text=aiib_obj.type)
+    
+    # Try to extract status from description if not found
+    if not status and aiib_obj.pdf_content:
+        status = extract_status(description=aiib_obj.pdf_content)
+    
+    # Try to extract organization name from description
+    organization_name = None
+    if aiib_obj.pdf_content:
+        organization_name = extract_organization(aiib_obj.pdf_content)
+    
+    # Try to extract financial information
+    estimated_value = None
+    currency = None
+    if aiib_obj.pdf_content:
+        estimated_value, currency = extract_financial_info(aiib_obj.pdf_content)
+    
+    # Try to extract country and city if member field is empty
+    country = aiib_obj.member
+    city = None
+    
+    if not country and aiib_obj.pdf_content:
+        extracted_country, extracted_city = extract_location_info(aiib_obj.pdf_content)
+        if extracted_country:
+            country = extracted_country
+        if extracted_city:
+            city = extracted_city
+    
+    # Extract procurement method
+    procurement_method = None
+    if aiib_obj.type:
+        procurement_method = extract_procurement_method(aiib_obj.type)
+    
+    if not procurement_method and aiib_obj.pdf_content:
+        procurement_method = extract_procurement_method(aiib_obj.pdf_content)
+        
+    # Extract document links if available
+    document_links = []
+    if "pdf" in row and row["pdf"]:
+        pdf_url = row["pdf"]
+        document_links = normalize_document_links(pdf_url)
+    
+    # Detect language
+    language = "en"  # Default for AIIB
+    if aiib_obj.pdf_content:
+        detected = detect_language(aiib_obj.pdf_content)
+        if detected:
+            language = detected
 
     # Construct the UnifiedTender
     unified = UnifiedTender(
@@ -57,19 +118,22 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
         # Additional fields
         description=aiib_obj.pdf_content,  # Using PDF content as description
         tender_type=aiib_obj.type,
+        status=status,
         publication_date=publication_dt,
-        country=aiib_obj.member,  # Member is equivalent to country
+        country=country,
+        city=city,
+        organization_name=organization_name,
         sector=aiib_obj.sector,
+        estimated_value=estimated_value,
+        currency=currency,
+        document_links=document_links,
+        procurement_method=procurement_method,
+        language=language,
         original_data=row,
         normalized_method="offline-dictionary",
     )
 
-    # Translate title if needed
-    if unified.title:
-        unified.title_english, _ = translate_to_english(unified.title)
-    
-    # Translate description if needed
-    if unified.description:
-        unified.description_english, _ = translate_to_english(unified.description)
+    # Use the common apply_translations function for all fields
+    unified = apply_translations(unified, language)
 
     return unified 

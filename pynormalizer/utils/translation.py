@@ -8,6 +8,7 @@ from typing import Dict, Optional, List, Set, Any
 import json
 import time
 from pathlib import Path
+import re
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -159,25 +160,46 @@ def detect_language(text: Optional[str]) -> Optional[str]:
     if not text or len(text) < 10:
         return None
     
+    # First, check if the text is predominantly English by looking for common English words
+    english_markers = ["the", "and", "for", "with", "this", "that", "from", "have", "will"]
+    total_english_markers = 0
+    english_threshold = 0.6  # 60% threshold for declaring text as English
+    
+    # Convert to lowercase and count English markers
+    text_lower = text.lower()
+    total_words = len([w for w in text_lower.split() if len(w) > 1])
+    
+    if total_words > 0:
+        for marker in english_markers:
+            pattern = r'\b' + marker + r'\b'
+            total_english_markers += len(re.findall(pattern, text_lower))
+        
+        # If significant proportion of words are English markers, treat as English
+        if total_english_markers / total_words > english_threshold:
+            return "en"
+    
     if not TRANSLATOR_AVAILABLE:
         return None
     
     try:
         # Use deep-translator's detection 
-        detected = detect_language(text)
+        detected = detect_language(text[:500])  # Limit detection to first 500 chars for speed
         if detected in SUPPORTED_LANGS:
             logger.debug(f"Detected language: {detected}")
             return detected
     except Exception as e:
         logger.warning(f"Language detection failed: {e}")
     
-    # Fallback to simple word counting method
+    # Fallback to our own detection method
     language_markers = {
-        "fr": ["le", "la", "les", "de", "et", "en", "pour", "dans", "un", "une"],
-        "es": ["el", "la", "los", "las", "de", "y", "en", "para", "un", "una"],
-        "de": ["der", "die", "das", "und", "in", "für", "ein", "eine", "mit", "von"],
-        "pt": ["o", "a", "os", "as", "de", "e", "em", "para", "um", "uma"],
-        "it": ["il", "la", "i", "le", "di", "e", "in", "per", "un", "una"],
+        "fr": ["le", "la", "les", "de", "et", "en", "pour", "dans", "un", "une", "est", "sont", "par", "sur"],
+        "es": ["el", "la", "los", "las", "de", "y", "en", "para", "un", "una", "es", "son", "por", "sobre"],
+        "de": ["der", "die", "das", "und", "in", "für", "ein", "eine", "mit", "von", "zu", "ist", "sind", "auf"],
+        "pt": ["o", "a", "os", "as", "de", "e", "em", "para", "um", "uma", "é", "são", "por", "sobre"],
+        "it": ["il", "la", "i", "le", "di", "e", "in", "per", "un", "una", "è", "sono", "con", "su"],
+        "ru": ["и", "в", "не", "на", "я", "что", "тот", "быть", "с", "он", "а", "весь", "это", "как"],
+        "ar": ["في", "من", "إلى", "على", "و", "ل", "ب", "ان", "هذا", "أن", "عن", "هو", "مع", "أو"],
+        "zh": ["的", "了", "和", "在", "是", "我", "有", "他", "这", "不", "人", "们", "一", "来"]
     }
     
     text_lower = text.lower()
@@ -186,8 +208,8 @@ def detect_language(text: Optional[str]) -> Optional[str]:
     for lang, markers in language_markers.items():
         count = 0
         for marker in markers:
-            # Count occurrences of marker words surrounded by spaces
-            count += text_lower.count(f" {marker} ")
+            # Count occurrences of marker words with word boundaries
+            count += len(re.findall(r'\b' + re.escape(marker) + r'\b', text_lower))
         word_counts[lang] = count
     
     # If no markers found, assume English
@@ -195,7 +217,14 @@ def detect_language(text: Optional[str]) -> Optional[str]:
         return "en"
     
     # Return the language with the most marker words
-    return max(word_counts.items(), key=lambda x: x[1])[0]
+    most_likely_lang = max(word_counts.items(), key=lambda x: x[1])[0]
+    
+    # Only return the language if it has a significant count
+    if word_counts[most_likely_lang] > 3:
+        return most_likely_lang
+    
+    # Default to English if nothing else determined
+    return "en"
 
 def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto", 
                          use_fallback: bool = True) -> tuple[Optional[str], Optional[str]]:
@@ -219,14 +248,33 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
     if not text or len(text.strip()) == 0:
         return None, None
     
+    # Detect language if set to auto
+    detected_lang = src_lang
+    if src_lang == "auto":
+        detected_lang = detect_language(text)
+        
     # Skip translation if already English
-    if src_lang == "en" or (src_lang == "auto" and detect_language(text) == "en"):
-        TRANSLATION_STATS["already_english"] += 1
-        # Log language if detected
-        detected = detect_language(text)
-        if detected and detected in TRANSLATION_STATS["languages"]:
-            TRANSLATION_STATS["languages"][detected] = TRANSLATION_STATS["languages"].get(detected, 0) + 1
-        return text, "already_english"
+    if detected_lang == "en":
+        # But verify it's really English using our enhanced detection
+        if len(text.split()) > 3:  # Only check if more than 3 words
+            english_markers = ["the", "and", "for", "with", "this", "that", "from", "have", "will"]
+            text_lower = text.lower()
+            english_marker_count = 0
+            
+            for marker in english_markers:
+                english_marker_count += len(re.findall(r'\b' + re.escape(marker) + r'\b', text_lower))
+            
+            # If English markers are found, it's likely English
+            if english_marker_count > 0:
+                TRANSLATION_STATS["already_english"] += 1
+                # Log language detection
+                if detected_lang and detected_lang in TRANSLATION_STATS["languages"]:
+                    TRANSLATION_STATS["languages"][detected_lang] = TRANSLATION_STATS["languages"].get(detected_lang, 0) + 1
+                return text, "already_english"
+        else:
+            # Short text - just assume it's English as detected
+            TRANSLATION_STATS["already_english"] += 1
+            return text, "already_english"
     
     # Try primary translation method
     if TRANSLATOR_AVAILABLE:
@@ -259,7 +307,12 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
             for src_word, tgt_word in FALLBACK_DICTIONARY.items():
                 translated_text = translated_text.replace(src_word, tgt_word)
             
-            return translated_text, "fallback_dictionary"
+            # Only return the fallback translation if it's actually different from the original
+            if translated_text != text:
+                return translated_text, "fallback_dictionary"
+            
+            # If fallback didn't change anything, log as failure
+            logger.warning(f"Fallback translation didn't modify text: {text[:50]}...")
         except Exception as e:
             logger.error(f"Fallback translation failed: {e}")
     
