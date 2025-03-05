@@ -158,21 +158,19 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
     
     # Try to extract from contact_address if available
     if (not country or not city) and hasattr(wb_obj, 'contact_address') and wb_obj.contact_address:
-        extracted_location = extract_location_info(wb_obj.contact_address)
-        if extracted_location:
-            if not country and extracted_location.get('country'):
-                country = extracted_location['country']
-            if not city and extracted_location.get('city'):
-                city = extracted_location['city']
+        extracted_country, extracted_city = extract_location_info(wb_obj.contact_address)
+        if not country and extracted_country:
+            country = extracted_country
+        if not city and extracted_city:
+            city = extracted_city
     
-    # Try to extract from description as a last resort
+    # If still no country or city, try to extract from description
     if (not country or not city) and hasattr(wb_obj, 'description') and wb_obj.description:
-        extracted_location = extract_location_info(wb_obj.description)
-        if extracted_location:
-            if not country and extracted_location.get('country'):
-                country = extracted_location['country']
-            if not city and extracted_location.get('city'):
-                city = extracted_location['city']
+        extracted_country, extracted_city = extract_location_info(wb_obj.description)
+        if not country and extracted_country:
+            country = extracted_country
+        if not city and extracted_city:
+            city = extracted_city
     
     # Extract organization name
     organization_name = None

@@ -70,12 +70,11 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
     
     # Try to extract from description if not available
     if not estimated_value and hasattr(afdb_obj, 'description') and afdb_obj.description:
-        extracted_financial = extract_financial_info(afdb_obj.description)
-        if extracted_financial:
-            if not estimated_value and extracted_financial.get('value'):
-                estimated_value = extracted_financial['value']
-            if not currency and extracted_financial.get('currency'):
-                currency = extracted_financial['currency']
+        extracted_value, extracted_curr = extract_financial_info(afdb_obj.description)
+        if extracted_value:
+            estimated_value = extracted_value
+        if not currency and extracted_curr:
+            currency = extracted_curr
     
     # Try to extract procurement method
     procurement_method = None
