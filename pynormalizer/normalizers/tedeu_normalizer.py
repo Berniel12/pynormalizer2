@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Dict, Any, Optional
+import json
 
 from pynormalizer.models.source_models import TEDEuTender
 from pynormalizer.models.unified_model import UnifiedTender
@@ -52,6 +53,69 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         }
         procurement_method = procurement_map.get(tedeu_obj.procedure_type.upper(), tedeu_obj.procedure_type)
 
+    # Extract estimated value and currency from links if present
+    estimated_value = None
+    currency = None
+    
+    # Extract city and country information if not in the main fields
+    country = None
+    city = None
+    
+    # Extract document links in consistent format
+    document_links = []
+    
+    if tedeu_obj.links and isinstance(tedeu_obj.links, dict):
+        # PDF links are often the most important, extract them
+        if "pdf" in tedeu_obj.links and isinstance(tedeu_obj.links["pdf"], dict):
+            for lang, link in tedeu_obj.links["pdf"].items():
+                document_links.append({
+                    "type": "pdf",
+                    "language": lang,
+                    "url": link
+                })
+                
+        # Include XML links
+        if "xml" in tedeu_obj.links and isinstance(tedeu_obj.links["xml"], dict):
+            for lang, link in tedeu_obj.links["xml"].items():
+                document_links.append({
+                    "type": "xml",
+                    "language": lang,
+                    "url": link
+                })
+                
+        # Include HTML links
+        if "html" in tedeu_obj.links and isinstance(tedeu_obj.links["html"], dict):
+            for lang, link in tedeu_obj.links["html"].items():
+                document_links.append({
+                    "type": "html",
+                    "language": lang,
+                    "url": link
+                })
+    
+    # Try to extract country from lots if available
+    if tedeu_obj.lots and isinstance(tedeu_obj.lots, list) and len(tedeu_obj.lots) > 0:
+        for lot in tedeu_obj.lots:
+            if isinstance(lot, dict):
+                # Extract country
+                if not country and 'country' in lot:
+                    country = lot.get('country')
+                    
+                # Extract city
+                if not city and 'city' in lot:
+                    city = lot.get('city')
+                    
+                # Extract value information
+                if not estimated_value and 'value' in lot:
+                    lot_value = lot.get('value')
+                    if isinstance(lot_value, dict):
+                        if 'amount' in lot_value:
+                            try:
+                                estimated_value = float(lot_value.get('amount'))
+                            except (ValueError, TypeError):
+                                pass
+                        if 'currency' in lot_value:
+                            currency = lot_value.get('currency')
+
     # Construct the UnifiedTender
     unified = UnifiedTender(
         # Required fields
@@ -65,6 +129,8 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         status=tedeu_obj.notice_status,
         publication_date=publication_dt,
         deadline_date=deadline_dt,
+        country=country,
+        city=city,
         organization_name=tedeu_obj.organisation_name,
         organization_id=tedeu_obj.organisation_id,
         contact_email=tedeu_obj.contact_email,
@@ -72,8 +138,10 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         url=tedeu_obj.contact_url,
         language=tedeu_obj.language,
         notice_id=tedeu_obj.notice_identifier or tedeu_obj.publication_number,
-        document_links=tedeu_obj.links,
+        document_links=document_links if document_links else tedeu_obj.links,
         procurement_method=procurement_method,
+        estimated_value=estimated_value,
+        currency=currency,
         original_data=row,
         normalized_method="offline-dictionary",
     )
@@ -83,14 +151,39 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     
     # Translate title if needed
     if unified.title:
-        unified.title_english, _ = translate_to_english(unified.title, language)
+        title_en, title_method = translate_to_english(unified.title, language)
+        unified.title_english = title_en
+        
+        # Set fallback_reason if already English
+        if title_method == "already_english":
+            unified.fallback_reason = json.dumps({"title": "already_english"})
     
     # Translate description if needed
     if unified.description:
-        unified.description_english, _ = translate_to_english(unified.description, language)
+        desc_en, desc_method = translate_to_english(unified.description, language)
+        unified.description_english = desc_en
+        
+        # Update fallback_reason if already English
+        if desc_method == "already_english":
+            if unified.fallback_reason:
+                fallback = json.loads(unified.fallback_reason)
+                fallback["description"] = "already_english"
+                unified.fallback_reason = json.dumps(fallback)
+            else:
+                unified.fallback_reason = json.dumps({"description": "already_english"})
     
     # Translate organization name if needed
     if unified.organization_name:
-        unified.organization_name_english, _ = translate_to_english(unified.organization_name, language)
+        org_en, org_method = translate_to_english(unified.organization_name, language)
+        unified.organization_name_english = org_en
+        
+        # Update fallback_reason if already English
+        if org_method == "already_english":
+            if unified.fallback_reason:
+                fallback = json.loads(unified.fallback_reason)
+                fallback["organization_name"] = "already_english"
+                unified.fallback_reason = json.dumps(fallback)
+            else:
+                unified.fallback_reason = json.dumps({"organization_name": "already_english"})
 
     return unified 
