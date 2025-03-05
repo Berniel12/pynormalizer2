@@ -267,6 +267,15 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
     TRANSLATION_STATS["failed"] += 1
     return text, "failed"  # Return original text if all methods fail
 
+def get_supported_languages() -> Dict[str, str]:
+    """
+    Get the dictionary of supported language codes and their names.
+    
+    Returns:
+        Dictionary mapping ISO language codes to language names
+    """
+    return SUPPORTED_LANGS
+
 def get_translation_stats() -> Dict[str, Any]:
     """Get statistics about translation operations."""
     return TRANSLATION_STATS 

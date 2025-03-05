@@ -6,6 +6,8 @@ WORKDIR /usr/src/app
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+# Explicitly install deep-translator to ensure it's available
+RUN pip install --no-cache-dir deep-translator>=1.11.3
 
 # Copy project files
 COPY . .
