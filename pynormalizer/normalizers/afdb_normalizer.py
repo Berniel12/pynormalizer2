@@ -7,7 +7,9 @@ import uuid
 
 from pynormalizer.models.source_models import AFDBTender
 from pynormalizer.models.unified_model import UnifiedTender
-from pynormalizer.utils.translation import translate_to_english, detect_language, apply_translations
+from pynormalizer.utils.translation import (
+    translate_to_english, detect_language, apply_translations
+)
 from pynormalizer.utils.normalizer_helpers import (
     normalize_document_links, 
     extract_financial_info,

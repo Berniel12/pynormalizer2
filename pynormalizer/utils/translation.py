@@ -378,5 +378,75 @@ def get_supported_languages() -> Dict[str, str]:
     return SUPPORTED_LANGS
 
 def get_translation_stats() -> Dict[str, Any]:
-    """Get statistics about translation operations."""
-    return TRANSLATION_STATS 
+    """Get statistics about translations performed."""
+    return TRANSLATION_STATS
+
+def apply_translations(unified_tender: Any, source_language: Optional[str] = None) -> Any:
+    """
+    Apply translations to all relevant fields in a UnifiedTender object.
+    
+    Args:
+        unified_tender: The UnifiedTender object to translate fields for
+        source_language: Optional source language code, if known
+        
+    Returns:
+        Updated UnifiedTender with translated fields
+    """
+    # Fields to translate from source language to English
+    fields_to_translate = [
+        'title',
+        'description',
+        'organization_name',
+        'buyer',
+        'project_name',
+    ]
+    
+    # Store fallback reasons to track translation methods
+    fallback_reason = {}
+    
+    # Detect language if not provided
+    language = source_language
+    if not language:
+        # Try to detect from title or description
+        if unified_tender.title:
+            language = detect_language(unified_tender.title)
+        if not language and unified_tender.description:
+            language = detect_language(unified_tender.description)
+    
+    # Default to English if language detection failed
+    language = language or "en"
+    
+    # Skip translation if language is already English
+    if language == "en":
+        for field in fields_to_translate:
+            if hasattr(unified_tender, f"{field}_english") and getattr(unified_tender, field):
+                setattr(unified_tender, f"{field}_english", getattr(unified_tender, field))
+        return unified_tender
+    
+    # Translate each field
+    for field in fields_to_translate:
+        # Get the original field value
+        original_value = getattr(unified_tender, field, None)
+        if not original_value:
+            continue
+            
+        # Skip if already translated
+        if hasattr(unified_tender, f"{field}_english") and getattr(unified_tender, f"{field}_english", None):
+            continue
+            
+        # Translate and track the method used
+        translated_value, method = translate_to_english(original_value, language)
+        
+        # Set the translated field
+        if hasattr(unified_tender, f"{field}_english"):
+            setattr(unified_tender, f"{field}_english", translated_value)
+            
+            # Track fallback reasons
+            if method:
+                fallback_reason[field] = method
+    
+    # Store fallback reasons in the normalized_method field if available
+    if hasattr(unified_tender, "fallback_reason") and fallback_reason:
+        unified_tender.fallback_reason = fallback_reason
+    
+    return unified_tender 

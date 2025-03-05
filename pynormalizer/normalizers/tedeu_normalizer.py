@@ -1,19 +1,21 @@
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 import json
 import re
 import uuid
 
 from pynormalizer.models.source_models import TEDEuTender
 from pynormalizer.models.unified_model import UnifiedTender
-from pynormalizer.utils.translation import translate_to_english, detect_language
+from pynormalizer.utils.translation import (
+    translate_to_english, detect_language, apply_translations
+)
 from pynormalizer.utils.normalizer_helpers import (
     normalize_document_links, 
     extract_financial_info, 
     extract_location_info,
     extract_procurement_method,
     extract_organization,
-    apply_translations
+    extract_status
 )
 
 def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:

@@ -1,17 +1,19 @@
+import json
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from pynormalizer.models.source_models import AFDTender
 from pynormalizer.models.unified_model import UnifiedTender
-from pynormalizer.utils.translation import translate_to_english, detect_language
+from pynormalizer.utils.translation import (
+    translate_to_english, detect_language, apply_translations
+)
 from pynormalizer.utils.normalizer_helpers import (
     normalize_document_links,
     extract_financial_info,
     extract_location_info,
     extract_organization,
     extract_procurement_method,
-    extract_status,
-    apply_translations
+    extract_status
 )
 
 def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:

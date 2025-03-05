@@ -4,11 +4,12 @@ Helper functions for normalizers.
 import json
 import logging
 import re
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, Tuple, List, Union
 from datetime import datetime
 from pynormalizer.models.unified_model import UnifiedTender
 from pynormalizer.utils.translation import translate_to_english
 
+# Initialize logger
 logger = logging.getLogger(__name__)
 
 def normalize_document_links(links: Any) -> List[Dict[str, str]]:
@@ -191,71 +192,6 @@ def normalize_document_links(links: Any) -> List[Dict[str, str]]:
                         })
     
     return normalized_links
-
-def apply_translations(unified: UnifiedTender, detected_language: Optional[str] = "auto") -> UnifiedTender:
-    """
-    Apply translations to a unified tender record.
-    
-    Args:
-        unified: The unified tender record
-        detected_language: Detected language code or "auto" for auto-detection
-        
-    Returns:
-        Updated unified tender with translations
-    """
-    # Track translation methods used
-    translation_methods = {}
-    already_english_fields = []
-    
-    # Translate title
-    if unified.title:
-        unified.title_english, method = translate_to_english(unified.title, detected_language)
-        if method:
-            translation_methods["title"] = method
-            if method == "already_english":
-                already_english_fields.append("title")
-    
-    # Translate description
-    if unified.description:
-        unified.description_english, method = translate_to_english(unified.description, detected_language)
-        if method:
-            translation_methods["description"] = method
-            if method == "already_english":
-                already_english_fields.append("description")
-    
-    # Translate organization name
-    if unified.organization_name:
-        unified.organization_name_english, method = translate_to_english(unified.organization_name, detected_language)
-        if method:
-            translation_methods["organization_name"] = method
-            if method == "already_english":
-                already_english_fields.append("organization_name")
-    
-    # Translate project name
-    if unified.project_name:
-        unified.project_name_english, method = translate_to_english(unified.project_name, detected_language)
-        if method:
-            translation_methods["project_name"] = method
-            if method == "already_english":
-                already_english_fields.append("project_name")
-    
-    # Translate buyer
-    if unified.buyer:
-        unified.buyer_english, method = translate_to_english(unified.buyer, detected_language)
-        if method:
-            translation_methods["buyer"] = method
-            if method == "already_english":
-                already_english_fields.append("buyer")
-    
-    # Store translation methods used in normalized_method field
-    if translation_methods:
-        unified.normalized_method = json.dumps(translation_methods)
-    
-    # Set fallback_reason field if fields were already in English
-    if already_english_fields:
-        unified.fallback_reason = json.dumps({field: "already_english" for field in already_english_fields})
-    
-    return unified
 
 def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
     """

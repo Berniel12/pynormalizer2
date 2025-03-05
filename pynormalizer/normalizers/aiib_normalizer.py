@@ -1,9 +1,13 @@
+import json
+import re
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from pynormalizer.models.source_models import AIIBTender
 from pynormalizer.models.unified_model import UnifiedTender
-from pynormalizer.utils.translation import translate_to_english, detect_language
+from pynormalizer.utils.translation import (
+    translate_to_english, detect_language, apply_translations
+)
 from pynormalizer.utils.normalizer_helpers import (
     normalize_document_links,
     extract_financial_info,
@@ -11,7 +15,6 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_organization,
     extract_procurement_method,
     extract_status,
-    apply_translations
 )
 
 def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
