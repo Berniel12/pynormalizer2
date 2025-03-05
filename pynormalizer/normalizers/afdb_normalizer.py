@@ -51,12 +51,11 @@ def normalize_afdb(row: Dict[str, Any]) -> UnifiedTender:
     if not country or not city:
         description = getattr(afdb_obj, 'description', '')
         if description:
-            extracted_location = extract_location_info(description)
-            if extracted_location:
-                if not country and extracted_location.get('country'):
-                    country = extracted_location['country']
-                if not city and extracted_location.get('city'):
-                    city = extracted_location['city']
+            extracted_country, extracted_city = extract_location_info(description)
+            if not country and extracted_country:
+                country = extracted_country
+            if not city and extracted_city:
+                city = extracted_city
     
     # Try to extract organization name from description
     organization_name = getattr(afdb_obj, 'organization_name', None)

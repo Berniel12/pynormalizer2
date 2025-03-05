@@ -138,7 +138,7 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
     
     # If still no status, try to extract from description
     if not status and hasattr(wb_obj, 'description') and wb_obj.description:
-        extracted_status = extract_status(wb_obj.description)
+        extracted_status = extract_status(description=wb_obj.description)
         if extracted_status:
             status = extracted_status
     

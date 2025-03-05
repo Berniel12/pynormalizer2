@@ -29,27 +29,31 @@ TRANSLATOR_AVAILABLE = False
 GoogleTranslator = None
 detect_language_func = None
 try:
-    # First try importing the main components
+    # Try to import deep_translator directly
+    import deep_translator
     from deep_translator import GoogleTranslator as dt_GoogleTranslator
     GoogleTranslator = dt_GoogleTranslator
     
-    # Then try importing the detect_language function separately
     try:
+        # Try to import detect_language function
         from deep_translator import detect_language as dt_detect_language
         def detect_language_func(text):
-            return dt_detect_language(text)
+            try:
+                return dt_detect_language(text)
+            except Exception as e:
+                logger.warning(f"Language detection failed: {e}")
+                return "en"  # Default to English
         
         TRANSLATOR_AVAILABLE = True
         logger.info("Successfully imported deep-translator and detect_language function")
     except (ImportError, AttributeError) as e:
-        # Sometimes the detect_language function might be missing or renamed
         logger.warning(f"detect_language import failed: {e}. Will use fallback detection.")
         # Define a fallback detection function
         def detect_language_func(text):
             logger.warning("Using fallback language detection due to import error")
             return "en"  # Default to English
-except ImportError as e:
-    logger.warning(f"deep-translator not available: {e}. Install with pip install deep-translator")
+except Exception as e:
+    logger.warning(f"deep-translator not available: {str(e)}. Translation will be skipped.")
     
     # Create dummy translator function for fallback
     class DummyTranslator:
@@ -58,14 +62,14 @@ except ImportError as e:
             self.target = target
         
         def translate(self, text):
-            logger.warning("Using dummy translator due to import error")
+            logger.warning("Translation skipped: deep-translator not available")
             return text  # Return the original text
     
     GoogleTranslator = DummyTranslator
     
     # Create dummy detection function
     def detect_language_func(text):
-        logger.warning("Using dummy language detection due to import error")
+        logger.warning("Language detection skipped: deep-translator not available")
         return "en"  # Default to English
 
 # Define supported language codes
@@ -150,6 +154,18 @@ SPANISH_WORDS = {
     "el", "la", "los", "las", "un", "una", "unos", "unas", "y", "o", "para", 
     "en", "sobre", "con", "sin", "por", "del", "al", "adquisición", "proyecto",
     "servicios", "proceso", "contratación", "modernización"
+}
+
+# Other non-English words to improve language detection
+OTHER_NON_ENGLISH_WORDS = {
+    # German
+    "der", "die", "das", "und", "für", "ist", "auf", "dem", "nicht", "mit",
+    # Portuguese
+    "não", "em", "são", "está", "muito", "obrigado", "serviços",
+    # Italian
+    "sono", "questo", "quello", "grazie", "tutti", "bene", "servizi", 
+    # Arabic and other languages that often appear in tenders
+    "bénéfice", "bâtiment", "financé", "аукцион", "тендер", "закупки"
 }
 
 def fix_character_encoding(text: Optional[str]) -> Optional[str]:
@@ -334,6 +350,11 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
     # First fix any character encoding issues
     text = fix_character_encoding(text)
     
+    # Skip translation if deep-translator is not available
+    if not TRANSLATOR_AVAILABLE:
+        TRANSLATION_STATS["failed"] += 1
+        return text, "translator_unavailable"
+    
     # Detect language if set to auto
     detected_lang = src_lang
     if src_lang == "auto":
@@ -343,7 +364,8 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
     # by checking for specific non-English words that indicate it is not English
     is_definitely_not_english = False
     if any(word in text.lower().split() for word in FRENCH_WORDS) or \
-       any(word in text.lower().split() for word in SPANISH_WORDS):
+       any(word in text.lower().split() for word in SPANISH_WORDS) or \
+       any(word in text.lower().split() for word in SPANISH_WORDS + FRENCH_WORDS + OTHER_NON_ENGLISH_WORDS):
         is_definitely_not_english = True
     
     # Skip translation if already English and not definitely non-English
@@ -364,12 +386,6 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto",
                     TRANSLATION_STATS["languages"]["en"] = 0
                 TRANSLATION_STATS["languages"]["en"] += 1
                 return text, "already_english"
-    
-    # If no translator available, return original and log
-    if not TRANSLATOR_AVAILABLE:
-        TRANSLATION_STATS["failed"] += 1
-        logger.warning("Translation skipped: deep-translator not available")
-        return text, "translator_unavailable"
     
     # Record the detected language in stats
     if detected_lang:

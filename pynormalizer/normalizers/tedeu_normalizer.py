@@ -307,7 +307,7 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         procurement_method=procurement_method,
         original_data=tedeu_obj.original_data if hasattr(tedeu_obj, 'original_data') and tedeu_obj.original_data else None,
         source_table="tedeu",
-        source_id=tedeu_obj.id if hasattr(tedeu_obj, 'id') and tedeu_obj.id else None,
+        source_id=str(tedeu_obj.id) if hasattr(tedeu_obj, 'id') and tedeu_obj.id is not None else None,
         normalized_by="pynormalizer",
         title_english=title_english,
         description_english=description_english,
