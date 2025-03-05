@@ -52,7 +52,7 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
     country = "United States"  # Default for SAM.gov
     
     if samgov_obj.place_of_performance and isinstance(samgov_obj.place_of_performance, dict):
-        city = (
+        city_value = (
             samgov_obj.place_of_performance.get('city') or 
             samgov_obj.place_of_performance.get('cityName')
         )
@@ -65,7 +65,36 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
         
         # Only override default if explicitly specified
         if country_code and country_code != "USA" and country_code != "US":
-            country = country_code
+            if isinstance(country_code, dict) and 'code' in country_code:
+                country = country_code['code']
+            else:
+                country = str(country_code)
+                
+        # Handle city field being a dictionary
+        if isinstance(city_value, dict):
+            if 'name' in city_value:
+                city = city_value['name']
+            else:
+                # Extract first value from the dictionary if it exists
+                city_values = list(city_value.values())
+                if city_values:
+                    city = str(city_values[0])
+        else:
+            city = city_value
+
+    # Handle country field if it's a dictionary
+    if isinstance(country, dict):
+        if 'code' in country:
+            country = country['code']
+        elif 'name' in country:
+            country = country['name']
+        else:
+            # Extract first value from the dictionary if it exists
+            country_values = list(country.values())
+            if country_values:
+                country = str(country_values[0])
+            else:
+                country = "United States"  # Default fallback
 
     # Construct the UnifiedTender
     unified = UnifiedTender(
