@@ -1,0 +1,10 @@
+{
+    "name": "tender-normalizer",
+    "version": "0.1",
+    "buildTag": "latest",
+    "env": {
+        "SUPABASE_URL": "",
+        "SUPABASE_KEY": ""
+    },
+    "dockerfile": "./Dockerfile"
+} 

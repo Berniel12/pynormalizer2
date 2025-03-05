@@ -1,0 +1,14 @@
+{
+    "# PostgreSQL direct connection": "Use these settings for direct PostgreSQL connection",
+    "dbname": "YOUR_DB_NAME",
+    "user": "YOUR_DB_USER",
+    "password": "YOUR_DB_PASSWORD",
+    "host": "YOUR_DB_HOST",
+    "port": 5432,
+    
+    "# Supabase connection": "Alternatively, use these settings for Supabase",
+    "supabase_url": "https://your-project-id.supabase.co",
+    "supabase_key": "your-supabase-key",
+    
+    "# Note": "You can also set SUPABASE_URL and SUPABASE_KEY environment variables instead"
+} 
