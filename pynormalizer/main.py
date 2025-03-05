@@ -150,7 +150,7 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
             if hasattr(unified_tender, 'publication_date') and unified_tender.publication_date:
                 detail_logger.info(f"AFTER - publication_date: {unified_tender.publication_date}")
             
-            if unified_tender.tags:
+            if hasattr(unified_tender, 'tags') and unified_tender.tags:
                 detail_logger.info(f"AFTER - tags: {unified_tender.tags}")
             
             # Log summary of changes

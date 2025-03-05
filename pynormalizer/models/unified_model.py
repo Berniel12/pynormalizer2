@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Any
+from typing import Optional, Any, List
 from datetime import datetime
 
 class UnifiedTender(BaseModel):
@@ -44,4 +44,5 @@ class UnifiedTender(BaseModel):
     normalized_at: Optional[datetime] = None
     fallback_reason: Optional[str] = None
     normalized_method: Optional[str] = None
-    processing_time_ms: Optional[int] = None 
+    processing_time_ms: Optional[int] = None
+    tags: Optional[List[str]] = None 
