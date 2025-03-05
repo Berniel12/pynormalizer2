@@ -421,5 +421,28 @@ def apply_translations(unified_tender: Any, source_language: Optional[str] = Non
     
     return unified_tender
 
+def setup_translation_models():
+    """
+    Initialize and prepare translation models.
+    Ensures that the translation system is properly set up.
+    
+    This function is called at the start of the normalization process
+    to ensure translation capabilities are available.
+    
+    Returns:
+        bool: True if translation setup was successful, False otherwise
+    """
+    global TRANSLATOR_AVAILABLE
+    
+    # Test the translation setup to ensure it's working
+    result = test_translation_setup()
+    
+    if result:
+        logger.info("Translation models successfully set up")
+    else:
+        logger.warning("Translation models setup failed, using fallbacks")
+    
+    return result
+
 # Automatically test the translation setup when the module is imported
 test_translation_setup() 
