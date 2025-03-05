@@ -156,12 +156,25 @@ def upsert_unified_tender(conn, tender: UnifiedTender):
         # Convert datetime objects to ISO format strings for JSON serialization
         data_json_safe = json.loads(json.dumps(data, cls=DateTimeEncoder))
         
-        # Use Supabase upsert functionality with explicit conflict resolution
-        # Specify which columns to use for conflict detection and how to handle conflicts
-        response = conn.table("unified_tenders").upsert(
-            data_json_safe,
-            on_conflict=["source_table", "source_id"]  # Specify the columns that have a unique constraint
-        ).execute()
+        # First check if a record with this source_table and source_id already exists
+        source_table = data.get("source_table")
+        source_id = data.get("source_id")
+        
+        if source_table and source_id:
+            # Query to check if the record already exists
+            existing_record = conn.table("unified_tenders").select("id").eq("source_table", source_table).eq("source_id", source_id).execute()
+            
+            if existing_record and existing_record.data and len(existing_record.data) > 0:
+                # Record exists, update it
+                record_id = existing_record.data[0]["id"]
+                response = conn.table("unified_tenders").update(data_json_safe).eq("id", record_id).execute()
+            else:
+                # Record doesn't exist, insert a new one
+                response = conn.table("unified_tenders").insert(data_json_safe).execute()
+        else:
+            # Missing source_table or source_id, just insert
+            response = conn.table("unified_tenders").insert(data_json_safe).execute()
+        
         return response
     
     # Otherwise use direct PostgreSQL connection
