@@ -144,6 +144,10 @@ def upsert_unified_tender(conn, tender: UnifiedTender):
     
     # Check if using Supabase
     if SUPABASE_AVAILABLE and isinstance(conn, Client):
+        # Remove fields that don't exist in the database schema
+        if 'tags' in data:
+            del data['tags']
+            
         # Convert datetime objects to ISO format strings for JSON serialization
         data_json_safe = json.loads(json.dumps(data, cls=DateTimeEncoder))
         
