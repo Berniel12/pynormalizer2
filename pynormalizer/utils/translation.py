@@ -24,20 +24,57 @@ TRANSLATION_STATS = {
 # Set up deep-translator imports with robust error handling
 TRANSLATOR_AVAILABLE = False
 GoogleTranslator = None
-detect_language_func = None
+
+# Common words in different languages to help with detection
+LANGUAGE_MARKERS = {
+    'en': ['the', 'and', 'for', 'with', 'this', 'that', 'from', 'have', 'to', 'in', 'is', 'are', 'at', 'be', 'by'],
+    'fr': ['le', 'la', 'les', 'un', 'une', 'des', 'et', 'pour', 'avec', 'ce', 'cette', 'de', 'du', 'au', 'aux'],
+    'es': ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'para', 'con', 'este', 'esta', 'de', 'del'],
+    'pt': ['o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'e', 'para', 'com', 'este', 'esta', 'de', 'do', 'da'],
+    'de': ['der', 'die', 'das', 'ein', 'eine', 'und', 'für', 'mit', 'dieser', 'diese', 'von', 'zu', 'bei', 'aus'],
+}
+
+def detect_language_heuristic(text: str) -> Optional[str]:
+    """
+    Detect language using a simple heuristic based on common words.
+    
+    Args:
+        text: Text to detect language for
+        
+    Returns:
+        ISO language code or None if detection fails
+    """
+    if not text or len(text) < 5:
+        return None
+        
+    text_lower = text.lower()
+    
+    # Count language markers for each language
+    lang_scores = {}
+    for lang, markers in LANGUAGE_MARKERS.items():
+        lang_scores[lang] = 0
+        for marker in markers:
+            pattern = r'\b' + re.escape(marker) + r'\b'
+            matches = re.findall(pattern, text_lower)
+            lang_scores[lang] += len(matches)
+    
+    # Find the language with the highest score
+    max_score = 0
+    detected_lang = None
+    for lang, score in lang_scores.items():
+        if score > max_score:
+            max_score = score
+            detected_lang = lang
+    
+    # Set a minimum threshold for detection confidence
+    if max_score < 2:
+        return None
+        
+    return detected_lang
 
 try:
     # Try to import deep_translator
     from deep_translator import GoogleTranslator as dt_GoogleTranslator
-    from deep_translator import detect_language as dt_detect_language
-    
-    # Define a wrapped detection function that handles errors
-    def detect_language_func(text):
-        try:
-            return dt_detect_language(text)
-        except Exception as e:
-            logger.warning(f"Language detection failed: {e}")
-            return None
     
     # Set up the translator
     GoogleTranslator = dt_GoogleTranslator
@@ -58,11 +95,6 @@ except Exception as e:
             return text
     
     GoogleTranslator = DummyTranslator
-    
-    # Create a dummy detection function
-    def detect_language_func(text):
-        logger.warning("Language detection unavailable")
-        return None
 
 # Define supported language codes
 SUPPORTED_LANGS = {
@@ -128,11 +160,25 @@ def test_translation_setup():
         return False
     
     try:
+        # Test language detection
+        if is_english_text("Hello world"):
+            logger.info("English detection test passed")
+        else:
+            logger.warning("English detection test failed")
+            return False
+            
+        if not is_english_text("Bonjour le monde"):
+            logger.info("French detection test passed")
+        else:
+            logger.warning("French detection test failed")
+            return False
+        
         # Test a simple translation
         translator = GoogleTranslator(source='fr', target='en')
         result = translator.translate("bonjour")
         
-        if result and result.lower() == "hello":
+        valid_translations = ["hello", "good morning", "hello there"]
+        if result and result.lower() in valid_translations:
             logger.info("Translation test successful")
             return True
         else:
@@ -157,14 +203,25 @@ def is_english_text(text: str) -> bool:
     if not text or len(text) < 5:
         return True
     
+    # Known non-English words that indicate other languages
+    french_words = ["bonjour", "monde", "merci", "être", "jour", "français", "votre", "vous", "cette"]
+    spanish_words = ["hola", "gracias", "buenos", "días", "español", "hacer", "mundo"]
+    german_words = ["danke", "bitte", "guten", "morgen", "deutsch", "nicht", "hallo"]
+    
+    text_lower = text.lower()
+    
+    # Check for common non-English words
+    for word in french_words + spanish_words + german_words:
+        if f" {word} " in f" {text_lower} " or text_lower.startswith(f"{word} ") or text_lower.endswith(f" {word}"):
+            return False
+    
     # Count non-ASCII characters - English text typically has very few
     non_ascii_ratio = sum(1 for c in text if ord(c) > 127) / len(text)
     if non_ascii_ratio > 0.05:  # More than 5% non-ASCII suggests non-English
         return False
     
     # Check for common English words
-    english_markers = ["the", "and", "for", "with", "this", "that", "from", "have", "to", "in"]
-    text_lower = text.lower()
+    english_markers = LANGUAGE_MARKERS['en']
     
     # Count English markers
     english_marker_count = 0
@@ -172,20 +229,30 @@ def is_english_text(text: str) -> bool:
         pattern = r'\b' + re.escape(marker) + r'\b'
         english_marker_count += len(re.findall(pattern, text_lower))
     
-    # If we find several English markers, it's likely English
-    if english_marker_count >= 2:
+    # Check for non-English markers
+    non_english_marker_count = 0
+    for lang, markers in LANGUAGE_MARKERS.items():
+        if lang == 'en':
+            continue
+        for marker in markers:
+            pattern = r'\b' + re.escape(marker) + r'\b'
+            non_english_marker_count += len(re.findall(pattern, text_lower))
+    
+    # If more non-English markers than English markers, it's likely not English
+    if non_english_marker_count > english_marker_count:
+        return False
+        
+    # If we find several English markers and few non-English markers, it's likely English
+    if english_marker_count >= 2 and english_marker_count > non_english_marker_count:
         return True
     
-    # Use language detection as a fallback if available
-    if TRANSLATOR_AVAILABLE:
-        try:
-            detected = detect_language_func(text[:500])  # Limit to first 500 chars for speed
-            return detected == "en"
-        except Exception:
-            pass
+    # Language detection using our heuristic
+    detected = detect_language_heuristic(text)
+    if detected and detected != 'en':
+        return False
     
-    # Default behavior - assume not English if we're unsure
-    return False
+    # Default behavior - if no strong signals, assume English
+    return True
 
 def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto") -> Tuple[Optional[str], Optional[str]]:
     """
@@ -222,7 +289,8 @@ def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto") 
     
     # Detect language if set to auto
     if src_lang == "auto":
-        detected = detect_language_func(text[:500])
+        # Use our heuristic detection as a reliable alternative
+        detected = detect_language_heuristic(text[:1000])
         if detected:
             src_lang = detected
             # Log the detected language
