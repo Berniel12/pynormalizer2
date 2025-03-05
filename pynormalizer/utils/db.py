@@ -156,9 +156,12 @@ def upsert_unified_tender(conn, tender: UnifiedTender):
         # Convert datetime objects to ISO format strings for JSON serialization
         data_json_safe = json.loads(json.dumps(data, cls=DateTimeEncoder))
         
-        # Use Supabase upsert functionality
-        # This requires the unique constraint to be set up in Supabase
-        response = conn.table("unified_tenders").upsert(data_json_safe).execute()
+        # Use Supabase upsert functionality with explicit conflict resolution
+        # Specify which columns to use for conflict detection and how to handle conflicts
+        response = conn.table("unified_tenders").upsert(
+            data_json_safe,
+            on_conflict=["source_table", "source_id"]  # Specify the columns that have a unique constraint
+        ).execute()
         return response
     
     # Otherwise use direct PostgreSQL connection
