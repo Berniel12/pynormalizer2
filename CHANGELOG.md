@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0] - 2023-03-05
+
+### Added
+- Implemented lightweight translation using deep-translator library
+- Improved language detection capabilities
+- Better error handling for translation failures
+
+### Changed
+- Replaced heavy ArgosTranslate with lightweight deep-translator library
+- Reduced Docker image size significantly by using smaller translation library
+- Eliminated large model downloads for translation
+- Improved build time for Docker containers
+- Updated README with information about new translation capabilities
+
+### Fixed
+- Fixed Pydantic validation errors for JSON fields
+- Fixed connection closing issue with Supabase client
+- Improved error handling in normalizers
+- Better handling of string-encoded JSON data
+
 ## [1.1.0] - 2023-03-05
 
 ### Added

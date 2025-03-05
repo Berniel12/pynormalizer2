@@ -118,7 +118,7 @@ General-purpose script for running normalization:
 
 - Normalizes data from 9 different tender sources
 - Maps source-specific fields to a unified schema
-- Performs offline translation of non-English fields using ArgosTranslate
+- Performs lightweight translation of non-English fields using deep-translator
 - Handles database upserts with conflict resolution
 - Supports both direct PostgreSQL and Supabase connections
 - Detailed logging for before/after comparison
@@ -151,4 +151,7070 @@ The package generates several log files:
 
 ## Translation
 
-The package uses ArgosTranslate for offline translation with a fallback dictionary for common terms. Translation statistics are logged at the end of each run. 
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison log
+
+## Translation
+
+The package uses the lightweight `deep-translator` library for translating non-English content:
+
+- Automatically detects source language
+- Translates titles, descriptions, and other key fields to English
+- Uses Google Translate API without requiring API keys
+- Falls back to a dictionary-based approach for common terms if translation fails
+- Significantly smaller footprint compared to other translation libraries
+- No large model downloads required
+
+## Docker Support
+
+The package includes a Dockerfile for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t pynormalizer .
+
+# Run in test mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer
+
+# Run in production mode
+docker run -e SUPABASE_URL=your-url -e SUPABASE_KEY=your-key pynormalizer --batch-size 100
+```
+
+## Logging
+
+The package generates several log files:
+
+- `apify_normalize.log` - Main log for Apify script
+- `pynormalizer.log` - Core normalization log
+- `test_normalize.log` - Test script log
+- `normalization_comparison.log` - Detailed before/after comparison
