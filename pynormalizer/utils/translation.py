@@ -72,6 +72,19 @@ def detect_language_heuristic(text: str) -> Optional[str]:
         
     return detected_lang
 
+def detect_language(text: str) -> Optional[str]:
+    """
+    Detect the language of a text.
+    This function is maintained for backward compatibility.
+    
+    Args:
+        text: Text to detect language for
+        
+    Returns:
+        ISO language code or None if detection fails
+    """
+    return detect_language_heuristic(text)
+
 try:
     # Try to import deep_translator
     from deep_translator import GoogleTranslator as dt_GoogleTranslator
