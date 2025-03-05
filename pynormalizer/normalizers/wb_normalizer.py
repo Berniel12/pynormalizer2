@@ -25,206 +25,189 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
     Returns:
         Normalized UnifiedTender instance
     """
-    # Handle document_links if it's a string
-    if isinstance(row.get('document_links'), str):
-        try:
-            if row['document_links'].strip():
-                row['document_links'] = json.loads(row['document_links'])
-            else:
-                row['document_links'] = None
-        except (json.JSONDecodeError, ValueError):
-            # If not valid JSON, it could be a URL
-            if row['document_links'].startswith(('http', 'www')):
-                row['document_links'] = [{'url': row['document_links']}]
-            else:
-                row['document_links'] = None
-            
+    # Handle document_links if it's a string (sometimes it is)
+    if "document_links" in row and isinstance(row["document_links"], str):
+        # Try to parse as JSON if it starts with [ or {
+        if row["document_links"].strip().startswith(("[", "{")):
+            try:
+                row["document_links"] = json.loads(row["document_links"])
+            except json.JSONDecodeError:
+                # If it fails to parse, just keep it as a string
+                pass
+        # If it's a URL string that starts with http or www, make it a list with a dict
+        elif row["document_links"].strip().startswith(("http", "www")):
+            row["document_links"] = [{"link": row["document_links"]}]
+    
     # Validate with Pydantic
     try:
         wb_obj = WBTender(**row)
     except Exception as e:
         raise ValueError(f"Failed to validate World Bank tender: {e}")
-
-    # Detect language from title and/or description
-    language = "en"  # Default to English for World Bank
+    
+    # Detect language
+    language = "en"  # Default for World Bank
     
     if wb_obj.title:
         detected = detect_language(wb_obj.title)
         if detected:
             language = detected
-    elif wb_obj.description and not language:
+    elif wb_obj.description and language == "en":
         detected = detect_language(wb_obj.description)
         if detected:
             language = detected
-
-    # Extract procurement method using helper function
+    
+    # Extract procurement method - first from procurement_method field, then from description
     procurement_method = None
     
-    # Try direct fields first
-    if wb_obj.procurement_method_name:
-        procurement_method = wb_obj.procurement_method_name
-    elif wb_obj.procurement_method:
+    # Check direct field first
+    if hasattr(wb_obj, 'procurement_method') and wb_obj.procurement_method:
         procurement_method = wb_obj.procurement_method
-        
-    # Try to extract from description if needed
-    if not procurement_method and wb_obj.description:
-        extracted_method = extract_procurement_method(wb_obj.description)
-        if extracted_method:
-            procurement_method = extracted_method
-                
-    # Extract procurement method from procurement_method_code if available
-    if not procurement_method and wb_obj.procurement_method_code:
-        # Common procurement method codes
-        proc_code_map = {
-            'ICB': 'International Competitive Bidding',
-            'NCB': 'National Competitive Bidding',
-            'RFP': 'Request for Proposals',
-            'QCBS': 'Quality and Cost-Based Selection',
-            'QBS': 'Quality-Based Selection',
-            'FBS': 'Fixed Budget Selection',
-            'LCS': 'Least Cost Selection',
-            'CQS': 'Consultant\'s Qualification Selection',
-            'SSS': 'Single Source Selection',
-            'DC': 'Direct Contracting',
-            'FA': 'Framework Agreement',
-            'EOI': 'Expression of Interest',
-            'IQ': 'Invitation for Quotations',
-            'RFQ': 'Request for Quotations'
-        }
-        
-        if wb_obj.procurement_method_code in proc_code_map:
-            procurement_method = proc_code_map[wb_obj.procurement_method_code]
-
-    # Extract status information if not already available
-    status = wb_obj.notice_status or wb_obj.status
+    elif hasattr(wb_obj, 'procurement_method_name') and wb_obj.procurement_method_name:
+        procurement_method = wb_obj.procurement_method_name
     
-    # Determine status based on dates if not already available
-    if not status:
-        if wb_obj.submission_deadline_time:
-            if isinstance(wb_obj.submission_deadline_time, datetime):
-                deadline = wb_obj.submission_deadline_time
-                # If deadline is in the past, mark as closed
-                if deadline < datetime.now():
-                    status = "Closed"
-                else:
-                    status = "Open"
-            elif isinstance(wb_obj.submission_deadline_time, str):
-                try:
-                    deadline = datetime.fromisoformat(wb_obj.submission_deadline_time.replace('Z', '+00:00'))
-                    if deadline < datetime.now():
-                        status = "Closed"
-                    else:
-                        status = "Open"
-                except (ValueError, TypeError):
-                    pass
-
-    # Extract location information 
-    country = wb_obj.country
+    # Try to extract from description if not found directly
+    if not procurement_method and wb_obj.description:
+        procurement_method = extract_procurement_method(wb_obj.description)
+    
+    # Extract status
+    status = None
+    
+    # Check if notice_status attribute exists
+    if hasattr(wb_obj, 'notice_status') and wb_obj.notice_status:
+        status = wb_obj.notice_status
+    # Check if tender_type attribute exists (sometimes contains status)
+    elif hasattr(wb_obj, 'tender_type') and wb_obj.tender_type:
+        status = wb_obj.tender_type
+    
+    # Try to determine based on deadline_date
+    if not status and hasattr(wb_obj, 'deadline_date') and wb_obj.deadline_date:
+        # If deadline has passed, mark as closed
+        if isinstance(wb_obj.deadline_date, datetime) and wb_obj.deadline_date < datetime.now():
+            status = "Closed"
+        else:
+            status = "Open"
+    
+    # Extract country and city
+    country = None
     city = None
     
-    # Try to extract country and city from project_ctry_name
-    if wb_obj.project_ctry_name and not country:
+    # Check direct fields
+    if hasattr(wb_obj, 'country') and wb_obj.country:
+        country = wb_obj.country
+    
+    if hasattr(wb_obj, 'city') and wb_obj.city:
+        city = wb_obj.city
+    
+    # Try project_ctry_name if country is not set
+    if not country and hasattr(wb_obj, 'project_ctry_name') and wb_obj.project_ctry_name:
         country = wb_obj.project_ctry_name
     
-    # Extract from description if not available
-    if (not country or not city) and wb_obj.description:
-        extracted_country, extracted_city = extract_location_info(wb_obj.description)
-        if not country and extracted_country:
-            country = extracted_country
-        if not city and extracted_city:
-            city = extracted_city
+    # Try contact_ctry_name if still not set
+    if not country and hasattr(wb_obj, 'contact_ctry_name') and wb_obj.contact_ctry_name:
+        country = wb_obj.contact_ctry_name
     
-    # Extract organization information
+    # If no country/city found, try to extract from contact address
+    if (not country or not city) and hasattr(wb_obj, 'contact_address') and wb_obj.contact_address:
+        country_from_addr, city_from_addr = extract_location_info(wb_obj.contact_address)
+        if not country and country_from_addr:
+            country = country_from_addr
+        if not city and city_from_addr:
+            city = city_from_addr
+    
+    # If still not found, try to extract from description
+    if (not country or not city) and wb_obj.description:
+        country_from_desc, city_from_desc = extract_location_info(wb_obj.description)
+        if not country and country_from_desc:
+            country = country_from_desc
+        if not city and city_from_desc:
+            city = city_from_desc
+    
+    # Extract organization name
     organization_name = None
-    if wb_obj.contact_organization:
+    
+    # Check direct contact_organization field
+    if hasattr(wb_obj, 'contact_organization') and wb_obj.contact_organization:
         organization_name = wb_obj.contact_organization
+    # If not found, try buyer field
+    elif hasattr(wb_obj, 'buyer') and wb_obj.buyer:
+        organization_name = wb_obj.buyer
+    # If still not found, try to extract from description
     elif wb_obj.description:
         organization_name = extract_organization(wb_obj.description)
     
-    # Extract financial information if not already available
-    estimated_value, currency = None, None
+    # Extract financial information
+    estimated_value = None
+    currency = None
     
-    # Extract from description
-    if wb_obj.description:
-        estimated_value, currency = extract_financial_info(wb_obj.description)
-        
-    # Normalize document links to standardized format
-    document_links = normalize_document_links(wb_obj.document_links)
+    if hasattr(wb_obj, 'estimated_value') and wb_obj.estimated_value:
+        estimated_value = wb_obj.estimated_value
     
-    # Convert dates to datetime objects
+    if hasattr(wb_obj, 'currency') and wb_obj.currency:
+        currency = wb_obj.currency
+    
+    # If not found directly, try to extract from description
+    if (not estimated_value or not currency) and wb_obj.description:
+        value, curr = extract_financial_info(wb_obj.description)
+        if value and curr:
+            if not estimated_value:
+                estimated_value = value
+            if not currency:
+                currency = curr
+    
+    # Normalize document links
+    document_links = []
+    if hasattr(wb_obj, 'document_links') and wb_obj.document_links:
+        document_links = normalize_document_links(wb_obj.document_links)
+    
+    # Convert dates
     publication_date = None
-    deadline_date = None
-    
-    if wb_obj.publication_date:
+    if hasattr(wb_obj, 'publication_date') and wb_obj.publication_date:
         if isinstance(wb_obj.publication_date, datetime):
             publication_date = wb_obj.publication_date
         elif isinstance(wb_obj.publication_date, str):
             try:
                 publication_date = datetime.fromisoformat(wb_obj.publication_date.replace('Z', '+00:00'))
-            except (ValueError, TypeError):
+            except ValueError:
                 pass
     
-    if wb_obj.submission_date:
-        if isinstance(wb_obj.submission_date, datetime):
-            deadline_date = wb_obj.submission_date
-        elif isinstance(wb_obj.submission_date, str):
+    deadline_date = None
+    if hasattr(wb_obj, 'deadline_date') and wb_obj.deadline_date:
+        if isinstance(wb_obj.deadline_date, datetime):
+            deadline_date = wb_obj.deadline_date
+        elif isinstance(wb_obj.deadline_date, str):
             try:
-                deadline_date = datetime.fromisoformat(wb_obj.submission_date.replace('Z', '+00:00'))
-            except (ValueError, TypeError):
+                deadline_date = datetime.fromisoformat(wb_obj.deadline_date.replace('Z', '+00:00'))
+            except ValueError:
                 pass
     
-    # Determine tender type from notice_type
-    tender_type = None
-    if wb_obj.tender_type:
-        tender_type = wb_obj.tender_type
-    elif wb_obj.notice_type:
-        # Mapping of notice types to tender types
-        notice_type_map = {
-            'Invitation for Bids': 'Goods/Works',
-            'Request for Expressions of Interest': 'Consulting Services',
-            'Request for Proposals': 'Consulting Services',
-            'General Procurement Notice': 'Planning',
-            'Contract Award': 'Award',
-            'Shortlist': 'Shortlisting Results'
-        }
-        tender_type = notice_type_map.get(wb_obj.notice_type, wb_obj.notice_type)
-
     # Construct the UnifiedTender
     unified = UnifiedTender(
         # Required fields
-        title=wb_obj.title or f"World Bank Tender - {wb_obj.id}",
+        title=wb_obj.title,
         source_table="wb",
         source_id=str(wb_obj.id),
         
         # Additional fields
         description=wb_obj.description,
-        tender_type=tender_type,
+        tender_type=getattr(wb_obj, 'tender_type', None),
         status=status,
-        publication_date=publication_date or wb_obj.publication_date,
-        deadline_date=deadline_date or wb_obj.submission_date or wb_obj.submission_deadline_time,
+        publication_date=publication_date,
+        deadline_date=deadline_date,
         country=country,
         city=city,
         organization_name=organization_name,
-        organization_id=wb_obj.project_id,
-        project_name=wb_obj.project_name,
-        project_id=wb_obj.project_id,
-        reference_number=wb_obj.bid_reference_no,
-        notice_id=wb_obj.bid_reference_no or wb_obj.id,
-        contact_name=wb_obj.contact_name,
-        contact_email=wb_obj.contact_email,
-        contact_phone=wb_obj.contact_phone,
-        contact_address=wb_obj.contact_address,
-        url=wb_obj.url,
-        document_links=document_links,
-        procurement_method=procurement_method,
+        project_name=getattr(wb_obj, 'project_name', None),
         estimated_value=estimated_value,
         currency=currency,
+        url=getattr(wb_obj, 'url', None),
+        document_links=document_links,
+        procurement_method=procurement_method,
+        language=language,
         original_data=row,
         normalized_method="offline-dictionary",
-        language=language,
     )
-
-    # Apply translations using the common helper
+    
+    # Apply translations
     unified = apply_translations(unified, language)
-
+    
     return unified 

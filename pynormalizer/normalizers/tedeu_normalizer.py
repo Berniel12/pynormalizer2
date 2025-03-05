@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Dict, Any, Optional
 import json
+import re
 
 from pynormalizer.models.source_models import TEDEuTender
 from pynormalizer.models.unified_model import UnifiedTender
@@ -10,6 +11,7 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_financial_info, 
     extract_location_info,
     extract_procurement_method,
+    extract_organization,
     apply_translations
 )
 
