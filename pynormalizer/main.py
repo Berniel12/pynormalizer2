@@ -48,8 +48,8 @@ SOURCE_NORMALIZERS = {
     "afdb": normalize_afdb,
     "aiib": normalize_aiib,
     "iadb": normalize_iadb,
-    "samgov": normalize_samgov,
-    "tedeu": normalize_tedeu,
+    "sam_gov": normalize_samgov,
+    "ted_eu": normalize_tedeu,
     "ungm": normalize_ungm,
     "wb": normalize_wb
 }
