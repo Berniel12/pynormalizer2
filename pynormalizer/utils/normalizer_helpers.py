@@ -318,9 +318,21 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
         matches = re.findall(pattern, text, re.IGNORECASE)
         if matches:
             for match in matches:
-                amount_str = match.strip()
+                # Handle cases where match might be a tuple or a string
+                if isinstance(match, tuple):
+                    if len(match) > 0:
+                        amount_str = match[0]
+                    else:
+                        continue
+                else:
+                    amount_str = match
                 
-                # Clean the amount string
+                # Ensure amount_str is a string
+                if not isinstance(amount_str, str):
+                    continue
+                
+                # Strip and clean the amount string
+                amount_str = amount_str.strip()
                 amount_str = amount_str.replace(',', '')
                 
                 # Handle million/billion/trillion suffixes
