@@ -1352,12 +1352,52 @@ def ensure_country(country: Optional[str],
         
         # Country name normalization mapping for special cases and alternate forms
         country_normalization_map = {
-            # Côte d'Ivoire variations
+            # French-English variants
             "côte d'ivoire": "Côte d'Ivoire",
             "cote d'ivoire": "Côte d'Ivoire", 
             "c te d'ivoire": "Côte d'Ivoire",
             "ivory coast": "Côte d'Ivoire",
-            # Other common variations
+            "république de côte d'ivoire": "Côte d'Ivoire",
+            
+            # Country codes
+            "rca": "Central African Republic",
+            "rdc": "DR Congo",
+            "car": "Central African Republic",
+            "drc": "DR Congo",
+            
+            # Accented French names with English equivalents
+            "algérie": "Algeria",
+            "bénin": "Benin",
+            "égypte": "Egypt",
+            "guinée": "Guinea",
+            "guinée équatoriale": "Equatorial Guinea",
+            "guinée-bissau": "Guinea-Bissau",
+            "guinée equatoriale": "Equatorial Guinea",
+            "libéria": "Liberia",
+            "maroc": "Morocco",
+            "mauritanie": "Mauritania",
+            "nigéria": "Nigeria",
+            "sénégal": "Senegal",
+            "tchad": "Chad",
+            "tunisie": "Tunisia",
+            "république centrafricaine": "Central African Republic",
+            "république démocratique du congo": "DR Congo",
+            "république du congo": "Congo",
+            "comores": "Comoros",
+            
+            # Inconsistent spellings
+            "bostwana": "Botswana",
+            "caboverde": "Cabo Verde",
+            "cabo-verde": "Cabo Verde",
+            "somaliland": "Somalia",
+            "viet nam": "Vietnam",
+            
+            # Generic or invalid terms that should be mapped to proper values
+            "multinational": None,  # Will trigger fallback logic
+            "international": None,  # Will trigger fallback logic
+            "africa": None,         # Will trigger fallback logic
+            
+            # USA/UK variants
             "usa": "United States",
             "united states of america": "United States",
             "u.s.a.": "United States",
@@ -1368,7 +1408,6 @@ def ensure_country(country: Optional[str],
             "uae": "United Arab Emirates",
             "holland": "Netherlands",
             "republic of korea": "South Korea",
-            "drc": "DR Congo",
             "democratic republic of congo": "DR Congo",
             "republic of china": "Taiwan",
             "people's republic of china": "China",
@@ -1377,6 +1416,14 @@ def ensure_country(country: Optional[str],
             "russia": "Russian Federation",
             "czech republic": "Czechia"
         }
+        
+        # Check for project titles mistakenly entered as countries
+        project_title_indicators = [
+            "cabinet pour", "procurement of", "project", "consultant",
+            "recruitment", "program for", "service de", "amélioration",
+            "contratación", "audit", "vers des", "amélioration",
+            "communities"
+        ]
         
         # BULLETPROOF TYPE HANDLING
         # Handle all possible types for country parameter
@@ -1412,12 +1459,24 @@ def ensure_country(country: Optional[str],
                 logger.info(f"Country is a valid string: {country}")
                 country = country.strip()
                 
-                # Apply normalization for known variations
-                country_lower = country.lower()
-                if country_lower in country_normalization_map:
-                    normalized_country = country_normalization_map[country_lower]
-                    logger.info(f"Normalized country from '{country}' to '{normalized_country}'")
-                    country = normalized_country
+                # Check if it's a project title mistakenly entered as country
+                is_project_title = False
+                if country and len(country) > 15:  # Short country names are unlikely to be project titles
+                    country_lower = country.lower()
+                    for indicator in project_title_indicators:
+                        if indicator.lower() in country_lower:
+                            logger.info(f"Country value appears to be a project title: {country}")
+                            country = None
+                            is_project_title = True
+                            break
+                
+                if not is_project_title:
+                    # Apply normalization for known variations
+                    country_lower = country.lower()
+                    if country_lower in country_normalization_map:
+                        normalized_country = country_normalization_map[country_lower]
+                        logger.info(f"Normalized country from '{country}' to '{normalized_country}'")
+                        country = normalized_country
             
             # The next part of the function relies on country being None or a valid string
             logger.info(f"Normalized country value: {country}")
@@ -1693,36 +1752,270 @@ def ensure_country(country: Optional[str],
         logger.error(traceback.format_exc())
         return "Unknown"
 
-def determine_normalized_method(extraction_methods_used=None):
+def determine_normalized_method(row, default=None):
     """
-    Determine the appropriate normalized_method value based on extraction techniques.
+    Determine the normalized_method for a tender based on source table and available data.
     
     Args:
-        extraction_methods_used: Optional list of extraction methods used
+        row (dict): Row of data from a source table
+        default (str, optional): Default value if no method can be determined
         
     Returns:
-        String indicating the normalization method
+        str: The normalized procurement method
     """
-    if not extraction_methods_used:
-        return "offline-dictionary"
+    # If normalized_method is already set and valid, return it
+    if row.get('normalized_method') and row['normalized_method'].strip():
+        return row['normalized_method']
+    
+    # Default methods by source table
+    table_defaults = {
+        'wb': 'International Competitive Bidding',
+        'adb': 'Open Competitive Bidding',
+        'afdb': 'International Competitive Bidding', 
+        'afd': 'International Competitive Bidding',
+        'aiib': 'International Open Competitive Tendering',
+        'iadb': 'International Competitive Bidding',
+        'tedeu': 'Open Procedure',
+        'sam_gov': 'Full and Open Competition',
+        'ungm': 'International Competitive Bidding'
+    }
+    
+    # If we have the source table and a procurement method
+    if row.get('source_table') and row.get('procurement_method') and row['procurement_method'].strip():
+        method = row['procurement_method'].lower()
         
-    methods = set(extraction_methods_used)
+        # Standardize method names based on common patterns
+        if 'open' in method or 'competitive' in method:
+            if 'international' in method:
+                return 'International Competitive Bidding'
+            elif 'national' in method:
+                return 'National Competitive Bidding'
+            else:
+                return 'Open Competitive Bidding'
+        elif 'direct' in method or 'sole source' in method or 'single source' in method:
+            return 'Direct Procurement'
+        elif 'limited' in method or 'selective' in method or 'restricted' in method:
+            return 'Limited Competitive Bidding'
+        elif 'quality' in method and 'cost' in method:
+            return 'Quality and Cost-Based Selection'
+        elif 'consultant' in method and 'selection' in method:
+            return 'Consultant Qualification Selection'
+        elif 'request for proposal' in method or 'rfp' in method:
+            return 'Request for Proposal'
+        elif 'request for quotation' in method or 'rfq' in method:
+            return 'Request for Quotation'
     
-    # If NLP/ML techniques were used
-    if "nlp" in methods or "ml" in methods or "ai" in methods:
-        if "pattern" in methods or "dictionary" in methods:
-            return "hybrid-nlp-pattern"
-        return "nlp-model"
+    # Use source table default
+    if row.get('source_table') and row['source_table'] in table_defaults:
+        return table_defaults[row['source_table']]
     
-    # If translation was used
-    if "translation" in methods:
-        if "pattern" in methods:
-            return "pattern-translation"
-        return "translation-dictionary"
+    # Fallback to the provided default or a generic term
+    return default or 'Competitive Bidding'
+
+def ensure_country(country_value):
+    """
+    Normalize country names to standard English names.
     
-    # If patterns and dictionaries were used
-    if "pattern" in methods and "dictionary" in methods:
-        return "pattern-dictionary" 
+    Args:
+        country_value: Country name or code to normalize
+        
+    Returns:
+        str: Normalized country name or None if invalid
+    """
+    if not country_value:
+        return None
+        
+    # Convert to string and clean
+    if not isinstance(country_value, str):
+        country_value = str(country_value)
     
-    # Default to basic offline dictionary-based normalization
-    return "offline-dictionary"
+    country_value = country_value.strip()
+    if not country_value:
+        return None
+    
+    # Common country name variations (including French names and abbreviations)
+    country_mapping = {
+        # French to English
+        "côte d'ivoire": "Ivory Coast",
+        "cote d'ivoire": "Ivory Coast",
+        "république démocratique du congo": "Democratic Republic of the Congo",
+        "republique democratique du congo": "Democratic Republic of the Congo",
+        "république du congo": "Republic of the Congo",
+        "republique du congo": "Republic of the Congo",
+        "guinée": "Guinea",
+        "guinee": "Guinea",
+        "guinée-bissau": "Guinea-Bissau",
+        "guinee-bissau": "Guinea-Bissau",
+        "guinée équatoriale": "Equatorial Guinea",
+        "guinee equatoriale": "Equatorial Guinea",
+        "bénin": "Benin",
+        "benin": "Benin",
+        "burkina faso": "Burkina Faso",
+        "cameroun": "Cameroon",
+        "république centrafricaine": "Central African Republic",
+        "republique centrafricaine": "Central African Republic",
+        "tchad": "Chad",
+        "comores": "Comoros",
+        "djibouti": "Djibouti",
+        "égypte": "Egypt",
+        "egypte": "Egypt",
+        "guinée équatoriale": "Equatorial Guinea",
+        "guinee equatoriale": "Equatorial Guinea",
+        "érythrée": "Eritrea",
+        "erythree": "Eritrea",
+        "éthiopie": "Ethiopia",
+        "ethiopie": "Ethiopia",
+        "gabon": "Gabon",
+        "gambie": "Gambia",
+        "ghana": "Ghana",
+        "kenya": "Kenya",
+        "lesotho": "Lesotho",
+        "libéria": "Liberia",
+        "liberia": "Liberia",
+        "libye": "Libya",
+        "madagascar": "Madagascar",
+        "malawi": "Malawi",
+        "mali": "Mali",
+        "mauritanie": "Mauritania",
+        "maurice": "Mauritius",
+        "maroc": "Morocco",
+        "mozambique": "Mozambique",
+        "namibie": "Namibia",
+        "niger": "Niger",
+        "nigéria": "Nigeria",
+        "nigeria": "Nigeria",
+        "rwanda": "Rwanda",
+        "sénégal": "Senegal",
+        "senegal": "Senegal",
+        "sierra leone": "Sierra Leone",
+        "somalie": "Somalia",
+        "afrique du sud": "South Africa",
+        "soudan": "Sudan",
+        "soudan du sud": "South Sudan",
+        "tanzanie": "Tanzania",
+        "togo": "Togo",
+        "tunisie": "Tunisia",
+        "ouganda": "Uganda",
+        "zambie": "Zambia",
+        "zimbabwe": "Zimbabwe",
+        
+        # Common abbreviations and variations
+        "usa": "United States",
+        "u.s.a.": "United States",
+        "u.s.": "United States",
+        "united states of america": "United States",
+        "america": "United States",
+        "uk": "United Kingdom",
+        "u.k.": "United Kingdom",
+        "great britain": "United Kingdom",
+        "britain": "United Kingdom",
+        "england": "United Kingdom",
+        "uae": "United Arab Emirates",
+        "u.a.e.": "United Arab Emirates",
+        "roc": "Republic of the Congo",
+        "drc": "Democratic Republic of the Congo",
+        "d.r.c.": "Democratic Republic of the Congo",
+        "dr congo": "Democratic Republic of the Congo",
+        "congo-kinshasa": "Democratic Republic of the Congo",
+        "congo-brazzaville": "Republic of the Congo",
+        "car": "Central African Republic",
+        "c.a.r.": "Central African Republic",
+        "rsa": "South Africa",
+        "r.s.a.": "South Africa",
+        "sa": "South Africa",
+        "s.a.": "South Africa",
+        
+        # ISO codes (selected examples)
+        "us": "United States",
+        "gb": "United Kingdom",
+        "fr": "France",
+        "de": "Germany",
+        "cn": "China",
+        "jp": "Japan",
+        "ru": "Russia",
+        "br": "Brazil",
+        "in": "India",
+        "za": "South Africa",
+        "ng": "Nigeria",
+        "ke": "Kenya",
+        "eg": "Egypt",
+        "ma": "Morocco",
+        "dz": "Algeria",
+        "tz": "Tanzania",
+        "et": "Ethiopia",
+        "cd": "Democratic Republic of the Congo",
+        "cg": "Republic of the Congo",
+        "ci": "Ivory Coast",
+        "gh": "Ghana",
+        "cm": "Cameroon",
+        "mg": "Madagascar",
+        "ao": "Angola",
+        "mz": "Mozambique",
+        "sn": "Senegal",
+        "zw": "Zimbabwe",
+        "rw": "Rwanda",
+        "ml": "Mali",
+        "bf": "Burkina Faso",
+        "ne": "Niger",
+        "td": "Chad",
+        "so": "Somalia",
+        "sd": "Sudan",
+        "ss": "South Sudan",
+        "ug": "Uganda",
+        "zm": "Zambia",
+        "mw": "Malawi",
+        "ls": "Lesotho",
+        "bw": "Botswana",
+        "na": "Namibia",
+        "sz": "Eswatini",
+        "gm": "Gambia",
+        "gn": "Guinea",
+        "gw": "Guinea-Bissau",
+        "lr": "Liberia",
+        "sl": "Sierra Leone",
+        "tg": "Togo",
+        "bj": "Benin",
+        "ga": "Gabon",
+        "gq": "Equatorial Guinea",
+        "st": "Sao Tome and Principe",
+        "cv": "Cape Verde",
+        "km": "Comoros",
+        "mu": "Mauritius",
+        "sc": "Seychelles",
+        "dj": "Djibouti",
+        "er": "Eritrea",
+        "bi": "Burundi",
+        "cf": "Central African Republic",
+        "ly": "Libya",
+        "tn": "Tunisia",
+        "mr": "Mauritania",
+    }
+    
+    # Try direct lookup in mapping (case insensitive)
+    normalized = country_mapping.get(country_value.lower())
+    if normalized:
+        return normalized
+    
+    # Check for partial matches (for longer country names)
+    if len(country_value) > 5:
+        for key, value in country_mapping.items():
+            # Check if the key is in the country value or vice versa
+            if key in country_value.lower() or country_value.lower() in key:
+                return value
+    
+    # If no match found, return the original value with proper capitalization
+    # This handles standard English country names that don't need mapping
+    return country_value.title()
+
+def log_before_after(field, before, after):
+    """
+    Log the before and after values of a field during normalization.
+    
+    Args:
+        field: Field name
+        before: Value before normalization
+        after: Value after normalization
+    """
+    if before != after:
+        logger.info(f"Normalized {field}: '{before}' -> '{after}'")
+    return after

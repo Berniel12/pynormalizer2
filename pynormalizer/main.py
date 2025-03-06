@@ -9,6 +9,11 @@ import psycopg2
 
 from pynormalizer.utils.db import get_connection, fetch_rows, ensure_unique_constraint, upsert_unified_tender
 from pynormalizer.utils.translation import setup_translation_models, get_translation_stats
+from pynormalizer.utils.normalizer_helpers import (
+    log_before_after,
+    determine_normalized_method,
+    ensure_country
+)
 
 from pynormalizer.normalizers import (
     normalize_adb,
@@ -143,6 +148,35 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
             
             # Set normalized timestamp
             unified_tender.normalized_at = datetime.now()
+            
+            # Apply additional data quality enhancements
+            
+            # 1. Ensure normalized_method is set
+            if not unified_tender.normalized_method:
+                # Add source_table to the row for the helper function
+                row['source_table'] = table_name
+                # Use the new helper function to determine normalized_method
+                unified_tender.normalized_method = determine_normalized_method(row)
+                logger.info(f"Set normalized_method for {table_name}: {unified_tender.normalized_method}")
+            
+            # 2. Normalize country values
+            if unified_tender.country:
+                # Apply enhanced country normalization
+                original_country = unified_tender.country
+                normalized_country = ensure_country(unified_tender.country)
+                if normalized_country != original_country:
+                    log_before_after("country", original_country, normalized_country)
+                    unified_tender.country = normalized_country
+            
+            # 3. Set organization name if missing
+            if not unified_tender.organization_name or len(unified_tender.organization_name or '') < 3:
+                # Try to extract from project name if available
+                if unified_tender.project_name and len(unified_tender.project_name) > 10:
+                    from pynormalizer.utils.normalizer_helpers import extract_organization
+                    org = extract_organization(unified_tender.project_name)
+                    if org:
+                        unified_tender.organization_name = org
+                        logger.info(f"Extracted organization from project name: {org}")
             
             # Upsert to the unified table
             upsert_unified_tender(conn, unified_tender)
