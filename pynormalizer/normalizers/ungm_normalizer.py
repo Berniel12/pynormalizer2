@@ -127,20 +127,62 @@ def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
                     country = str(countries_list[0])
 
     # Get document links
-    document_links = None
+    document_links = []
     if ungm_obj.documents and isinstance(ungm_obj.documents, dict) and 'documents' in ungm_obj.documents:
         documents = ungm_obj.documents['documents']
         if isinstance(documents, list):
-            document_links = documents
+            for doc in documents:
+                if isinstance(doc, dict) and 'url' in doc:
+                    document_links.append({
+                        'url': doc['url'],
+                        'type': doc.get('type', 'unknown'),
+                        'language': doc.get('language', 'en'),
+                        'description': doc.get('description', doc.get('title', None))
+                    })
 
-    # Get URL
+    # Get URL - improved extraction and fallback mechanisms
     url = None
     if ungm_obj.links and isinstance(ungm_obj.links, dict):
-        if 'self' in ungm_obj.links:
-            url = ungm_obj.links['self']
-        elif 'notice' in ungm_obj.links:
-            url = ungm_obj.links['notice']
-
+        # Try several potential fields where URLs might be stored
+        url_fields = ['self', 'notice', 'tender', 'details', 'href', 'url']
+        for field in url_fields:
+            if field in ungm_obj.links and ungm_obj.links[field]:
+                url = ungm_obj.links[field]
+                break
+        
+        # If URL is still not found but there's an 'items' list, check the items
+        if not url and 'items' in ungm_obj.links and isinstance(ungm_obj.links['items'], list):
+            for item in ungm_obj.links['items']:
+                if isinstance(item, dict) and 'href' in item:
+                    url = item['href']
+                    break
+                elif isinstance(item, dict) and 'url' in item:
+                    url = item['url']
+                    break
+                elif isinstance(item, str) and (item.startswith('http://') or item.startswith('https://')):
+                    url = item
+                    break
+    
+    # If still no URL found and we have a reference number, try to construct a generic UNGM URL
+    if not url and ungm_obj.reference:
+        url = f"https://www.ungm.org/Public/Notice/{ungm_obj.reference}"
+    
+    # If we have a URL, add it to document_links if not already included
+    if url:
+        url_already_included = False
+        for link in document_links:
+            if isinstance(link, dict) and link.get('url') == url:
+                url_already_included = True
+                break
+        
+        if not url_already_included:
+            document_links.append({
+                'url': url,
+                'type': 'main',
+                'language': 'en',
+                'description': 'Main tender notice'
+            })
+    
     # Detect language from title and description combined
     lang_sample = ""
     if ungm_obj.title:

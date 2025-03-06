@@ -18,6 +18,7 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_procurement_method,
     extract_status,
     ensure_country,
+    determine_normalized_method,
 )
 
 # Get logger
@@ -60,6 +61,7 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
                 for fmt in date_formats:
                     try:
                         publication_dt = datetime.strptime(aiib_obj.date, fmt)
+                        logger.info(f"Successfully parsed date {aiib_obj.date} with format {fmt}")
                         break
                     except ValueError:
                         continue
@@ -68,6 +70,64 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
                 # If all parsing attempts fail, leave as None
                 pass
 
+        # If no date from the direct field, try to extract from PDF content
+        if not publication_dt and aiib_obj.pdf_content:
+            # Define common date patterns in text
+            date_patterns = [
+                r'(?:dated|date[d]?:|published on|issued on|release[d]? on)\s+(\d{1,2}[\s\./\-]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\./\-]+\d{2,4})',
+                r'(?:dated|date[d]?:|published on|issued on|release[d]? on)\s+(\d{1,2}[\s\./\-]+\d{1,2}[\s\./\-]+\d{2,4})',
+                r'(\d{1,2}[\s\./\-]+(?:January|February|March|April|May|June|July|August|September|October|November|December)[\s\./\-]+\d{2,4})',
+                r'((?:January|February|March|April|May|June|July|August|September|October|November|December)[\s\./\-]+\d{1,2}[\s\./\-]+\d{2,4})'
+            ]
+            
+            logger.info("Looking for date patterns in PDF content")
+            
+            for pattern in date_patterns:
+                try:
+                    matches = re.findall(pattern, aiib_obj.pdf_content, re.IGNORECASE)
+                    if matches:
+                        for match in matches:
+                            date_str = match.strip()
+                            logger.info(f"Found potential date: {date_str}")
+                            
+                            # Clean up the date string
+                            date_str = re.sub(r'(?:st|nd|rd|th)', '', date_str)  # Remove ordinals
+                            date_str = re.sub(r'[,]', '', date_str)  # Remove commas
+                            date_str = re.sub(r'[\s\./\-]+', ' ', date_str)  # Normalize separators to spaces
+                            
+                            # Try various date formats
+                            potential_formats = [
+                                "%d %B %Y", "%d %b %Y",
+                                "%B %d %Y", "%b %d %Y",
+                                "%d %m %Y", "%m %d %Y",
+                                "%Y %m %d", "%d %B %y",
+                                "%B %d %y", "%b %d %y"
+                            ]
+                            
+                            for fmt in potential_formats:
+                                try:
+                                    potential_dt = datetime.strptime(date_str, fmt)
+                                    # Sanity check for reasonable publication date (not in future, not too old)
+                                    now = datetime.now()
+                                    ten_years_ago = now.replace(year=now.year - 10)
+                                    if ten_years_ago <= potential_dt <= now:
+                                        publication_dt = potential_dt
+                                        logger.info(f"Successfully parsed date from content: {date_str} → {publication_dt}")
+                                        break
+                                except ValueError:
+                                    continue
+                            
+                            if publication_dt:
+                                break
+                        
+                        if publication_dt:
+                            break
+                except Exception as e:
+                    logger.warning(f"Error extracting date: {e}")
+            
+            if not publication_dt:
+                logger.warning("Could not extract publication date from content")
+        
         # Use project_notice as the title if available, otherwise use a placeholder
         title = aiib_obj.project_notice or f"AIIB Tender - {aiib_obj.id}"
         
@@ -94,7 +154,33 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
         # Try to extract organization name from description
         organization_name = None
         if aiib_obj.pdf_content:
+            # First, try to extract from the PDF content
             organization_name = extract_organization(aiib_obj.pdf_content)
+            logger.info(f"Extracted organization name from PDF content: {organization_name}")
+            
+            # If no organization name found, try additional methods
+            if not organization_name and aiib_obj.project_notice:
+                # Extract organization from project notice
+                # Look for common patterns in project titles that might indicate the organization
+                org_patterns = [
+                    r'(?:by|for|with)\s+(?:the\s+)?([A-Za-z\s\(\)&,\.\-\']{5,50})',
+                    r'([A-Za-z\s\(\)&,\.\-\']{5,50})\s+(?:Project|Program|Initiative|Development)'
+                ]
+                
+                for pattern in org_patterns:
+                    matches = re.findall(pattern, aiib_obj.project_notice, re.IGNORECASE)
+                    if matches:
+                        potential_org = matches[0].strip()
+                        # Check if this looks like a valid organization name
+                        if len(potential_org) > 5 and any(keyword in potential_org.lower() for keyword in ['ministry', 'department', 'agency', 'authority', 'bank', 'corporation']):
+                            organization_name = potential_org
+                            logger.info(f"Extracted organization from project notice: {organization_name}")
+                            break
+            
+            # If still no organization name, use a generic AIIB-related name
+            if not organization_name and aiib_obj.member:
+                organization_name = f"Asian Infrastructure Investment Bank - {aiib_obj.member} Project"
+                logger.info(f"Using generic AIIB organization name: {organization_name}")
         
         # Try to extract financial information
         estimated_value = None
@@ -181,9 +267,82 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
             
         # Extract document links if available
         document_links = []
+        
+        # First check for direct PDF URL
         if "pdf" in row and row["pdf"]:
             pdf_url = row["pdf"]
             document_links = normalize_document_links(pdf_url)
+        
+        # Create a URL for the AIIB tender
+        url = None
+        
+        # Extract URLs from PDF content using regex
+        if aiib_obj.pdf_content and isinstance(aiib_obj.pdf_content, str):
+            # Define pattern to identify URLs in PDF content
+            url_pattern = re.compile(
+                r'(https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9()@:%_\+.~#?&//=]*)'
+            )
+            urls = url_pattern.findall(aiib_obj.pdf_content)
+            
+            # Add extracted URLs to document_links
+            for extracted_url in urls:
+                # Skip if it's already in document_links
+                url_already_included = False
+                for link in document_links:
+                    if isinstance(link, dict) and link.get('url') == extracted_url:
+                        url_already_included = True
+                        break
+                
+                if not url_already_included:
+                    document_links.append({
+                        'url': extracted_url,
+                        'type': 'related',
+                        'language': language,
+                        'description': 'URL extracted from PDF content'
+                    })
+            
+            # Use the first URL as the main tender URL if none set yet
+            if not url and urls:
+                url = urls[0]
+        
+        # If no URL found yet, try to create a generic AIIB URL
+        if not url and aiib_obj.project_notice:
+            # Clean project notice to create URL-friendly string
+            project_slug = re.sub(r'[^a-zA-Z0-9]', '-', aiib_obj.project_notice)
+            project_slug = re.sub(r'-+', '-', project_slug).strip('-').lower()
+            
+            # Create AIIB projects URL
+            url = f"https://www.aiib.org/en/projects/details/{project_slug}.html"
+            
+            # Add this URL to document_links if not already included
+            url_already_included = False
+            for link in document_links:
+                if isinstance(link, dict) and link.get('url') == url:
+                    url_already_included = True
+                    break
+            
+            if not url_already_included:
+                document_links.append({
+                    'url': url,
+                    'type': 'main',
+                    'language': 'en',
+                    'description': 'Main project page'
+                })
+        
+        # Track extraction methods used for normalized_method
+        extraction_methods = []
+        if language != "en":
+            extraction_methods.append("translation")
+        if url:
+            extraction_methods.append("pattern")  # URL extraction used patterns
+        if organization_name:
+            extraction_methods.append("pattern")  # Org extraction used patterns
+        if country:
+            extraction_methods.append("dictionary")  # Country normalization used dictionaries
+        
+        # Determine the normalized method based on techniques used
+        normalized_method = determine_normalized_method(extraction_methods)
+        logger.info(f"Using normalized_method: {normalized_method}")
         
         # Construct the UnifiedTender
         unified = UnifiedTender(
@@ -203,11 +362,12 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
             sector=aiib_obj.sector,
             estimated_value=estimated_value,
             currency=currency,
+            url=url,  # Now including the URL
             document_links=document_links,
             procurement_method=procurement_method,
             language=language,
             original_data=row,
-            normalized_method="offline-dictionary",
+            normalized_method=normalized_method,
         )
 
         # Use the common apply_translations function for all fields

@@ -318,21 +318,9 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
         matches = re.findall(pattern, text, re.IGNORECASE)
         if matches:
             for match in matches:
-                # Handle cases where match might be a tuple or a string
-                if isinstance(match, tuple):
-                    if len(match) > 0:
-                        amount_str = match[0]
-                    else:
-                        continue
-                else:
-                    amount_str = match
+                amount_str = match.strip()
                 
-                # Ensure amount_str is a string
-                if not isinstance(amount_str, str):
-                    continue
-                
-                # Strip and clean the amount string
-                amount_str = amount_str.strip()
+                # Clean the amount string
                 amount_str = amount_str.replace(',', '')
                 
                 # Handle million/billion/trillion suffixes
@@ -632,24 +620,54 @@ def extract_organization_and_buyer(text: str) -> Tuple[Optional[str], Optional[s
     organization_name = None
     buyer = None
     
-    # Extract organization patterns
+    # Common organization keywords to help validate extracted names
+    org_keywords = [
+        'ministry', 'department', 'agency', 'authority', 'commission', 'corporation', 'institute',
+        'bank', 'association', 'council', 'office', 'bureau', 'organization', 'centre', 'center',
+        'committee', 'board', 'company', 'society', 'foundation', 'university', 'college',
+        'group', 'consortium', 'fund', 'trust', 'administration', 'directorate', 'division',
+        'unit', 'development', 'international', 'national', 'government', 'municipal', 'services',
+        'enterprise', 'institution', 'united nations', 'world bank', 'african development bank',
+        'asian development bank', 'european union', 'european commission', 'undp', 'unep', 'unicef',
+        'unesco', 'who', 'ministry of', 'department of', 'project', 'program',
+        'inc', 'ltd', 'llc', 'corp', 'co', 'sa', 'gmbh', 'ag', 'plc'
+    ]
+    
+    # Patterns to filter out false positives
+    false_positive_patterns = [
+        r'^(?:the|this|that|these|those|their|our|its|his|her|my|your)$',
+        r'^(?:january|february|march|april|may|june|july|august|september|october|november|december)$',
+        r'^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)$',
+        r'^(?:\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)$',  # Numbers
+        r'^.{1,3}$'  # Too short strings (3 chars or less)
+    ]
+    
+    # Enhanced organization patterns
     org_patterns = [
         # Common organization intro phrases
-        r'(?:by|from|for|issued by|on behalf of)\s+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+in|\s+for|\s+at|\s+\(|\.|$)',
+        r'(?:by|from|for|issued by|on behalf of)\s+([A-Za-z0-9\s\(\)&,\.\-\']{5,75}?)(?:\s+in|\s+for|\s+at|\s+\(|\.|$)',
         # Organization followed by action
-        r'([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)\s+(?:invites|announces|requests|is seeking|has issued)',
-        # Explicit mentions
-        r'(?:implementing agency|contracting authority|issuing authority|procurement entity|client)[\s\:]+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+|\.|$)',
-        # Specific to World Bank/ADB
-        r'(?:borrower|recipient|purchaser)[\s\:]+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+|\.|$)',
+        r'([A-Za-z0-9\s\(\)&,\.\-\']{5,75}?)\s+(?:invites|announces|requests|is seeking|has issued|hereby announces|intends to apply)',
+        # Explicit mentions with labels
+        r'(?:implementing agency|contracting authority|issuing authority|procurement entity|client|contracting entity)\s*(?:is|:|will be|shall be)?\s*([A-Za-z0-9\s\(\)&,\.\-\']{5,75}?)(?:\s+|\.|$)',
+        # Specific to World Bank/ADB/development banks
+        r'(?:borrower|recipient|purchaser|executing agency|implementing agency)\s*(?:is|:|will be|shall be)?\s*([A-Za-z0-9\s\(\)&,\.\-\']{5,75}?)(?:\s+|\.|$)',
+        # Ministry-specific patterns
+        r'(?:ministry of|department of|office of|authority of)\s+([A-Za-z0-9\s\(\)&,\.\-\']{3,50}?)(?:\s+|\.|$)',
         # For buyer/client specific patterns
-        r'(?:buyer|client|purchaser|employer)[\s\:]+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+|\.|$)',
+        r'(?:buyer|client|purchaser|employer|customer)\s*(?:is|:|will be|shall be)?\s*([A-Za-z0-9\s\(\)&,\.\-\']{5,75}?)(?:\s+|\.|$)',
         # Awarded to pattern
-        r'(?:awarded to|contract awarded to)[\s\:]+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+|\.|$)'
+        r'(?:awarded to|contract awarded to|contract to|supplier:)\s*([A-Za-z0-9\s\(\)&,\.\-\']{5,75}?)(?:\s+|\.|$)',
+        # New patterns for government bodies
+        r'(?:government of|republic of)\s+([A-Za-z0-9\s\(\)&,\.\-\']{3,30}?)(?:\s+|\.|$)',
+        # Project implementation units
+        r'(?:project implementation unit|project management unit|PMU|PIU)\s+(?:of|for|under)?\s+([A-Za-z0-9\s\(\)&,\.\-\']{5,75}?)(?:\s+|\.|$)',
+        # Organizations with "The" prefix
+        r'(?:The)\s+([A-Za-z0-9\s\(\)&,\.\-\']{5,75}?)(?:\s+invites|\s+requests|\s+announces|\s+has issued|\s+intends to|\s+through|\s+is seeking)'
     ]
     
     # Try each pattern for organization
-    for pattern in org_patterns[:4]:  # First 4 patterns are for organizations
+    for pattern in org_patterns[:8]:  # First 8 patterns are for organizations
         try:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:
@@ -667,7 +685,7 @@ def extract_organization_and_buyer(text: str) -> Tuple[Optional[str], Optional[s
             continue
     
     # Try buyer-specific patterns
-    for pattern in org_patterns[4:]:  # Last 2 patterns are for buyers
+    for pattern in org_patterns[8:]:  # Last 2 patterns are for buyers
         try:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:
@@ -1615,3 +1633,37 @@ def ensure_country(country: Optional[str],
         logger.error(f"CRITICAL ERROR in ensure_country: {e}")
         logger.error(traceback.format_exc())
         return "Unknown"
+
+def determine_normalized_method(extraction_methods_used=None):
+    """
+    Determine the appropriate normalized_method value based on extraction techniques.
+    
+    Args:
+        extraction_methods_used: Optional list of extraction methods used
+        
+    Returns:
+        String indicating the normalization method
+    """
+    if not extraction_methods_used:
+        return "offline-dictionary"
+        
+    methods = set(extraction_methods_used)
+    
+    # If NLP/ML techniques were used
+    if "nlp" in methods or "ml" in methods or "ai" in methods:
+        if "pattern" in methods or "dictionary" in methods:
+            return "hybrid-nlp-pattern"
+        return "nlp-model"
+    
+    # If translation was used
+    if "translation" in methods:
+        if "pattern" in methods:
+            return "pattern-translation"
+        return "translation-dictionary"
+    
+    # If patterns and dictionaries were used
+    if "pattern" in methods and "dictionary" in methods:
+        return "pattern-dictionary" 
+    
+    # Default to basic offline dictionary-based normalization
+    return "offline-dictionary"

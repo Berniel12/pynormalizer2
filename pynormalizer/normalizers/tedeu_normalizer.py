@@ -145,10 +145,30 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         if not currency and extracted_currency:
             currency = extracted_currency
     
-    # Use the normalize_document_links helper to standardize links
+    # Extract document links from 'links' field
     document_links = []
     if hasattr(tedeu_obj, 'links') and tedeu_obj.links:
         document_links = normalize_document_links(tedeu_obj.links)
+    
+    # Add contact_url to document_links if available
+    if hasattr(tedeu_obj, 'contact_url') and tedeu_obj.contact_url:
+        url_already_included = False
+        
+        # Check if the URL is already in document_links
+        if document_links:
+            for link in document_links:
+                if isinstance(link, dict) and link.get('url') == tedeu_obj.contact_url:
+                    url_already_included = True
+                    break
+        
+        # Add URL to document_links if not already included
+        if not url_already_included:
+            document_links.append({
+                "url": tedeu_obj.contact_url,
+                "type": "contact",
+                "language": "en",
+                "description": "Contact URL"
+            })
     
     # Try to extract status based on dates and notice_status
     status = None
