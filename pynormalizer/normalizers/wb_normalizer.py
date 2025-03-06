@@ -19,7 +19,8 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_organization_and_buyer,
     extract_status,
     extract_sector_info,
-    parse_date_string
+    parse_date_string,
+    ensure_country
 )
 
 # Initialize logger
@@ -518,16 +519,30 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
                 "description": "Main tender notice"
             })
     
+    # Make sure country is always populated
+    country = wb_obj.country if hasattr(wb_obj, 'country') and wb_obj.country else None
+    if hasattr(wb_obj, 'project_ctry_name') and wb_obj.project_ctry_name:
+        country = wb_obj.project_ctry_name
+    
+    # Ensure we have a country value using our fallback mechanisms
+    country = ensure_country(
+        country=country,
+        text=wb_obj.description,
+        organization=organization_name,
+        email=getattr(wb_obj, 'contact_email', None),
+        language=language
+    )
+    
     # Create UnifiedTender object
     normalized_tender = UnifiedTender(
         id=str(uuid.uuid4()),  # Generate a new UUID for the unified record
-        title=title,
-        description=description,
-        tender_type=getattr(wb_obj, 'tender_type', None),
+        title=wb_obj.title if wb_obj.title else "No title",
+        description=wb_obj.description,
+        tender_type=wb_obj.tender_type,
         status=status,
         publication_date=publication_dt,
         deadline_date=deadline_dt,
-        country=country,
+        country=country,  # Using our guaranteed non-empty country
         city=city,
         organization_name=organization_name,
         organization_id=getattr(wb_obj, 'organization_id', None),
@@ -542,15 +557,15 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
         contact_email=getattr(wb_obj, 'contact_email', None),
         contact_phone=getattr(wb_obj, 'contact_phone', None),
         contact_address=getattr(wb_obj, 'contact_address', None),
-        url=getattr(wb_obj, 'url', None),
+        url=wb_obj.url,
         document_links=document_links,
         language=language,
         notice_id=getattr(wb_obj, 'notice_id', None),
         reference_number=reference_number,
         procurement_method=procurement_method,
-        original_data=row,
+        original_data=wb_obj.dict() if hasattr(wb_obj, 'dict') else row,
         source_table="wb",
-        source_id=getattr(wb_obj, 'id', None),
+        source_id=wb_obj.id,
         normalized_by="pynormalizer",
         title_english=title_english,
         description_english=description_english,

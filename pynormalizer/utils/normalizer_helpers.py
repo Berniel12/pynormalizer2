@@ -1231,3 +1231,132 @@ def extract_organization(text: str) -> Optional[str]:
     # Use the new enhanced function and return just the organization
     organization_name, _ = extract_organization_and_buyer(text)
     return organization_name 
+
+def ensure_country(country: Optional[str], 
+                  text: Optional[str] = None, 
+                  organization: Optional[str] = None,
+                  email: Optional[str] = None,
+                  language: Optional[str] = None) -> str:
+    """
+    Ensure country is not empty, using various fallback strategies.
+    
+    Args:
+        country: Current country value (may be None or empty)
+        text: Text to extract country from if country is empty
+        organization: Organization name to extract country from if country is empty
+        email: Email to extract domain country from if country is empty
+        language: Language to guess country from if country is empty
+        
+    Returns:
+        Non-empty country string, with "Unknown" as last resort
+    """
+    # If country already exists, return it
+    if country:
+        return country
+    
+    # Attempt to extract from text if available
+    if text:
+        extracted_country, _ = extract_location_info(text)
+        if extracted_country:
+            return extracted_country
+    
+    # Try to extract from organization name if contains country prefix
+    if organization:
+        country_prefix_match = re.match(r'^([A-Z]{3,})\s*-\s*', organization)
+        if country_prefix_match:
+            country_code = country_prefix_match.group(1).strip()
+            # Skip organization abbreviations
+            if country_code not in ['UNDP', 'UNEP', 'UNHCR', 'UNICEF', 'WHO', 'FAO', 'IBRD', 'ADB', 'AIIB', 'IFC']:
+                return country_code
+    
+    # Try to extract from email domain if available
+    if email and '@' in email:
+        domain = email.split('@')[1]
+        tld = domain.split('.')[-1].lower()
+        
+        # Map common TLDs to countries
+        tld_country_map = {
+            'uk': 'United Kingdom',
+            'fr': 'France',
+            'de': 'Germany',
+            'it': 'Italy',
+            'es': 'Spain',
+            'ru': 'Russia',
+            'jp': 'Japan',
+            'cn': 'China',
+            'in': 'India',
+            'br': 'Brazil',
+            'ca': 'Canada',
+            'au': 'Australia',
+            'za': 'South Africa',
+            'ke': 'Kenya',
+            'ng': 'Nigeria',
+            'mx': 'Mexico',
+            'kr': 'South Korea',
+            'nl': 'Netherlands',
+            'se': 'Sweden',
+            'no': 'Norway',
+            'dk': 'Denmark',
+            'fi': 'Finland',
+            'pl': 'Poland',
+            'ua': 'Ukraine',
+            'gr': 'Greece',
+            'rw': 'Rwanda',
+            'lv': 'Latvia',
+            'lt': 'Lithuania',
+            'et': 'Estonia',
+            'tr': 'Turkey'
+        }
+        
+        if tld in tld_country_map:
+            return tld_country_map[tld]
+        
+        # For gov domains, check for country prefix (e.g., ke.gov, rw.gov)
+        if 'gov' in domain.split('.'):
+            for country_code in tld_country_map.keys():
+                if country_code + '.gov' in domain:
+                    return tld_country_map[country_code]
+    
+    # Try to guess from language if available
+    if language:
+        # Map common languages to primary countries
+        language_country_map = {
+            'en': 'United States',  # Default for English
+            'fr': 'France',
+            'es': 'Spain',
+            'de': 'Germany',
+            'it': 'Italy',
+            'pt': 'Portugal',
+            'ru': 'Russia',
+            'zh': 'China',
+            'ja': 'Japan',
+            'ko': 'South Korea',
+            'ar': 'Saudi Arabia',
+            'hi': 'India',
+            'lv': 'Latvia',
+            'lt': 'Lithuania',
+            'et': 'Estonia',
+            'fi': 'Finland',
+            'sv': 'Sweden',
+            'no': 'Norway',
+            'da': 'Denmark',
+            'nl': 'Netherlands',
+            'el': 'Greece',
+            'tr': 'Turkey',
+            'pl': 'Poland',
+            'cs': 'Czech Republic',
+            'sk': 'Slovakia',
+            'hu': 'Hungary',
+            'uk': 'Ukraine',
+            'ro': 'Romania',
+            'bg': 'Bulgaria',
+            'sr': 'Serbia',
+            'hr': 'Croatia',
+            'sl': 'Slovenia'
+        }
+        
+        if language in language_country_map:
+            return language_country_map[language]
+    
+    # Last resort: return "Unknown" to ensure field is not empty
+    return "Unknown" 

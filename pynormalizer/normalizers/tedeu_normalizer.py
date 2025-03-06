@@ -16,7 +16,8 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_procurement_method,
     extract_organization,
     extract_status,
-    extract_organization_and_buyer
+    extract_organization_and_buyer,
+    ensure_country
 )
 
 def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
@@ -259,6 +260,22 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     if buyer:
         buyer_english, buyer_method = translate_to_english(buyer, language)
     
+    # Extract country and ensure it's never empty
+    country = None
+    if hasattr(tedeu_obj, 'country') and tedeu_obj.country:
+        country = tedeu_obj.country
+    elif hasattr(tedeu_obj, 'country_code') and tedeu_obj.country_code:
+        country = tedeu_obj.country_code
+        
+    # Ensure country is populated using fallback mechanisms
+    country = ensure_country(
+        country=country,
+        text=tedeu_obj.summary if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary else None,
+        organization=organization_name,
+        email=tedeu_obj.contact_email if hasattr(tedeu_obj, 'contact_email') and tedeu_obj.contact_email else None,
+        language=language
+    )
+    
     # Create the UnifiedTender object
     normalized_tender = UnifiedTender(
         id=str(uuid.uuid4()),  # Generate a new UUID for the unified record
@@ -268,7 +285,7 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         status=status,
         publication_date=publication_dt,
         deadline_date=deadline_dt,
-        country=country,
+        country=country,  # Using our guaranteed non-empty country
         city=city,
         organization_name=organization_name,
         organization_id=None,  # Not directly available

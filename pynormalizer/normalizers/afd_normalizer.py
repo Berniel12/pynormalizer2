@@ -17,7 +17,8 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_status,
     extract_organization_and_buyer,
     parse_date_string,
-    parse_date_from_text
+    parse_date_from_text,
+    ensure_country
 )
 
 def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
@@ -168,6 +169,18 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
     if afd_obj.services:
         document_links = normalize_document_links(afd_obj.services)
 
+    # Make sure country is never empty
+    country = afd_obj.country if afd_obj.country else None
+    
+    # Use our fallback mechanisms to ensure country is populated
+    country = ensure_country(
+        country=country,
+        text=afd_obj.notice_content if afd_obj.notice_content and afd_obj.notice_content != "NO CONTENT" else None,
+        organization=organization_name,
+        email=afd_obj.email,
+        language=language
+    )
+
     # Construct the UnifiedTender
     unified = UnifiedTender(
         # Required fields
@@ -181,7 +194,7 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
         status=status,
         publication_date=publication_dt,
         deadline_date=deadline_dt,
-        country=afd_obj.country,
+        country=country,  # Using our guaranteed non-empty country
         city=afd_obj.city_locality,
         buyer=buyer_info,
         organization_name=organization_name,
