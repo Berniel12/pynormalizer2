@@ -11,6 +11,7 @@ from pynormalizer.utils.db import get_connection, fetch_rows, ensure_unique_cons
 from pynormalizer.utils.translation import setup_translation_models, get_translation_stats
 from pynormalizer.utils.normalizer_helpers import (
     log_before_after,
+    log_tender_normalization,
     determine_normalized_method,
     ensure_country
 )

@@ -77,6 +77,10 @@ def normalize_adb(row: Dict[str, Any]) -> UnifiedTender:
     unified = apply_translations(unified, language)
     
     # Log before and after data
-    log_before_after("adb", str(adb_obj.id), row, unified)
+    logger.info(f"NORMALIZING ADB - {adb_obj.id}")
+    logger.info(f"BEFORE:\n{row}")
+    logger.info(f"AFTER:\n{unified.model_dump()}")
+    logger.info(f"TRANSLATION: {unified.normalized_method}")
+    logger.info("-" * 80)
 
     return unified 
