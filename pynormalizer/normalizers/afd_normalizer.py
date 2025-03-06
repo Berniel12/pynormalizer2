@@ -124,7 +124,7 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
     currency = None
     
     # Try to get financial information from contract_amount/value fields
-    if afd_obj.contract_amount and isinstance(afd_obj.contract_amount, str):
+    if hasattr(afd_obj, 'contract_amount') and afd_obj.contract_amount and isinstance(afd_obj.contract_amount, str):
         estimated_value, currency = extract_financial_info(afd_obj.contract_amount)
     
     # If no financial info found, try to extract from description

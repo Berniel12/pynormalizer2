@@ -49,45 +49,18 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         else:
             deadline_dt = datetime.combine(tedeu_obj.deadline_date, datetime.min.time())
 
-    # Determine procurement method from procedure_type or description
+    # Extract title
+    title = tedeu_obj.title if hasattr(tedeu_obj, 'title') and tedeu_obj.title else None
+    
+    # Use summary as description since TED EU model doesn't have a description field
+    description = None
+    if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary:
+        description = tedeu_obj.summary
+    
+    # Extract procurement method
     procurement_method = None
     if hasattr(tedeu_obj, 'procedure_type') and tedeu_obj.procedure_type:
-        # Map TED procedure types to general procurement methods
-        procurement_map = {
-            "OPEN": "Open Procedure",
-            "RESTRICTED": "Restricted Procedure",
-            "COMPETITIVE_NEGOTIATION": "Competitive Procedure with Negotiation",
-            "COMPETITIVE_DIALOGUE": "Competitive Dialogue",
-            "INNOVATION_PARTNERSHIP": "Innovation Partnership",
-            "DESIGN_CONTEST": "Design Contest",
-            "NEGOTIATED_WITH_PRIOR_CALL": "Negotiated Procedure with Prior Call for Competition",
-            "NEGOTIATED_WITHOUT_PRIOR_CALL": "Negotiated Procedure without Prior Call for Competition",
-        }
-        procurement_method = procurement_map.get(tedeu_obj.procedure_type.upper(), tedeu_obj.procedure_type)
-    
-    # If not found in procedure_type, try to extract from description or additional_information
-    if not procurement_method:
-        description_text = ""
-        if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary:
-            description_text += tedeu_obj.summary + " "
-        if hasattr(tedeu_obj, 'additional_information') and tedeu_obj.additional_information:
-            description_text += tedeu_obj.additional_information + " "
-            
-        # Try to identify procurement method from description
-        procurement_keywords = {
-            "open procedure": "Open Procedure",
-            "restricted procedure": "Restricted Procedure",
-            "competitive dialogue": "Competitive Dialogue",
-            "negotiated procedure": "Negotiated Procedure",
-            "innovation partnership": "Innovation Partnership",
-            "design contest": "Design Contest"
-        }
-        
-        desc_lower = description_text.lower()
-        for keyword, method in procurement_keywords.items():
-            if keyword in desc_lower:
-                procurement_method = method
-                break
+        procurement_method = tedeu_obj.procedure_type.capitalize()
     
     # Extract country and city information safely
     country = None
@@ -111,8 +84,8 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
                 city = extracted_city
         
         # Try from the description as a last resort
-        if not country and hasattr(tedeu_obj, 'description') and tedeu_obj.description:
-            extracted_country, extracted_city = extract_location_info(tedeu_obj.description)
+        if not country and hasattr(tedeu_obj, 'summary') and tedeu_obj.summary:
+            extracted_country, extracted_city = extract_location_info(tedeu_obj.summary)
             if extracted_country:
                 country = extracted_country
             if not city and extracted_city:
@@ -133,8 +106,8 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
                 city = extracted_city
                 
         # Try from the description as a last resort
-        if not city and hasattr(tedeu_obj, 'description') and tedeu_obj.description:
-            extracted_country, extracted_city = extract_location_info(tedeu_obj.description)
+        if not city and hasattr(tedeu_obj, 'summary') and tedeu_obj.summary:
+            extracted_country, extracted_city = extract_location_info(tedeu_obj.summary)
             if extracted_city:
                 city = extracted_city
     
@@ -222,20 +195,6 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     if hasattr(tedeu_obj, 'contact_address') and tedeu_obj.contact_address:
         contact_address = tedeu_obj.contact_address
     
-    # Extract title and description information
-    title = None
-    description = None
-    
-    if hasattr(tedeu_obj, 'title') and tedeu_obj.title:
-        title = tedeu_obj.title
-    
-    if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary:
-        description = tedeu_obj.summary
-        
-        # Add additional information to description if available
-        if hasattr(tedeu_obj, 'additional_information') and tedeu_obj.additional_information:
-            description += "\n\n" + tedeu_obj.additional_information
-    
     # Extract reference numbers
     reference_number = None
     if hasattr(tedeu_obj, 'reference_number') and tedeu_obj.reference_number:
@@ -250,13 +209,13 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     # Detect language - check all text fields for better accuracy
     language_sample = ""
     
-    # Create a combined sample using title + description + other relevant text
+    # Create a combined sample using title + summary + other relevant text
     if tedeu_obj.title:
         language_sample += tedeu_obj.title + " "
     
-    if tedeu_obj.description:
-        # Add a truncated version of the description (first 300 chars)
-        language_sample += tedeu_obj.description[:300] + " "
+    if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary:
+        # Add a truncated version of the summary (first 300 chars)
+        language_sample += tedeu_obj.summary[:300] + " "
     
     if tedeu_obj.buyer:
         language_sample += tedeu_obj.buyer + " "
