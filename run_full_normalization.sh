@@ -10,8 +10,8 @@ echo ""
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 OUTPUT_FILE="normalization_report_${TIMESTAMP}.json"
 
-# Run the normalization script with the full option
-python run_normalization.py --full --output $OUTPUT_FILE
+# Run the normalization script (full mode is now the default)
+python run_normalization.py --output $OUTPUT_FILE
 
 echo ""
 echo "Normalization process completed"

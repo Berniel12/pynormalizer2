@@ -38,7 +38,37 @@ def main():
     
     args = parser.parse_args()
     
-    # Check for environment variables first
+    # Check for Apify environment variables first
+    apify_input = os.environ.get("APIFY_INPUT_JSON")
+    
+    # Variables for configuration
+    tables = args.tables
+    test_mode = args.test
+    limit_value = args.limit
+    
+    # Check if running on Apify and parse input
+    if apify_input:
+        try:
+            logger.info("Reading input from Apify environment")
+            apify_config = json.loads(apify_input)
+            
+            # Get source name (table)
+            source_name = apify_config.get("sourceName")
+            if source_name and source_name.strip():
+                tables = [source_name.strip()]
+                logger.info(f"Processing specific source from Apify input: {source_name}")
+            
+            # Get test mode setting
+            test_mode = apify_config.get("testMode", False)
+            
+            # Get limit
+            if "limit" in apify_config and apify_config["limit"] is not None:
+                limit_value = apify_config["limit"]
+                logger.info(f"Using limit from Apify input: {limit_value}")
+        except Exception as e:
+            logger.error(f"Error parsing Apify input: {e}")
+    
+    # Check for database connection environment variables
     if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY"):
         logger.info("Using Supabase connection from environment variables")
         db_config = {}  # Empty config will trigger env var usage
@@ -68,19 +98,19 @@ def main():
         logger.warning(f"Translation model initialization failed: {e}")
         logger.warning("Continuing with fallback translation methods")
     
-    # Set limit based on arguments
-    if args.full:
-        logger.info("FULL MODE: Processing all tenders from all sources")
-        limit = None
-    elif args.test:
-        logger.info("TEST MODE: Processing 2 records per table")
-        limit = 2
+    # Set limit based on mode
+    if test_mode:
+        # Use 3 records per table in test mode as per Apify config
+        limit = 3
+        logger.info(f"TEST MODE: Processing {limit} records per table")
+    elif limit_value is not None:
+        # Use specified limit
+        limit = limit_value
+        logger.info(f"Processing up to {limit} records per table")
     else:
-        limit = args.limit
-        if limit:
-            logger.info(f"Processing up to {limit} records per table")
-        else:
-            logger.info(f"Processing all records (no limit)")
+        # Default to full processing (no limit)
+        limit = None
+        logger.info("FULL MODE: Processing all records (no limit)")
     
     # Set batch size for progress reporting
     batch_size = 100  # Always report every 100 tenders for consistency
@@ -88,10 +118,8 @@ def main():
     # Run normalization
     try:
         logger.info(f"Starting normalization process...")
-        if limit:
-            logger.info(f"Processing up to {limit} records per table")
         
-        results = normalize_all_tenders(db_config, args.tables, batch_size, limit)
+        results = normalize_all_tenders(db_config, tables, batch_size, limit)
         
         # Print summary
         total = sum(results.values())
@@ -102,7 +130,13 @@ def main():
         logger.info(f"Total: {total} tenders processed")
         
         # Save report if output file specified
-        if args.output:
+        output_file = args.output
+        if not output_file and os.environ.get("APIFY_DEFAULT_DATASET_ID"):
+            # If running on Apify, create a timestamped output file
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            output_file = f"normalization_report_{timestamp}.json"
+        
+        if output_file:
             report = {
                 "timestamp": datetime.utcnow().isoformat(),
                 "duration_seconds": time.time() - start_time,
@@ -112,9 +146,9 @@ def main():
                 "batch_size": batch_size
             }
             
-            with open(args.output, 'w') as f:
+            with open(output_file, 'w') as f:
                 json.dump(report, f, indent=2)
-            logger.info(f"Normalization report saved to {args.output}")
+            logger.info(f"Normalization report saved to {output_file}")
         
     except Exception as e:
         logger.exception(f"Error during normalization: {e}")
