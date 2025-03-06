@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Dict, Any, List
+import re
 
 from pynormalizer.models.source_models import UNGMTender
 from pynormalizer.models.unified_model import UnifiedTender
@@ -105,6 +106,16 @@ def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
         elif isinstance(ungm_obj.beneficiary_countries, list) and ungm_obj.beneficiary_countries:
             country = ungm_obj.beneficiary_countries[0]
     
+    # If no country yet, try country from beneficiary_countries
+    if not country and ungm_obj.beneficiary_countries:
+        # It might be a comma-separated string
+        if isinstance(ungm_obj.beneficiary_countries, str):
+            countries = ungm_obj.beneficiary_countries.split(',')
+            country = countries[0].strip()  # Take the first one
+        # Or it might be a list
+        elif isinstance(ungm_obj.beneficiary_countries, list) and ungm_obj.beneficiary_countries:
+            country = ungm_obj.beneficiary_countries[0]
+    
     # If we couldn't extract from beneficiary_countries, try countries field
     if not country and ungm_obj.countries:
         if isinstance(ungm_obj.countries, dict) and 'countries' in ungm_obj.countries:
@@ -139,6 +150,56 @@ def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
         lang_sample += ungm_obj.description[:200]
     
     language = detect_language(lang_sample.strip()) or 'en'
+
+    # Get organization name
+    organization_name = None
+    buyer = None
+    
+    # Try to get from contacts
+    if ungm_obj.contacts and isinstance(ungm_obj.contacts, dict):
+        if 'title' in ungm_obj.contacts and ungm_obj.contacts['title']:
+            organization_name = ungm_obj.contacts['title']
+        elif 'contact_details' in ungm_obj.contacts and isinstance(ungm_obj.contacts['contact_details'], dict):
+            if 'Organization' in ungm_obj.contacts['contact_details']:
+                organization_name = ungm_obj.contacts['contact_details']['Organization']
+    
+    # Try to parse organization name from title/description if still not found
+    if not organization_name and ungm_obj.title:
+        # Look for patterns like "Organization: XYZ" or "by XYZ" in title
+        org_patterns = [
+            r'(?:by|from|for)\s+([A-Za-z0-9\s\(\)&,\.\-]+?)(?:\s+in|\s+for|\s+at|$)',
+            r'([A-Za-z0-9\s\(\)&,\.\-]+?)\s+(?:is seeking|requests|invites)'
+        ]
+        
+        for pattern in org_patterns:
+            match = re.search(pattern, ungm_obj.title)
+            if match:
+                potential_org = match.group(1).strip()
+                if len(potential_org) > 3 and potential_org.lower() not in ['the', 'and', 'for', 'of']:
+                    organization_name = potential_org
+                    break
+    
+    # Parse organization name that includes country information
+    if organization_name:
+        # Check if organization name has country prefix like "COUNTRY - Organization Name"
+        country_org_match = re.match(r'^([A-Z]{2,})\s*-\s*(.+)$', organization_name)
+        if country_org_match:
+            country_code = country_org_match.group(1).strip()
+            org_name = country_org_match.group(2).strip()
+            
+            # Only separate if first part looks like a country code
+            if len(country_code) <= 3 or country_code in ['UNDP', 'UNEP', 'UNHCR', 'UNICEF', 'WHO', 'FAO']:
+                # It's likely an organization abbreviation, not a country
+                pass
+            else:
+                # It's a country name, so update the country field if not set
+                if not country:
+                    country = country_code
+                organization_name = org_name
+                
+    # Use the organization name as buyer if it's not set
+    if organization_name and not buyer:
+        buyer = organization_name
 
     # Construct the UnifiedTender
     unified = UnifiedTender(

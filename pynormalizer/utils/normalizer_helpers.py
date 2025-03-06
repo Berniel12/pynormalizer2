@@ -27,9 +27,23 @@ def normalize_document_links(links_data):
     if not links_data:
         return normalized_links
     
+    # Define pattern to identify URLs
+    url_pattern = re.compile(
+        r'(https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9()@:%_\+.~#?&//=]*)'
+    )
+    
     # Handle string (single URL)
     if isinstance(links_data, str):
-        if links_data.startswith(('http://', 'https://', 'www.')):
+        # Try to extract URLs from text
+        urls = url_pattern.findall(links_data)
+        for url in urls:
+            normalized_links.append({
+                'url': url,
+                'type': 'unknown',
+                'language': 'en',
+                'description': None
+            })
+        if not urls and links_data.startswith(('http://', 'https://', 'www.')):
             normalized_links.append({
                 'url': links_data,
                 'type': 'unknown',
@@ -40,10 +54,19 @@ def normalize_document_links(links_data):
     
     # Handle list of strings
     if isinstance(links_data, list) and all(isinstance(item, str) for item in links_data):
-        for url in links_data:
-            if url and url.startswith(('http://', 'https://', 'www.')):
+        for item in links_data:
+            # Try to extract URLs from text
+            urls = url_pattern.findall(item)
+            for url in urls:
                 normalized_links.append({
                     'url': url,
+                    'type': 'unknown',
+                    'language': 'en',
+                    'description': None
+                })
+            if not urls and item.startswith(('http://', 'https://', 'www.')):
+                normalized_links.append({
+                    'url': item,
                     'type': 'unknown',
                     'language': 'en',
                     'description': None
@@ -57,9 +80,15 @@ def normalize_document_links(links_data):
                 # Extract URL - try various common keys
                 url = None
                 for key in ['url', 'link', 'href', 'uri', 'location', 'path']:
-                    if key in item and item[key] and isinstance(item[key], str):
-                        url = item[key]
-                        break
+                    if key in item and item[key]:
+                        if isinstance(item[key], str):
+                            # Try to extract URLs from text
+                            urls = url_pattern.findall(item[key])
+                            if urls:
+                                url = urls[0]
+                            elif item[key].startswith(('http://', 'https://', 'www.')):
+                                url = item[key]
+                            break
                 
                 if not url:
                     continue
@@ -95,14 +124,23 @@ def normalize_document_links(links_data):
                     'language': language,
                     'description': description
                 })
-            elif isinstance(item, str) and item.startswith(('http://', 'https://', 'www.')):
-                # Handle list of URL strings
-                normalized_links.append({
-                    'url': item,
-                    'type': 'unknown',
-                    'language': 'en',
-                    'description': None
-                })
+            elif isinstance(item, str):
+                # Try to extract URLs from text
+                urls = url_pattern.findall(item)
+                for url in urls:
+                    normalized_links.append({
+                        'url': url,
+                        'type': 'unknown',
+                        'language': 'en',
+                        'description': None
+                    })
+                if not urls and item.startswith(('http://', 'https://', 'www.')):
+                    normalized_links.append({
+                        'url': item,
+                        'type': 'unknown',
+                        'language': 'en',
+                        'description': None
+                    })
     
     # Handle dict with 'items' key (common pattern)
     elif isinstance(links_data, dict) and 'items' in links_data:
@@ -118,22 +156,42 @@ def normalize_document_links(links_data):
     elif isinstance(links_data, dict):
         # Try to extract direct links
         for key, value in links_data.items():
-            if isinstance(value, str) and value.startswith(('http://', 'https://', 'www.')):
-                normalized_links.append({
-                    'url': value,
-                    'type': 'unknown',
-                    'language': 'en',
-                    'description': key if key != 'url' and not key.isdigit() else None
-                })
-            elif isinstance(value, dict) and 'url' in value and isinstance(value['url'], str) and value['url'].startswith(('http://', 'https://', 'www.')):
-                # Handle nested link objects
-                doc = {
-                    'url': value['url'],
-                    'type': value.get('type', 'unknown'),
-                    'language': value.get('language', 'en'),
-                    'description': value.get('description', None)
-                }
-                normalized_links.append(doc)
+            if isinstance(value, str):
+                # Try to extract URLs from text
+                urls = url_pattern.findall(value)
+                for url in urls:
+                    normalized_links.append({
+                        'url': url,
+                        'type': 'unknown',
+                        'language': 'en',
+                        'description': key if key != 'url' and not key.isdigit() else None
+                    })
+                if not urls and value.startswith(('http://', 'https://', 'www.')):
+                    normalized_links.append({
+                        'url': value,
+                        'type': 'unknown',
+                        'language': 'en',
+                        'description': key if key != 'url' and not key.isdigit() else None
+                    })
+            elif isinstance(value, dict) and 'url' in value and isinstance(value['url'], str):
+                # Extract URLs from the url field
+                urls = url_pattern.findall(value['url'])
+                if urls:
+                    doc = {
+                        'url': urls[0],
+                        'type': value.get('type', 'unknown'),
+                        'language': value.get('language', 'en'),
+                        'description': value.get('description', None)
+                    }
+                    normalized_links.append(doc)
+                elif value['url'].startswith(('http://', 'https://', 'www.')):
+                    doc = {
+                        'url': value['url'],
+                        'type': value.get('type', 'unknown'),
+                        'language': value.get('language', 'en'),
+                        'description': value.get('description', None)
+                    }
+                    normalized_links.append(doc)
     
     # Remove duplicates by URL
     seen_urls = set()
@@ -175,8 +233,38 @@ def extract_financial_info(text):
         'NGN': ['NGN', '₦', 'Naira'],
         'ZAR': ['ZAR', 'R', 'Rand'],
         'KES': ['KES', 'KSh', 'Kenyan Shilling'],
-        'BRL': ['BRL', 'R$', 'Real', 'Reais']
+        'BRL': ['BRL', 'R$', 'Real', 'Reais'],
+        'RWF': ['RWF', 'Rwf', 'Rwandan Francs', 'Rwandan Franc'],
     }
+    
+    # First, check for specific Rwanda franc pattern which is often missed
+    # Pattern like: "Rwf 10,000" or "10,000 Rwandan Francs"
+    rwf_patterns = [
+        r'(?:Rwf|RWF)\s*([\d,\.]+(?:\s*million|\s*M|\s*billion|\s*B)?)',
+        r'([\d,\.]+)(?:\s*million|\s*M|\s*billion|\s*B)?\s*(?:Rwandan Francs?|RWF|Rwf)'
+    ]
+    
+    for pattern in rwf_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            try:
+                # Process the first match
+                value_str = matches[0].replace(',', '')
+                multiplier = 1
+                
+                # Check for million/billion indicators
+                if re.search(r'million|M', text, re.IGNORECASE):
+                    multiplier = 1000000
+                    value_str = re.sub(r'million|M', '', value_str, flags=re.IGNORECASE).strip()
+                elif re.search(r'billion|B', text, re.IGNORECASE):
+                    multiplier = 1000000000
+                    value_str = re.sub(r'billion|B', '', value_str, flags=re.IGNORECASE).strip()
+                    
+                value = float(value_str) * multiplier
+                return value, 'RWF'
+            except (ValueError, IndexError):
+                # Skip if value can't be parsed
+                pass
     
     # Find financial values with currency indicators
     # Pattern matches both "USD 1,000,000" and "1,000,000 USD" formats
@@ -188,7 +276,9 @@ def extract_financial_info(text):
         r'([\d,\.]+)(?:\s*(?:million|billion|m|b))?\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan)',
         # Numeric with M/B suffix: USD 1.5M, 1.5B USD
         r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+[MB])',
-        r'([\d,\.]+[MB])\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan)'
+        r'([\d,\.]+[MB])\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan)',
+        # Additional pattern for "X million USD" format
+        r'([\d,\.]+)\s+(?:million|billion)\s+([A-Z]{3}|dollars?|euros?|pounds?)'
     ]
     
     # Search for patterns in text
@@ -215,10 +305,10 @@ def extract_financial_info(text):
             if value_str:
                 # Handle million/billion indicators
                 million_multiplier = 1
-                if 'M' in value_str.upper() or 'MILLION' in value_str.upper():
+                if 'M' in value_str.upper() or 'MILLION' in value_str.upper() or 'million' in text.lower():
                     million_multiplier = 1000000
                     value_str = value_str.upper().replace('M', '').replace('MILLION', '')
-                elif 'B' in value_str.upper() or 'BILLION' in value_str.upper():
+                elif 'B' in value_str.upper() or 'BILLION' in value_str.upper() or 'billion' in text.lower():
                     million_multiplier = 1000000000
                     value_str = value_str.upper().replace('B', '').replace('BILLION', '')
                 
@@ -231,7 +321,8 @@ def extract_financial_info(text):
                     # Map currency indicator to standard code
                     currency = None
                     for code, indicators in currency_patterns.items():
-                        if any(indicator.upper() in currency_indicator.upper() for indicator in indicators):
+                        if any(indicator.upper() == currency_indicator.upper() or 
+                               indicator.upper() in currency_indicator.upper() for indicator in indicators):
                             currency = code
                             break
                     
@@ -239,6 +330,23 @@ def extract_financial_info(text):
                         return value, currency
                 except (ValueError, TypeError):
                     continue
+    
+    # Look for numeric-only amounts without explicit currency if context suggests a currency
+    if 'rwandan francs' in text.lower() or 'rwf' in text.lower():
+        amount_pattern = r'([\d,\.]+)(?:\s*million|\s*billion)?'
+        matches = re.findall(amount_pattern, text)
+        if matches:
+            try:
+                value_str = matches[0].replace(',', '')
+                multiplier = 1
+                if 'million' in text.lower():
+                    multiplier = 1000000
+                elif 'billion' in text.lower():
+                    multiplier = 1000000000
+                value = float(value_str) * multiplier
+                return value, 'RWF'
+            except (ValueError, IndexError):
+                pass
     
     return None, None
 

@@ -175,22 +175,6 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     if hasattr(tedeu_obj, 'links') and tedeu_obj.links:
         document_links = normalize_document_links(tedeu_obj.links)
     
-    # Extract or determine the language
-    language = None
-    if hasattr(tedeu_obj, 'language') and tedeu_obj.language:
-        language = tedeu_obj.language
-    
-    if not language or language == "None":
-        # Try to detect from title or summary
-        if hasattr(tedeu_obj, 'title') and tedeu_obj.title:
-            detected = detect_language(tedeu_obj.title)
-            if detected:
-                language = detected
-        elif hasattr(tedeu_obj, 'summary') and tedeu_obj.summary and not language:
-            detected = detect_language(tedeu_obj.summary)
-            if detected:
-                language = detected
-    
     # Extract organization information
     organization_name = None
     buyer = None
@@ -263,11 +247,42 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     title_english = None
     description_english = None
     
-    if title:
-        title_english, title_method = translate_to_english(title, language)
+    # Detect language - check all text fields for better accuracy
+    language_sample = ""
     
-    if description:
-        description_english, desc_method = translate_to_english(description, language)
+    # Create a combined sample using title + description + other relevant text
+    if tedeu_obj.title:
+        language_sample += tedeu_obj.title + " "
+    
+    if tedeu_obj.description:
+        # Add a truncated version of the description (first 300 chars)
+        language_sample += tedeu_obj.description[:300] + " "
+    
+    if tedeu_obj.buyer:
+        language_sample += tedeu_obj.buyer + " "
+    
+    # Add organization name if available and different from buyer
+    if organization_name and organization_name != tedeu_obj.buyer:
+        language_sample += organization_name + " "
+    
+    # Detect language from combined sample
+    detected_language = detect_language(language_sample.strip())
+    
+    # Validate language code - TED_EU often has invalid language codes
+    valid_languages = ['en', 'fr', 'de', 'es', 'it', 'pt', 'nl', 'da', 'sv', 'fi', 'el', 'cs', 'et', 'hu', 'lt', 'lv', 'mt', 'pl', 'sk', 'sl', 'bg', 'ro', 'ga', 'hr']
+    
+    if detected_language and detected_language in valid_languages:
+        language = detected_language
+    else:
+        # Try to get language from the documents or original data
+        if tedeu_obj.language:
+            lang_code = tedeu_obj.language.lower()[:2]  # Extract first 2 chars of language code
+            if lang_code in valid_languages:
+                language = lang_code
+            else:
+                language = 'en'  # Default to English if invalid
+        else:
+            language = 'en'  # Default to English if detection fails
     
     # Translate organization name and buyer to English
     organization_name_english = None

@@ -382,25 +382,60 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
     if (not project_name or not project_id) and hasattr(wb_obj, 'description') and wb_obj.description:
         # Extract Project ID patterns like "P123456" or "Project: P123456"
         if not project_id:
-            project_id_match = re.search(r'Project(?:\s*:\s*|\s+)([Pp]\d{6})', wb_obj.description)
-            if project_id_match:
-                project_id = project_id_match.group(1)
+            # Try different patterns for project IDs
+            project_id_patterns = [
+                r'Project(?:\s*:\s*|\s+)([Pp]\d{6})',
+                r'Project ID(?:\s*:\s*|\s+)([Pp]\d{6})',
+                r'Project No\.?(?:\s*:\s*|\s+)([Pp]\d{6})',
+                r'(?:^|\s)([Pp]\d{6})(?:\s|$)'  # Standalone P-number
+            ]
+            
+            for pattern in project_id_patterns:
+                project_id_match = re.search(pattern, wb_obj.description)
+                if project_id_match:
+                    project_id = project_id_match.group(1)
+                    break
         
         # Extract project name patterns like "Project Name: Example Project" or similar
         if not project_name:
             project_name_patterns = [
-                r'Project(?:\s*:\s*|\s+)([^:]+?)(?:Project|Loan|Credit|Reference|$)',
-                r'(?:for|under)\s+the\s+([^.]+?)\s+(?:Project|Program)'
+                r'Project(?:\s*:\s*|\s+)([^:]+?)(?:\s+Project|\s+Loan|\s+Credit|\s+Reference|$)',
+                r'(?:for|under)\s+the\s+([^.]+?)\s+(?:Project|Program)',
+                r'Project Name(?:\s*:\s*|\s+)([^.]+?)(?:\.|$)'
             ]
             
             for pattern in project_name_patterns:
-                project_name_match = re.search(pattern, wb_obj.description)
-                if project_name_match:
-                    potential_name = project_name_match.group(1).strip()
-                    # Ensure it's not just a project ID
-                    if not re.match(r'^[Pp]\d{6}$', potential_name):
-                        project_name = potential_name
-                        break
+                try:
+                    project_name_match = re.search(pattern, wb_obj.description)
+                    if project_name_match:
+                        potential_name = project_name_match.group(1).strip()
+                        # Ensure it's not just a project ID
+                        if len(potential_name) > 7 and not re.match(r'^[Pp]\d{6}$', potential_name):
+                            project_name = potential_name
+                            break
+                except Exception as e:
+                    logger.warning(f"Error extracting project name: {e}")
+            
+            # If still no project name, try to extract from title
+            if not project_name and wb_obj.title:
+                # The title often contains the project name
+                title_parts = wb_obj.title.split(" - ")
+                if len(title_parts) > 1:
+                    # If title has format "Action - Project Name", the project name is usually after the dash
+                    project_name = title_parts[1].strip()
+                elif "Project" in wb_obj.title:
+                    # Try to extract project name based on the word "Project"
+                    title_project_match = re.search(r'([^:]+?)\s+Project', wb_obj.title)
+                    if title_project_match:
+                        project_name = title_project_match.group(1).strip()
+    
+    # If we have a project ID but no project name, try to create a generic project name
+    if project_id and not project_name:
+        project_name = f"World Bank Project {project_id}"
+        
+    # Make sure project_id is a string, not a number
+    if project_id and not isinstance(project_id, str):
+        project_id = str(project_id)
     
     # Extract reference/bid number from description if not available
     reference_number = None

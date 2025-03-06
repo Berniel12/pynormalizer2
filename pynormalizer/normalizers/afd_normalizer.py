@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Dict, Any, Optional
+import re
 
 from pynormalizer.models.source_models import AFDTender
 from pynormalizer.models.unified_model import UnifiedTender
@@ -118,11 +119,56 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
     if afd_obj.notice_content and afd_obj.notice_content != "NO CONTENT":
         procurement_method = extract_procurement_method(afd_obj.notice_content)
     
-    # Try to extract financial information from content
+    # Extract financial information from notice content if available
     estimated_value = None
     currency = None
-    if afd_obj.notice_content and afd_obj.notice_content != "NO CONTENT":
-        estimated_value, currency = extract_financial_info(afd_obj.notice_content)
+    
+    # Try to get financial information from contract_amount/value fields
+    if afd_obj.contract_amount and isinstance(afd_obj.contract_amount, str):
+        estimated_value, currency = extract_financial_info(afd_obj.contract_amount)
+    
+    # If no financial info found, try to extract from description
+    if (not estimated_value or not currency) and afd_obj.notice_content:
+        # Look for specific Rwandan Franc pattern first
+        rwf_pattern = r'(?:Rwf|RWF)\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)'
+        rwf_matches = re.findall(rwf_pattern, afd_obj.notice_content, re.IGNORECASE)
+        
+        if rwf_matches:
+            try:
+                # Process the value
+                value_str = rwf_matches[0].replace(',', '')
+                multiplier = 1
+                
+                if 'million' in value_str.lower() or ' m' in value_str.lower():
+                    multiplier = 1000000
+                    value_str = re.sub(r'million|m', '', value_str, flags=re.IGNORECASE).strip()
+                elif 'billion' in value_str.lower() or ' b' in value_str.lower():
+                    multiplier = 1000000000
+                    value_str = re.sub(r'billion|b', '', value_str, flags=re.IGNORECASE).strip()
+                    
+                estimated_value = float(value_str) * multiplier
+                currency = 'RWF'
+            except (ValueError, IndexError):
+                # If parsing fails, try the general method
+                estimated_value, currency = extract_financial_info(afd_obj.notice_content)
+        else:
+            # If no specific RWF pattern found, use general extraction
+            estimated_value, currency = extract_financial_info(afd_obj.notice_content)
+    
+    # If still no currency but value exists, check for context clues
+    if estimated_value and not currency:
+        # Check for common currency mentions in the content
+        if afd_obj.notice_content:
+            if 'rwanda' in afd_obj.notice_content.lower() and re.search(r'\bRwf\b|\bRWF\b', afd_obj.notice_content, re.IGNORECASE):
+                currency = 'RWF'
+            elif 'france' in afd_obj.notice_content.lower() or 'euro' in afd_obj.notice_content.lower():
+                currency = 'EUR'
+            elif re.search(r'\bUSD\b|\$', afd_obj.notice_content):
+                currency = 'USD'
+    
+    # Correct common currency code mistakes
+    if currency == 'ZAR' and 'rwanda' in (afd_obj.country or '').lower():
+        currency = 'RWF'
     
     # Ensure proper organization name
     organization_name = afd_obj.agency
