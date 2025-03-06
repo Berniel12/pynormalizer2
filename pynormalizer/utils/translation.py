@@ -269,78 +269,125 @@ def is_english_text(text: str) -> bool:
 
 def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto") -> Tuple[Optional[str], Optional[str]]:
     """
-    Translate text to English using deep-translator.
+    Translate text to English.
     
     Args:
         text: Text to translate
-        src_lang: Source language code or "auto" for auto-detection
+        src_lang: Source language code (ISO 639-1) or "auto" for auto-detection
         
     Returns:
         Tuple of (translated_text, method_used)
     """
     global TRANSLATION_STATS
     
-    # Track total requests
+    if not text:
+        return None, None
+        
+    # Update stats
     TRANSLATION_STATS["total_requests"] += 1
     
-    # Handle None or empty text
-    if not text or len(text.strip()) == 0:
-        return None, None
-    
-    # Fix common character encoding issues
-    text = fix_character_encoding(text)
-    
-    # Skip translation if already English
-    if is_english_text(text):
+    # Early return if text is already English or very short
+    if is_english_text(text) or len(text) < 5:
         TRANSLATION_STATS["already_english"] += 1
-        return text, "already_english"
-    
-    # Skip translation if not available
-    if not TRANSLATOR_AVAILABLE:
-        TRANSLATION_STATS["failed"] += 1
-        return text, "translator_unavailable"
-    
-    # If source language is English, set to auto since English is the target language
-    if src_lang == "en":
-        src_lang = "auto"
-    
-    # If source language is None, use auto-detection
-    if src_lang is None:
-        src_lang = "auto"
-
-    # Get supported languages from GoogleTranslator
-    supported_languages = None
-    try:
-        supported_languages = GoogleTranslator().get_supported_languages(as_dict=True)
-    except Exception as e:
-        logger.warning(f"Could not get supported languages: {e}")
+        return text, "already-english"
         
-    # Check if the source language is supported
-    if src_lang != "auto" and supported_languages and src_lang not in supported_languages.values():
-        logger.warning(f"Source language '{src_lang}' not supported, falling back to auto-detection")
-        src_lang = "auto"
+    # Try to detect the language if not provided
+    if src_lang == "auto":
+        src_lang = detect_language(text) or "en"
     
-    # Attempt translation with retries
-    max_retries = 3
-    for attempt in range(1, max_retries + 1):
-        try:
+    if src_lang == "en":
+        TRANSLATION_STATS["already_english"] += 1
+        return text, "already-english"
+    
+    # Track language stats
+    if src_lang in TRANSLATION_STATS["languages"]:
+        TRANSLATION_STATS["languages"][src_lang] += 1
+    else:
+        TRANSLATION_STATS["languages"][src_lang] = 1
+    
+    # If text is very long, split into chunks for better translation
+    if len(text) > 1000:
+        # Split into chunks of ~1000 characters, trying to break at sentence boundaries
+        chunks = []
+        sentence_endings = ['. ', '! ', '? ', '.\n', '!\n', '?\n']
+        current_chunk = ""
+        
+        # Split by sentences
+        sentences = []
+        current_sentence = ""
+        for char in text:
+            current_sentence += char
+            if char in '.!?' and len(current_sentence) > 1:
+                sentences.append(current_sentence)
+                current_sentence = ""
+        if current_sentence:
+            sentences.append(current_sentence)
+        
+        # Group sentences into chunks
+        for sentence in sentences:
+            if len(current_chunk) + len(sentence) < 1000:
+                current_chunk += sentence
+            else:
+                chunks.append(current_chunk)
+                current_chunk = sentence
+        if current_chunk:
+            chunks.append(current_chunk)
+        
+        # If no chunks were created (no sentence boundaries found),
+        # fall back to simple character chunking
+        if not chunks:
+            chunks = [text[i:i+1000] for i in range(0, len(text), 1000)]
+        
+        # Translate each chunk
+        translated_chunks = []
+        for chunk in chunks:
+            try:
+                if TRANSLATOR_AVAILABLE:
+                    translator = GoogleTranslator(source=src_lang, target='en')
+                    translated = translator.translate(chunk)
+                    translated_chunks.append(translated)
+                else:
+                    # Fallback to dictionary-based word replacement when no translator available
+                    # This is a simplistic approach and won't handle grammar
+                    translated_chunks.append(chunk)  # Just use original chunk as fallback
+                    
+            except Exception as e:
+                logger.warning(f"Translation failed for chunk: {e}")
+                # If translation fails, append the original chunk
+                translated_chunks.append(chunk)
+        
+        translated_text = " ".join(translated_chunks)
+        TRANSLATION_STATS["success"] += 1
+        return translated_text, "chunked-translation"
+    
+    # Use deep-translator if available
+    try:
+        if TRANSLATOR_AVAILABLE:
             translator = GoogleTranslator(source=src_lang, target='en')
             translated = translator.translate(text)
-            
-            if translated and translated != text:
-                TRANSLATION_STATS["success"] += 1
-                return translated, "deep_translator"
-            else:
-                logger.warning(f"Translation produced same output as input, possible issue")
-                return text, "no_change"
+            TRANSLATION_STATS["success"] += 1
+            return translated, "deep-translator"
+        else:
+            # When no translator is available, try fixing encoding issues first
+            fixed_text = fix_character_encoding(text)
+            if fixed_text != text:
+                TRANSLATION_STATS["encoding_fixed"] += 1
+                return fixed_text, "encoding-fixed"
                 
-        except Exception as e:
-            logger.warning(f"Translation attempt {attempt} failed: {src_lang} --> {str(e)}")
-            time.sleep(1)  # Add delay between retries
-    
-    # Translation failed after all retries
-    TRANSLATION_STATS["failed"] += 1
-    return text, "translation_failed"
+            # Fallback to returning the original text
+            TRANSLATION_STATS["failed"] += 1
+            return text, "no-translation"
+    except Exception as e:
+        logger.warning(f"Translation failed: {e}")
+        TRANSLATION_STATS["failed"] += 1
+        
+        # Try fixing encoding issues as a last resort
+        fixed_text = fix_character_encoding(text)
+        if fixed_text != text:
+            TRANSLATION_STATS["encoding_fixed"] += 1
+            return fixed_text, "encoding-fixed"
+            
+        return text, "translation-error"
 
 def get_supported_languages() -> Dict[str, str]:
     """

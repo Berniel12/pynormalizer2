@@ -40,22 +40,60 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
         if afd_obj.publication_date:
             publication_dt = datetime.fromisoformat(afd_obj.publication_date.replace('Z', '+00:00'))
     except (ValueError, TypeError):
-        # Just leave as None if we can't parse
-        pass
+        # Try additional date formats
+        if afd_obj.publication_date and isinstance(afd_obj.publication_date, str):
+            date_formats = [
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S.%f",
+                "%Y-%m-%d",
+                "%Y/%m/%d",
+                "%d/%m/%Y",
+                "%d-%m-%Y",
+                "%d %b %Y",
+                "%d-%b-%Y",
+                "%B %d, %Y",
+                "%d %B %Y"
+            ]
+            for fmt in date_formats:
+                try:
+                    publication_dt = datetime.strptime(afd_obj.publication_date, fmt)
+                    break
+                except ValueError:
+                    continue
         
     try:
         if afd_obj.deadline:
             deadline_dt = datetime.fromisoformat(afd_obj.deadline.replace('Z', '+00:00'))
     except (ValueError, TypeError):
-        # Just leave as None if we can't parse
-        pass
-
-    # Detect language from original_language field or content
-    language = afd_obj.original_language or 'auto'
-    if language == 'auto' and afd_obj.notice_content:
-        detected = detect_language(afd_obj.notice_content)
-        if detected:
-            language = detected
+        # Try additional date formats
+        if afd_obj.deadline and isinstance(afd_obj.deadline, str):
+            date_formats = [
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S.%f",
+                "%Y-%m-%d",
+                "%Y/%m/%d",
+                "%d/%m/%Y",
+                "%d-%m-%Y",
+                "%d %b %Y",
+                "%d-%b-%Y",
+                "%B %d, %Y",
+                "%d %B %Y"
+            ]
+            for fmt in date_formats:
+                try:
+                    deadline_dt = datetime.strptime(afd_obj.deadline, fmt)
+                    break
+                except ValueError:
+                    continue
+    
+    # Detect language using combined text from title and description
+    language_sample = ""
+    if afd_obj.notice_title:
+        language_sample += afd_obj.notice_title + " "
+    if afd_obj.notice_content and afd_obj.notice_content != "NO CONTENT":
+        language_sample += afd_obj.notice_content[:200]  # Use first 200 chars
+    
+    language = detect_language(language_sample.strip()) or "fr"  # Default to French for AFD
     
     # Extract status based on deadline
     status = extract_status(

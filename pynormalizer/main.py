@@ -92,6 +92,7 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
     # Process rows in batches
     processed = 0
     errors = 0
+    error_details = {}  # Track specific error types and counts
     start_time = time.time()
     
     for i, row in enumerate(rows):
@@ -99,82 +100,81 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
             # Record processing time
             start_process = time.time()
             
-            # Log original data for comparison
-            row_id = row.get('id', i)
-            source = table_name
+            # Extract source_id for logging
+            source_id = None
+            if 'id' in row:
+                source_id = row['id']
+            elif 'source_id' in row:
+                source_id = row['source_id']
             
-            # Log key fields from source data for comparison
-            detail_logger.info(f"--- SOURCE DATA: {source} ID: {row_id} ---")
-            
-            # Log important fields from original data
-            important_fields = ['title', 'description', 'amount', 'deadline', 'publication_date', 'status']
-            for field in important_fields:
-                if field in row:
-                    detail_logger.info(f"BEFORE - {field}: {row.get(field)}")
-            
-            # Normalize the row
-            unified_tender = normalize_fn(row)
-            
-            # Set processing metadata
-            unified_tender.normalized_at = datetime.utcnow()
-            unified_tender.normalized_by = "pynormalizer"
-            unified_tender.processing_time_ms = int((time.time() - start_process) * 1000)
-            
-            # Log normalized data for comparison
-            detail_logger.info(f"--- NORMALIZED DATA: {source} ID: {row_id} ---")
-            detail_logger.info(f"AFTER - title: {unified_tender.title}")
-            
-            # Handle description that might be None
-            if unified_tender.description:
-                detail_logger.info(f"AFTER - description: {unified_tender.description[:100]}...")
-            else:
-                detail_logger.info(f"AFTER - description: None")
-            
-            # These attributes might not exist in UnifiedTender model, so check with hasattr
-            if hasattr(unified_tender, 'category'):
-                detail_logger.info(f"AFTER - category: {unified_tender.category}")
+            # Call the normalizer function
+            try:
+                unified_tender = normalize_fn(row)
+            except Exception as e:
+                # Detailed error logging for normalization failures
+                error_type = type(e).__name__
+                if error_type not in error_details:
+                    error_details[error_type] = {
+                        'count': 0,
+                        'examples': []
+                    }
                 
-            if hasattr(unified_tender, 'source_country'):
-                detail_logger.info(f"AFTER - source_country: {unified_tender.source_country}")
+                error_details[error_type]['count'] += 1
                 
-            if hasattr(unified_tender, 'value_usd'):
-                detail_logger.info(f"AFTER - value_usd: {unified_tender.value_usd}")
+                # Store example errors (up to 5 per type)
+                if len(error_details[error_type]['examples']) < 5:
+                    error_details[error_type]['examples'].append({
+                        'source_id': source_id,
+                        'message': str(e),
+                        'row_index': i
+                    })
+                
+                # Re-raise the exception
+                raise
             
-            if unified_tender.status:
-                detail_logger.info(f"AFTER - status: {unified_tender.status}")
+            # Calculate processing time
+            process_time_ms = int((time.time() - start_process) * 1000)
             
-            # Check for deadline and publication_date which exist in the model but might be None
-            if hasattr(unified_tender, 'deadline') and unified_tender.deadline:
-                detail_logger.info(f"AFTER - deadline: {unified_tender.deadline}")
+            # Add processing time to the unified tender
+            unified_tender.processing_time_ms = process_time_ms
             
-            if hasattr(unified_tender, 'publication_date') and unified_tender.publication_date:
-                detail_logger.info(f"AFTER - publication_date: {unified_tender.publication_date}")
+            # Set normalized timestamp
+            unified_tender.normalized_at = datetime.now()
             
-            if hasattr(unified_tender, 'tags') and unified_tender.tags:
-                detail_logger.info(f"AFTER - tags: {unified_tender.tags}")
-            
-            # Log summary of changes
-            detail_logger.info(f"Processing time: {unified_tender.processing_time_ms}ms")
-            detail_logger.info("------------------------\n")
-            
-            # Upsert the normalized tender
+            # Upsert to the unified table
             upsert_unified_tender(conn, unified_tender)
             
             processed += 1
             
             # Log progress periodically
-            if (i + 1) % batch_size == 0 or i == total_rows - 1:
+            if processed % batch_size == 0 or processed == total_rows:
                 elapsed = time.time() - start_time
-                rate = (i + 1) / elapsed if elapsed > 0 else 0
-                logger.info(f"Processed {i + 1}/{total_rows} rows from {table_name} " +
-                           f"({(i + 1) / total_rows * 100:.1f}%) at {rate:.1f} rows/sec")
-        
+                avg_time = elapsed / processed if processed > 0 else 0
+                logger.info(f"Processed {processed}/{total_rows} rows from {table_name} " +
+                            f"({processed/total_rows*100:.1f}%). " +
+                            f"Elapsed: {elapsed:.1f}s, Avg: {avg_time:.2f}s/row")
+                
         except Exception as e:
             errors += 1
-            logger.exception(f"Error processing row {i} from {table_name}: {e}")
+            logger.error(f"Error processing row {i} from {table_name}: {e}")
+            if errors <= 5:  # Limit the number of detailed error logs
+                logger.error(f"Row data sample: {str(row)[:200]}...")
     
-    logger.info(f"Completed processing {processed}/{total_rows} rows from {table_name}")
-    logger.info(f"Errors: {errors}")
+    # Summarize results
+    success_rate = (processed / total_rows) * 100 if total_rows > 0 else 0
+    logger.info(f"Completed processing {table_name}: {processed}/{total_rows} rows " +
+                f"processed successfully ({success_rate:.1f}%).")
+    
+    if errors > 0:
+        logger.warning(f"Encountered {errors} errors while processing {table_name} ({errors/total_rows*100:.1f}%).")
+        
+        # Log error details
+        logger.warning(f"Error breakdown for {table_name}:")
+        for error_type, details in error_details.items():
+            logger.warning(f"  {error_type}: {details['count']} occurrences")
+            if details['examples']:
+                for i, example in enumerate(details['examples'], 1):
+                    logger.warning(f"    Example {i}: source_id={example['source_id']}, message: {example['message']}")
     
     return processed
 

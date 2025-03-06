@@ -29,6 +29,7 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
     contact_name = None
     contact_email = None
     contact_phone = None
+    contact_address = None
     
     if samgov_obj.contacts:
         primary_contact = None
@@ -46,6 +47,37 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
                 contact_email = primary_contact.get('email')
                 contact_phone = primary_contact.get('phone')
                 organization_name = primary_contact.get('organization') or primary_contact.get('org')
+                
+                # Try to extract address information
+                if 'address' in primary_contact and primary_contact['address']:
+                    addr = primary_contact['address']
+                    if isinstance(addr, dict):
+                        address_parts = []
+                        # Common address components
+                        for field in ['street', 'line1', 'line2', 'city', 'state', 'zip', 'zipcode', 'postal_code', 'country']:
+                            if field in addr and addr[field]:
+                                address_parts.append(str(addr[field]))
+                        if address_parts:
+                            contact_address = ", ".join(address_parts)
+                    elif isinstance(addr, str):
+                        contact_address = addr
+    
+    # Also try to get organization from additional fields
+    if not organization_name:
+        # Try departments, agency, etc.
+        org_fields = ['department_name', 'agency', 'sub_tier', 'office']
+        org_parts = []
+        for field in org_fields:
+            if hasattr(samgov_obj, field) and getattr(samgov_obj, field):
+                org_parts.append(getattr(samgov_obj, field))
+        
+        if org_parts:
+            organization_name = " - ".join(org_parts)
+    
+    # Fall back to naics code description if still no organization
+    if not organization_name and hasattr(samgov_obj, 'naics') and isinstance(samgov_obj.naics, dict):
+        if 'description' in samgov_obj.naics and samgov_obj.naics['description']:
+            organization_name = samgov_obj.naics['description']
 
     # Extract location from place_of_performance
     city = None
@@ -118,6 +150,7 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
         contact_name=contact_name,
         contact_email=contact_email,
         contact_phone=contact_phone,
+        contact_address=contact_address,
         original_data=row,
         language="en",  # SAM.gov is in English
         normalized_method="offline-dictionary",

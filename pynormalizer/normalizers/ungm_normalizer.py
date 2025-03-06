@@ -130,8 +130,15 @@ def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
         elif 'notice' in ungm_obj.links:
             url = ungm_obj.links['notice']
 
-    # Detect language from title
-    language = detect_language(ungm_obj.title) or 'en'
+    # Detect language from title and description combined
+    lang_sample = ""
+    if ungm_obj.title:
+        lang_sample += ungm_obj.title + " "
+    if ungm_obj.description:
+        # Add first 200 characters from description for better language detection
+        lang_sample += ungm_obj.description[:200]
+    
+    language = detect_language(lang_sample.strip()) or 'en'
 
     # Construct the UnifiedTender
     unified = UnifiedTender(
@@ -160,12 +167,43 @@ def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
     # Translate non-English fields if needed
     language = unified.language or "en"
     
-    # Translate title if needed
-    if unified.title:
-        unified.title_english, _ = translate_to_english(unified.title, language)
+    try:
+        # Translate title if needed
+        if unified.title and language != "en":
+            unified.title_english, _ = translate_to_english(unified.title, language)
+            # Verify translation quality - if translation is too short compared to original,
+            # try translating larger chunks of the title
+            if unified.title_english and len(unified.title_english) < len(unified.title) * 0.5:
+                # Try translating again with more context
+                title_chunks = [unified.title[i:i+500] for i in range(0, len(unified.title), 500)]
+                translated_chunks = []
+                for chunk in title_chunks:
+                    trans, _ = translate_to_english(chunk, language)
+                    translated_chunks.append(trans)
+                unified.title_english = " ".join(translated_chunks)
+    except Exception as e:
+        # Log the error and continue with untranslated text
+        print(f"Error translating title: {e}")
+        if not unified.title_english:
+            unified.title_english = unified.title
     
-    # Translate description if needed
-    if unified.description:
-        unified.description_english, _ = translate_to_english(unified.description, language)
+    try:
+        # Translate description if needed
+        if unified.description and language != "en":
+            # For longer descriptions, split into manageable chunks for translation
+            if len(unified.description) > 1000:
+                desc_chunks = [unified.description[i:i+1000] for i in range(0, len(unified.description), 1000)]
+                translated_chunks = []
+                for chunk in desc_chunks:
+                    trans, _ = translate_to_english(chunk, language)
+                    translated_chunks.append(trans)
+                unified.description_english = " ".join(translated_chunks)
+            else:
+                unified.description_english, _ = translate_to_english(unified.description, language)
+    except Exception as e:
+        # Log the error and continue with untranslated text
+        print(f"Error translating description: {e}")
+        if not unified.description_english:
+            unified.description_english = unified.description
 
     return unified 

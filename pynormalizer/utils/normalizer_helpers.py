@@ -12,313 +12,228 @@ from pynormalizer.utils.translation import translate_to_english
 # Initialize logger
 logger = logging.getLogger(__name__)
 
-def normalize_document_links(links: Any) -> List[Dict[str, str]]:
+def normalize_document_links(links_data):
     """
-    Normalize document links to a consistent format.
+    Normalize document links to a standardized format.
     
     Args:
-        links: Document links in various formats (string, list, dict, etc.)
+        links_data: Document links data in various formats
         
     Returns:
-        List of dictionaries with standardized format
+        List of normalized document link objects
     """
-    if not links:
-        return []
-        
     normalized_links = []
     
-    # Handle string format (single URL or JSON string)
-    if isinstance(links, str):
-        try:
-            # Check if it's a JSON string
-            parsed = json.loads(links)
-            return normalize_document_links(parsed)
-        except (json.JSONDecodeError, ValueError):
-            # Single URL string
-            if links.strip():
-                url_type = "unknown"
-                # Determine type based on extension
-                if links.lower().endswith(".pdf"):
-                    url_type = "pdf"
-                elif links.lower().endswith((".xml", ".rss", ".atom")):
-                    url_type = "xml"
-                elif links.lower().endswith((".html", ".htm", ".aspx", ".php")):
-                    url_type = "html"
-                    
+    if not links_data:
+        return normalized_links
+    
+    # Handle string (single URL)
+    if isinstance(links_data, str):
+        if links_data.startswith(('http://', 'https://', 'www.')):
+            normalized_links.append({
+                'url': links_data,
+                'type': 'unknown',
+                'language': 'en',
+                'description': None
+            })
+        return normalized_links
+    
+    # Handle list of strings
+    if isinstance(links_data, list) and all(isinstance(item, str) for item in links_data):
+        for url in links_data:
+            if url and url.startswith(('http://', 'https://', 'www.')):
                 normalized_links.append({
-                    "url": links.strip(),
-                    "type": url_type,
-                    "language": "en"  # Default language
+                    'url': url,
+                    'type': 'unknown',
+                    'language': 'en',
+                    'description': None
                 })
+        return normalized_links
     
-    # Handle list format
-    elif isinstance(links, list):
-        for item in links:
-            # List of strings (URLs)
-            if isinstance(item, str):
-                url = item.strip()
-                if url:
-                    url_type = "unknown"
-                    # Determine type based on extension
-                    if url.lower().endswith(".pdf"):
-                        url_type = "pdf"
-                    elif url.lower().endswith((".xml", ".rss", ".atom")):
-                        url_type = "xml"
-                    elif url.lower().endswith((".html", ".htm", ".aspx", ".php")):
-                        url_type = "html"
-                        
-                    normalized_links.append({
-                        "url": url,
-                        "type": url_type,
-                        "language": "en"  # Default language
-                    })
-            # List of dictionaries
-            elif isinstance(item, dict):
-                if "link" in item or "url" in item:
-                    url = item.get("link") or item.get("url")
-                    if url and isinstance(url, str) and url.strip():
-                        url_type = item.get("type", "unknown")
-                        # If type not specified, try to determine from URL
-                        if url_type == "unknown":
-                            if url.lower().endswith(".pdf"):
-                                url_type = "pdf"
-                            elif url.lower().endswith((".xml", ".rss", ".atom")):
-                                url_type = "xml"
-                            elif url.lower().endswith((".html", ".htm", ".aspx", ".php")):
-                                url_type = "html"
-                                
-                        normalized_links.append({
-                            "url": url.strip(),
-                            "type": url_type,
-                            "language": item.get("language", "en"),
-                            "description": item.get("description")
-                        })
-                else:
-                    # Handle dictionaries without standard keys
-                    for key, value in item.items():
-                        if isinstance(value, str) and (value.strip().startswith(("http", "www.")) or 
-                                                    any(value.lower().endswith(ext) for ext in 
-                                                        (".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".xml", ".html", ".htm"))):
-                            url_type = "unknown"
-                            if value.lower().endswith(".pdf"):
-                                url_type = "pdf"
-                            elif value.lower().endswith((".doc", ".docx")):
-                                url_type = "doc"
-                            elif value.lower().endswith((".xls", ".xlsx")):
-                                url_type = "excel"
-                            elif value.lower().endswith((".ppt", ".pptx")):
-                                url_type = "presentation"
-                            elif value.lower().endswith((".xml", ".rss", ".atom")):
-                                url_type = "xml"
-                            elif value.lower().endswith((".html", ".htm", ".aspx", ".php")):
-                                url_type = "html"
-                                
-                            normalized_links.append({
-                                "url": value.strip(),
-                                "type": url_type,
-                                "description": key if key != "url" and key != "link" else None
-                            })
-    
-    # Handle dictionary format
-    elif isinstance(links, dict):
-        # Known dictionary formats (like TED EU with language-specific URLs)
-        pdf_extensions = [".pdf", ".PDF"]
-        xml_extensions = [".xml", ".XML"]
-        html_extensions = [".html", ".htm", ".HTML", ".HTM", ".aspx", ".php"]
-        doc_extensions = [".doc", ".docx", ".DOC", ".DOCX"]
-        excel_extensions = [".xls", ".xlsx", ".XLS", ".XLSX"]
-        
-        # Process different sections
-        for section, content in links.items():
-            if isinstance(content, dict):
-                # Handle language-specific links
-                for lang, url in content.items():
-                    if url and isinstance(url, str) and url.strip():
-                        link_type = "unknown"
-                        if section.lower() == "pdf" or any(url.endswith(ext) for ext in pdf_extensions):
-                            link_type = "pdf"
-                        elif section.lower() == "xml" or any(url.endswith(ext) for ext in xml_extensions):
-                            link_type = "xml"
-                        elif section.lower() == "html" or any(url.endswith(ext) for ext in html_extensions):
-                            link_type = "html"
-                        elif section.lower() in ["doc", "document", "word"] or any(url.endswith(ext) for ext in doc_extensions):
-                            link_type = "doc"
-                        elif section.lower() in ["xls", "excel", "spreadsheet"] or any(url.endswith(ext) for ext in excel_extensions):
-                            link_type = "excel"
-                            
-                        normalized_links.append({
-                            "url": url.strip(),
-                            "type": link_type,
-                            "language": lang
-                        })
-            elif isinstance(content, str) and content.strip():
-                link_type = "unknown"
-                if section.lower() == "pdf" or any(content.endswith(ext) for ext in pdf_extensions):
-                    link_type = "pdf"
-                elif section.lower() == "xml" or any(content.endswith(ext) for ext in xml_extensions):
-                    link_type = "xml"
-                elif section.lower() == "html" or any(content.endswith(ext) for ext in html_extensions):
-                    link_type = "html"
-                elif section.lower() in ["doc", "document", "word"] or any(content.endswith(ext) for ext in doc_extensions):
-                    link_type = "doc"
-                elif section.lower() in ["xls", "excel", "spreadsheet"] or any(content.endswith(ext) for ext in excel_extensions):
-                    link_type = "excel"
+    # Handle list of dicts with various structures
+    if isinstance(links_data, list):
+        for item in links_data:
+            if isinstance(item, dict):
+                # Extract URL - try various common keys
+                url = None
+                for key in ['url', 'link', 'href', 'uri', 'location', 'path']:
+                    if key in item and item[key] and isinstance(item[key], str):
+                        url = item[key]
+                        break
+                
+                if not url:
+                    continue
+                
+                # Skip invalid URLs
+                if not url.startswith(('http://', 'https://', 'www.')):
+                    continue
+                
+                # Extract type
+                doc_type = 'unknown'
+                for key in ['type', 'document_type', 'doc_type', 'fileType', 'format']:
+                    if key in item and item[key]:
+                        doc_type = item[key]
+                        break
+                
+                # Extract language
+                language = 'en'  # Default to English
+                for key in ['language', 'lang', 'locale']:
+                    if key in item and item[key]:
+                        language = item[key]
+                        break
+                
+                # Extract description
+                description = None
+                for key in ['description', 'desc', 'title', 'name', 'text', 'label']:
+                    if key in item and item[key]:
+                        description = item[key]
+                        break
                 
                 normalized_links.append({
-                    "url": content.strip(),
-                    "type": link_type,
-                    "description": section if section not in ["pdf", "xml", "html", "doc", "excel"] else None
+                    'url': url,
+                    'type': doc_type,
+                    'language': language,
+                    'description': description
                 })
-            elif isinstance(content, list):
-                # Handle lists nested in dictionaries
-                for item in content:
-                    if isinstance(item, str) and item.strip():
-                        link_type = "unknown"
-                        if any(item.endswith(ext) for ext in pdf_extensions):
-                            link_type = "pdf"
-                        elif any(item.endswith(ext) for ext in xml_extensions):
-                            link_type = "xml"
-                        elif any(item.endswith(ext) for ext in html_extensions):
-                            link_type = "html"
-                        elif any(item.endswith(ext) for ext in doc_extensions):
-                            link_type = "doc"
-                        elif any(item.endswith(ext) for ext in excel_extensions):
-                            link_type = "excel"
-                            
-                        normalized_links.append({
-                            "url": item.strip(),
-                            "type": link_type,
-                            "description": section if section not in ["pdf", "xml", "html", "doc", "excel"] else None
-                        })
+            elif isinstance(item, str) and item.startswith(('http://', 'https://', 'www.')):
+                # Handle list of URL strings
+                normalized_links.append({
+                    'url': item,
+                    'type': 'unknown',
+                    'language': 'en',
+                    'description': None
+                })
     
-    return normalized_links
+    # Handle dict with 'items' key (common pattern)
+    elif isinstance(links_data, dict) and 'items' in links_data:
+        return normalize_document_links(links_data['items'])
+    
+    # Handle dict with URLs as values
+    elif isinstance(links_data, dict):
+        # Try to extract direct links
+        for key, value in links_data.items():
+            if isinstance(value, str) and value.startswith(('http://', 'https://', 'www.')):
+                normalized_links.append({
+                    'url': value,
+                    'type': 'unknown',
+                    'language': 'en',
+                    'description': key if key != 'url' and not key.isdigit() else None
+                })
+            elif isinstance(value, dict) and 'url' in value and value['url'].startswith(('http://', 'https://', 'www.')):
+                # Handle nested link objects
+                doc = {
+                    'url': value['url'],
+                    'type': value.get('type', 'unknown'),
+                    'language': value.get('language', 'en'),
+                    'description': value.get('description', None)
+                }
+                normalized_links.append(doc)
+    
+    # Remove duplicates by URL
+    seen_urls = set()
+    unique_links = []
+    
+    for link in normalized_links:
+        if link['url'] not in seen_urls:
+            seen_urls.add(link['url'])
+            unique_links.append(link)
+    
+    return unique_links
 
-def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
+def extract_financial_info(text):
     """
-    Extract estimated value and currency from text.
+    Extract financial information from text including currency and value.
     
     Args:
-        text: Text to extract from
+        text: Text to extract financial information from
         
     Returns:
-        Tuple of (estimated_value, currency)
+        Tuple of (value, currency)
     """
-    if not text or not isinstance(text, str):
+    if not text:
         return None, None
-        
-    # Look for currency symbols and amounts with more comprehensive patterns
+    
+    # Define common currency codes and symbols
     currency_patterns = {
-        'USD': [
-            r'US\$\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'USD\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'\$\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:US dollars|dollars|USD)'
-        ],
-        'EUR': [
-            r'EUR\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'€\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:euros|EUR|€)'
-        ],
-        'GBP': [
-            r'GBP\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'£\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:pounds|GBP|£)'
-        ],
-        'JPY': [
-            r'JPY\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'¥\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:yen|JPY|¥)'
-        ],
-        'CAD': [
-            r'CAD\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'C\$\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:Canadian dollars|CAD)'
-        ],
-        'AUD': [
-            r'AUD\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'A\$\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:Australian dollars|AUD)'
-        ],
-        'INR': [
-            r'INR\s*([\d,\.]+(?:\s*lakhs?|\s*crores?|\s*million|\s*m|\s*billion|\s*b)?)',
-            r'Rs\.\s*([\d,\.]+(?:\s*lakhs?|\s*crores?|\s*million|\s*m|\s*billion|\s*b)?)',
-            r'₹\s*([\d,\.]+(?:\s*lakhs?|\s*crores?|\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:rupees|INR|Rs\.)'
-        ],
-        'CNY': [
-            r'CNY\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'元\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:yuan|CNY|元)'
-        ],
-        'MWK': [
-            r'MWK\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'K\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:kwacha|MWK)'
-        ],
-        'RWF': [
-            r'RWF\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'RF\s*([\d,\.]+(?:\s*million|\s*m|\s*billion|\s*b)?)',
-            r'([\d,\.]+)\s*(?:Rwandan francs|RWF)'
-        ]
+        'USD': ['USD', 'US$', '$', 'Dollar', 'Dollars'],
+        'EUR': ['EUR', '€', 'Euro', 'Euros'],
+        'GBP': ['GBP', '£', 'Pound', 'Pounds'],
+        'JPY': ['JPY', '¥', 'Yen'],
+        'CNY': ['CNY', 'RMB', 'Yuan'],
+        'INR': ['INR', '₹', 'Rupee', 'Rupees'],
+        'MWK': ['MWK', 'Malawi Kwacha'],
+        'AUD': ['AUD', 'AU$', 'Australian Dollar'],
+        'CAD': ['CAD', 'CA$', 'Canadian Dollar'],
+        'CHF': ['CHF', 'Swiss Franc'],
+        'XAF': ['XAF', 'CFA Franc'],
+        'NGN': ['NGN', '₦', 'Naira'],
+        'ZAR': ['ZAR', 'R', 'Rand'],
+        'KES': ['KES', 'KSh', 'Kenyan Shilling'],
+        'BRL': ['BRL', 'R$', 'Real', 'Reais']
     }
     
-    for currency, patterns in currency_patterns.items():
-        for pattern in patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+    # Find financial values with currency indicators
+    # Pattern matches both "USD 1,000,000" and "1,000,000 USD" formats
+    # Also handles decimal points and various separators
+    financial_patterns = [
+        # Currency code/symbol followed by number: USD 1,000,000.00
+        r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+)(?:\s*(?:million|billion|m|b))?',
+        # Number followed by currency code/name: 1,000,000.00 USD
+        r'([\d,\.]+)(?:\s*(?:million|billion|m|b))?\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan)',
+        # Numeric with M/B suffix: USD 1.5M, 1.5B USD
+        r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+[MB])',
+        r'([\d,\.]+[MB])\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan)'
+    ]
+    
+    # Search for patterns in text
+    for pattern in financial_patterns:
+        matches = re.finditer(pattern, text, re.IGNORECASE)
+        for match in matches:
+            groups = match.groups()
             
-            if matches:
-                for match in matches:
-                    if isinstance(match, tuple):
-                        match = match[0]  # Extract the first group if it's a tuple
-                    
-                    if match:
-                        # Process the value
-                        try:
-                            # Remove commas from numbers
-                            value_str = match.replace(',', '')
-                            
-                            # Handle million/billion/m/b suffixes
-                            multiplier = 1
-                            if any(suffix in value_str.lower() for suffix in ['million', ' m']):
-                                multiplier = 1000000
-                                value_str = re.sub(r'million|m', '', value_str, flags=re.IGNORECASE).strip()
-                            elif any(suffix in value_str.lower() for suffix in ['billion', ' b']):
-                                multiplier = 1000000000
-                                value_str = re.sub(r'billion|b', '', value_str, flags=re.IGNORECASE).strip()
-                            elif 'crore' in value_str.lower():
-                                multiplier = 10000000  # 1 crore = 10 million
-                                value_str = re.sub(r'crores?', '', value_str, flags=re.IGNORECASE).strip()
-                            elif 'lakh' in value_str.lower():
-                                multiplier = 100000  # 1 lakh = 100,000
-                                value_str = re.sub(r'lakhs?', '', value_str, flags=re.IGNORECASE).strip()
-                                
-                            # Convert to float and apply multiplier
-                            value = float(value_str) * multiplier
-                            return value, currency
-                        except (ValueError, TypeError):
-                            pass
-    
-    # Generic pattern for numbers with currency codes
-    generic_pattern = r'([\d,\.]+)\s*(?:million|m|billion|b)?\s*(USD|EUR|GBP|CAD|AUD|INR|JPY|CNY|MWK|RWF)'
-    matches = re.findall(generic_pattern, text, re.IGNORECASE)
-    
-    if matches:
-        for value_str, curr in matches:
-            try:
-                # Process the value
-                value_str = value_str.replace(',', '')
-                multiplier = 1
+            # Determine which group is the currency and which is the value
+            currency_indicator = None
+            value_str = None
+            
+            # Check if first group looks like a currency
+            first_group = groups[0].strip().upper()
+            if first_group in currency_patterns or any(first_group in patterns for patterns in currency_patterns.values()):
+                currency_indicator = first_group
+                value_str = groups[1]
+            else:
+                # Second group must be the currency
+                currency_indicator = groups[1].strip().upper()
+                value_str = groups[0]
+            
+            # Clean up the value string
+            if value_str:
+                # Handle million/billion indicators
+                million_multiplier = 1
+                if 'M' in value_str.upper() or 'MILLION' in value_str.upper():
+                    million_multiplier = 1000000
+                    value_str = value_str.upper().replace('M', '').replace('MILLION', '')
+                elif 'B' in value_str.upper() or 'BILLION' in value_str.upper():
+                    million_multiplier = 1000000000
+                    value_str = value_str.upper().replace('B', '').replace('BILLION', '')
                 
-                if 'million' in text.lower() or ' m' in text.lower():
-                    multiplier = 1000000
-                elif 'billion' in text.lower() or ' b' in text.lower():
-                    multiplier = 1000000000
-                    
-                value = float(value_str) * multiplier
-                return value, curr.upper()
-            except (ValueError, TypeError):
-                pass
+                # Extract just digits and decimal point
+                value_str = re.sub(r'[^\d\.]', '', value_str.replace(',', ''))
                 
+                try:
+                    value = float(value_str) * million_multiplier
+                    
+                    # Map currency indicator to standard code
+                    currency = None
+                    for code, indicators in currency_patterns.items():
+                        if any(indicator.upper() in currency_indicator.upper() for indicator in indicators):
+                            currency = code
+                            break
+                    
+                    if currency:
+                        return value, currency
+                except (ValueError, TypeError):
+                    continue
+    
     return None, None
 
 def format_for_logging(data: Dict[str, Any]) -> str:
@@ -743,4 +658,151 @@ def log_before_after(source_type: str, source_id: str, before: Dict[str, Any], a
     logger.info(f"BEFORE:\n{format_for_logging(before)}")
     logger.info(f"AFTER:\n{format_for_logging(after.model_dump())}")
     logger.info(f"TRANSLATION: {after.normalized_method}")
-    logger.info("-" * 80) 
+    logger.info("-" * 80)
+
+def standardize_status(status: str) -> str:
+    """
+    Standardize status values across different sources.
+    
+    Args:
+        status: Original status string
+        
+    Returns:
+        Standardized status string
+    """
+    if not status:
+        return None
+        
+    status = status.strip().lower()
+    
+    # Status mapping to standard values
+    status_mapping = {
+        # Active statuses
+        'active': 'Active',
+        'open': 'Open',
+        'current': 'Active',
+        'ongoing': 'Active',
+        'in progress': 'Active',
+        'published': 'Published',
+        
+        # Closed statuses
+        'closed': 'Closed',
+        'canceled': 'Cancelled',
+        'cancelled': 'Cancelled',
+        'completed': 'Completed',
+        'terminated': 'Cancelled',
+        'expired': 'Closed',
+        
+        # Award statuses
+        'awarded': 'Awarded',
+        'award': 'Awarded',
+        'contract award': 'Awarded',
+        'awarded contract': 'Awarded',
+        'contract awarded': 'Awarded',
+        
+        # Pending statuses
+        'pending': 'Pending',
+        'evaluation': 'Under Evaluation',
+        'under evaluation': 'Under Evaluation',
+        'evaluating': 'Under Evaluation',
+        
+        # Draft statuses
+        'draft': 'Draft',
+        'planned': 'Planned',
+        'planning': 'Planned',
+        
+        # Other statuses
+        'request for quotation': 'Open',
+        'request for proposal': 'Open',
+        'request for information': 'Open',
+        'request for interest': 'Open'
+    }
+    
+    # Try exact match first
+    if status in status_mapping:
+        return status_mapping[status]
+    
+    # Try partial match if exact match fails
+    for key, value in status_mapping.items():
+        if key in status:
+            return value
+    
+    # Handle special cases with keyword detection
+    if any(keyword in status for keyword in ['rfp', 'rfq', 'rfi', 'tender']):
+        return 'Open'
+    
+    if any(keyword in status for keyword in ['award', 'awarded', 'contract']):
+        return 'Awarded'
+    
+    # Default to returning the original status with proper capitalization
+    return status.title()
+
+def extract_sector_info(text: str) -> str:
+    """
+    Extract sector information from text.
+    
+    Args:
+        text: Text to extract sector information from
+        
+    Returns:
+        Extracted sector or None if not found
+    """
+    if not text:
+        return None
+        
+    # Common sectors in procurement/tender notices
+    sector_patterns = {
+        'Agriculture': ['agriculture', 'farming', 'irrigation', 'crops', 'livestock', 'fishery'],
+        'Construction': ['construction', 'building', 'infrastructure', 'housing', 'roads', 'bridges', 'facility'],
+        'Education': ['education', 'school', 'university', 'teaching', 'training', 'academic'],
+        'Energy': ['energy', 'power', 'electricity', 'renewable', 'solar', 'wind', 'hydro', 'electric'],
+        'Environment': ['environment', 'climate', 'green', 'sustainability', 'recycling', 'waste management'],
+        'Finance': ['finance', 'banking', 'investment', 'financial', 'insurance', 'accounting'],
+        'Health': ['health', 'medical', 'hospital', 'clinic', 'pharmaceutical', 'drugs', 'medicine'],
+        'ICT': ['ict', 'information technology', 'computer', 'software', 'hardware', 'network', 'digital', 'telecommunications'],
+        'Manufacturing': ['manufacturing', 'industrial', 'factory', 'production', 'processing'],
+        'Mining': ['mining', 'minerals', 'extraction', 'coal', 'ore', 'metals', 'geological'],
+        'Transportation': ['transport', 'transportation', 'logistics', 'airport', 'railway', 'road', 'shipping', 'vehicles'],
+        'Water': ['water', 'sanitation', 'sewage', 'drainage', 'plumbing', 'hygiene'],
+        'Social Development': ['social', 'welfare', 'community', 'poverty', 'gender', 'youth', 'empowerment'],
+        'Defense': ['defense', 'defence', 'military', 'security', 'army', 'navy', 'air force', 'weapons'],
+        'Tourism': ['tourism', 'hospitality', 'hotel', 'travel', 'leisure']
+    }
+    
+    # Check for sector indicators in the text
+    text_lower = text.lower()
+    matches = []
+    
+    for sector, keywords in sector_patterns.items():
+        for keyword in keywords:
+            if keyword in text_lower:
+                # Calculate a confidence score based on frequency and context
+                count = text_lower.count(keyword)
+                # Check if term appears as a standalone word, not substring
+                standalone = any(re.search(r'\b' + re.escape(keyword) + r'\b', text_lower))
+                
+                confidence = count * (2 if standalone else 1)
+                matches.append((sector, confidence))
+                break  # Only count each sector once
+    
+    if matches:
+        # Sort by confidence score and return the highest one
+        matches.sort(key=lambda x: x[1], reverse=True)
+        return matches[0][0]
+    
+    # Try to extract sector from common phrases
+    sector_phrases = [
+        (r'sector:\s*([A-Za-z\s&]+?)(?:\.|,|\n)', 1),
+        (r'in the\s+([A-Za-z\s&]+?)\s+sector', 1),
+        (r'([A-Za-z\s&]+?)\s+sector', 1)
+    ]
+    
+    for pattern, group in sector_phrases:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            potential_sector = match.group(group).strip()
+            # Check if it's not just a generic word
+            if len(potential_sector) > 3 and potential_sector.lower() not in ['this', 'the', 'and', 'for', 'from']:
+                return potential_sector
+    
+    return None 

@@ -16,7 +16,9 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_location_info,
     extract_procurement_method,
     extract_organization,
-    extract_status
+    extract_status,
+    standardize_status,
+    extract_sector_info
 )
 
 # Initialize logger
@@ -126,7 +128,57 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
                     # Try with different format
                     deadline_dt = datetime.strptime(wb_obj.deadline_date, "%Y-%m-%d")
                 except ValueError:
-                    pass
+                    # Try additional date formats
+                    date_formats = [
+                        "%Y-%m-%dT%H:%M:%S",
+                        "%Y-%m-%dT%H:%M:%S.%f",
+                        "%Y/%m/%d",
+                        "%d/%m/%Y",
+                        "%d-%m-%Y",
+                        "%d %b %Y",
+                        "%d-%b-%Y",
+                        "%B %d, %Y",
+                        "%d %B %Y"
+                    ]
+                    for fmt in date_formats:
+                        try:
+                            deadline_dt = datetime.strptime(wb_obj.deadline_date, fmt)
+                            break
+                        except ValueError:
+                            continue
+    
+    # Also parse publication_date with enhanced formats
+    publication_dt = None
+    if hasattr(wb_obj, 'publication_date') and wb_obj.publication_date:
+        if isinstance(wb_obj.publication_date, datetime):
+            publication_dt = wb_obj.publication_date
+        elif isinstance(wb_obj.publication_date, str):
+            try:
+                # Try parsing common date formats
+                publication_dt = datetime.fromisoformat(wb_obj.publication_date.replace('Z', '+00:00'))
+            except (ValueError, AttributeError):
+                try:
+                    # Try with different format
+                    publication_dt = datetime.strptime(wb_obj.publication_date, "%Y-%m-%d")
+                except ValueError:
+                    # Try additional date formats
+                    date_formats = [
+                        "%Y-%m-%dT%H:%M:%S",
+                        "%Y-%m-%dT%H:%M:%S.%f",
+                        "%Y/%m/%d",
+                        "%d/%m/%Y",
+                        "%d-%m-%Y",
+                        "%d %b %Y",
+                        "%d-%b-%Y",
+                        "%B %d, %Y",
+                        "%d %B %Y"
+                    ]
+                    for fmt in date_formats:
+                        try:
+                            publication_dt = datetime.strptime(wb_obj.publication_date, fmt)
+                            break
+                        except ValueError:
+                            continue
     
     # Set status based on deadline if available and status still not determined
     if not status and deadline_dt:
@@ -180,6 +232,31 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
     elif hasattr(wb_obj, 'buyer') and wb_obj.buyer:
         organization_name = wb_obj.buyer
     
+    # Try to extract from contact_organization if still not found
+    if not organization_name and hasattr(wb_obj, 'contact_organization') and wb_obj.contact_organization:
+        organization_name = wb_obj.contact_organization
+    
+    # Try to extract from original_data's nested fields
+    if not organization_name and hasattr(wb_obj, 'original_data') and wb_obj.original_data:
+        original = wb_obj.original_data
+        if isinstance(original, dict):
+            # Check for project_name field
+            if not organization_name and 'project_name' in original and original['project_name']:
+                organization_name = original['project_name']
+            # Try contact_organization
+            if not organization_name and 'contact_organization' in original and original['contact_organization']:
+                organization_name = original['contact_organization']
+        elif isinstance(original, str):
+            try:
+                original_dict = json.loads(original)
+                if isinstance(original_dict, dict):
+                    if not organization_name and 'project_name' in original_dict and original_dict['project_name']:
+                        organization_name = original_dict['project_name']
+                    if not organization_name and 'contact_organization' in original_dict and original_dict['contact_organization']:
+                        organization_name = original_dict['contact_organization']
+            except json.JSONDecodeError:
+                pass
+    
     # Try to extract from description if still not found
     if not organization_name and hasattr(wb_obj, 'description') and wb_obj.description:
         extracted_org = extract_organization(wb_obj.description)
@@ -213,7 +290,7 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
             currency = extracted_curr
     
     # Extract document links
-    document_links = []
+    document_links = None
     
     # Process document_links if available
     if hasattr(wb_obj, 'document_links') and wb_obj.document_links:
@@ -222,29 +299,19 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
     # Add URL as a document link if available and not already in document_links
     if hasattr(wb_obj, 'url') and wb_obj.url:
         url_already_included = False
-        for link in document_links:
-            if isinstance(link, dict) and link.get('url') == wb_obj.url:
-                url_already_included = True
-                break
+        if document_links:
+            for link in document_links:
+                if isinstance(link, dict) and link.get('url') == wb_obj.url:
+                    url_already_included = True
+                    break
         
         if not url_already_included:
-            document_links.append({"url": wb_obj.url, "description": "Main tender notice"})
-    
-    # Convert publication date to datetime
-    publication_dt = None
-    if hasattr(wb_obj, 'publication_date') and wb_obj.publication_date:
-        if isinstance(wb_obj.publication_date, datetime):
-            publication_dt = wb_obj.publication_date
-        elif isinstance(wb_obj.publication_date, str):
-            try:
-                # Try parsing common date formats
-                publication_dt = datetime.fromisoformat(wb_obj.publication_date.replace('Z', '+00:00'))
-            except (ValueError, AttributeError):
-                try:
-                    # Try with different format
-                    publication_dt = datetime.strptime(wb_obj.publication_date, "%Y-%m-%d")
-                except ValueError:
-                    pass
+            document_links.append({
+                "url": wb_obj.url, 
+                "type": "unknown", 
+                "language": language,
+                "description": "Main tender notice"
+            })
     
     # Extract title and description
     title = getattr(wb_obj, 'title', None)
@@ -279,6 +346,127 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
     if project_name:
         project_name_english, project_method = translate_to_english(project_name, language)
     
+    # Extract project information
+    project_name = None
+    project_id = None
+    project_number = None
+    
+    # Try direct fields first
+    if hasattr(wb_obj, 'project_name') and wb_obj.project_name:
+        project_name = wb_obj.project_name
+    if hasattr(wb_obj, 'project_id') and wb_obj.project_id:
+        project_id = wb_obj.project_id
+    if hasattr(wb_obj, 'project_number') and wb_obj.project_number:
+        project_number = wb_obj.project_number
+    
+    # Try to extract from original_data
+    if (not project_name or not project_id) and hasattr(wb_obj, 'original_data') and wb_obj.original_data:
+        original = wb_obj.original_data
+        if isinstance(original, dict):
+            if not project_name and 'project_name' in original and original['project_name']:
+                project_name = original['project_name']
+            if not project_id and 'project_id' in original and original['project_id']:
+                project_id = original['project_id']
+        elif isinstance(original, str):
+            try:
+                original_dict = json.loads(original)
+                if isinstance(original_dict, dict):
+                    if not project_name and 'project_name' in original_dict and original_dict['project_name']:
+                        project_name = original_dict['project_name']
+                    if not project_id and 'project_id' in original_dict and original_dict['project_id']:
+                        project_id = original_dict['project_id']
+            except json.JSONDecodeError:
+                pass
+    
+    # Try to extract from description
+    if (not project_name or not project_id) and hasattr(wb_obj, 'description') and wb_obj.description:
+        # Extract Project ID patterns like "P123456" or "Project: P123456"
+        if not project_id:
+            project_id_match = re.search(r'Project(?:\s*:\s*|\s+)([Pp]\d{6})', wb_obj.description)
+            if project_id_match:
+                project_id = project_id_match.group(1)
+        
+        # Extract project name patterns like "Project Name: Example Project" or similar
+        if not project_name:
+            project_name_patterns = [
+                r'Project(?:\s*:\s*|\s+)([^:]+?)(?:Project|Loan|Credit|Reference|$)',
+                r'(?:for|under)\s+the\s+([^.]+?)\s+(?:Project|Program)'
+            ]
+            
+            for pattern in project_name_patterns:
+                project_name_match = re.search(pattern, wb_obj.description)
+                if project_name_match:
+                    potential_name = project_name_match.group(1).strip()
+                    # Ensure it's not just a project ID
+                    if not re.match(r'^[Pp]\d{6}$', potential_name):
+                        project_name = potential_name
+                        break
+    
+    # Extract reference/bid number from description if not available
+    reference_number = None
+    if hasattr(wb_obj, 'reference_number') and wb_obj.reference_number:
+        reference_number = wb_obj.reference_number
+    elif hasattr(wb_obj, 'bid_reference_no') and wb_obj.bid_reference_no:
+        reference_number = wb_obj.bid_reference_no
+    elif hasattr(wb_obj, 'description') and wb_obj.description:
+        # Common reference number patterns
+        ref_patterns = [
+            r'Bid/Contract Reference No:?\s*([A-Za-z0-9\-\./]+)',
+            r'Reference No\.?:?\s*([A-Za-z0-9\-\./]+)',
+            r'Ref\.? No\.?:?\s*([A-Za-z0-9\-\./]+)',
+            r'Reference:?\s*([A-Za-z0-9\-\./]+)',
+            r'Contract No\.?:?\s*([A-Za-z0-9\-\./]+)'
+        ]
+        
+        for pattern in ref_patterns:
+            match = re.search(pattern, wb_obj.description)
+            if match:
+                reference_number = match.group(1).strip()
+                break
+    
+    # Extract sector information
+    sector = None
+    if hasattr(wb_obj, 'sector') and wb_obj.sector:
+        sector = wb_obj.sector
+    else:
+        # Try to extract from description
+        if hasattr(wb_obj, 'description') and wb_obj.description:
+            sector = extract_sector_info(wb_obj.description)
+        
+        # Try from project name
+        if not sector and project_name:
+            sector = extract_sector_info(project_name)
+            
+    # Standardize status
+    if status:
+        status = standardize_status(status)
+        
+    # Improve document links handling
+    document_links = None
+    if hasattr(wb_obj, 'document_links') and wb_obj.document_links:
+        document_links = normalize_document_links(wb_obj.document_links)
+        
+    # Add main URL as document link if not already included
+    if hasattr(wb_obj, 'url') and wb_obj.url:
+        if not document_links:
+            document_links = []
+            
+        # Check if URL already exists in document_links
+        url_exists = False
+        if document_links:
+            for link in document_links:
+                if isinstance(link, dict) and 'url' in link and link['url'] == wb_obj.url:
+                    url_exists = True
+                    break
+        
+        if not url_exists:
+            document_links.append({
+                "url": wb_obj.url, 
+                "type": "unknown", 
+                "language": language,
+                "description": "Main tender notice"
+            })
+    
     # Create UnifiedTender object
     normalized_tender = UnifiedTender(
         id=str(uuid.uuid4()),  # Generate a new UUID for the unified record
@@ -294,9 +482,9 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
         organization_id=getattr(wb_obj, 'organization_id', None),
         buyer=buyer,
         project_name=project_name,
-        project_id=getattr(wb_obj, 'project_id', None),
-        project_number=getattr(wb_obj, 'project_number', None),
-        sector=getattr(wb_obj, 'sector', None),
+        project_id=project_id,
+        project_number=project_number,
+        sector=sector,
         estimated_value=estimated_value,
         currency=currency,
         contact_name=getattr(wb_obj, 'contact_name', None),
@@ -307,7 +495,7 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
         document_links=document_links,
         language=language,
         notice_id=getattr(wb_obj, 'notice_id', None),
-        reference_number=getattr(wb_obj, 'reference_number', None),
+        reference_number=reference_number,
         procurement_method=procurement_method,
         original_data=row,
         source_table="wb",
