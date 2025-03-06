@@ -116,7 +116,7 @@ def fetch_unnormalized_rows(conn, table_name: str) -> List[Dict[str, Any]]:
         response = conn.table('unified_tenders') \
             .select('source_id') \
             .eq('source_table', table_name) \
-            .is_('normalized_at', 'not.null') \
+            .not_('normalized_at', 'is.null') \
             .execute()
             
         if hasattr(response, 'data'):
