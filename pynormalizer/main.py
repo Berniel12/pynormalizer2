@@ -94,6 +94,8 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
     errors = 0
     error_details = {}  # Track specific error types and counts
     start_time = time.time()
+    last_report_time = start_time
+    process_times = []  # Keep track of processing times for statistics
     
     for i, row in enumerate(rows):
         try:
@@ -134,6 +136,7 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
             
             # Calculate processing time
             process_time_ms = int((time.time() - start_process) * 1000)
+            process_times.append(process_time_ms)
             
             # Add processing time to the unified tender
             unified_tender.processing_time_ms = process_time_ms
@@ -146,13 +149,37 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
             
             processed += 1
             
-            # Log progress periodically
+            # Log progress for every batch_size records
             if processed % batch_size == 0 or processed == total_rows:
                 elapsed = time.time() - start_time
                 avg_time = elapsed / processed if processed > 0 else 0
                 logger.info(f"Processed {processed}/{total_rows} rows from {table_name} " +
                             f"({processed/total_rows*100:.1f}%). " +
                             f"Elapsed: {elapsed:.1f}s, Avg: {avg_time:.2f}s/row")
+                
+                # Detailed statistics every batch_size records
+                if len(process_times) > 0:
+                    avg_process_time = sum(process_times) / len(process_times)
+                    min_process_time = min(process_times) if process_times else 0
+                    max_process_time = max(process_times) if process_times else 0
+                    
+                    # Reset process_times for next batch
+                    process_times = []
+                    
+                    # Calculate records per second
+                    recent_elapsed = time.time() - last_report_time
+                    records_per_second = batch_size / recent_elapsed if recent_elapsed > 0 else 0
+                    
+                    logger.info(f"  Performance: {records_per_second:.2f} records/sec | " +
+                                f"Avg: {avg_process_time:.0f}ms | Min: {min_process_time}ms | Max: {max_process_time}ms")
+                    
+                    # Reset for next batch reporting
+                    last_report_time = time.time()
+                
+                # Error rate statistics
+                if errors > 0:
+                    error_rate = (errors / processed) * 100
+                    logger.info(f"  Errors: {errors} ({error_rate:.1f}% error rate)")
                 
         except Exception as e:
             errors += 1

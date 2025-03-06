@@ -34,6 +34,7 @@ def main():
     parser.add_argument("--limit", type=int, help="Maximum number of records to process per table")
     parser.add_argument("--test", action="store_true", help="Run in test mode (2 records per table)")
     parser.add_argument("--output", type=str, help="Output file for normalization report")
+    parser.add_argument("--full", action="store_true", help="Process all tenders from all sources")
     
     args = parser.parse_args()
     
@@ -67,12 +68,22 @@ def main():
         logger.warning(f"Translation model initialization failed: {e}")
         logger.warning("Continuing with fallback translation methods")
     
-    # Set limit for test mode
-    if args.test:
-        logger.info("Running in TEST mode with 2 records per table")
+    # Set limit based on arguments
+    if args.full:
+        logger.info("FULL MODE: Processing all tenders from all sources")
+        limit = None
+    elif args.test:
+        logger.info("TEST MODE: Processing 2 records per table")
         limit = 2
     else:
         limit = args.limit
+        if limit:
+            logger.info(f"Processing up to {limit} records per table")
+        else:
+            logger.info(f"Processing all records (no limit)")
+    
+    # Set batch size for progress reporting
+    batch_size = 100  # Always report every 100 tenders for consistency
     
     # Run normalization
     try:
@@ -80,12 +91,12 @@ def main():
         if limit:
             logger.info(f"Processing up to {limit} records per table")
         
-        results = normalize_all_tenders(db_config, args.tables, args.batch_size, limit)
+        results = normalize_all_tenders(db_config, args.tables, batch_size, limit)
         
         # Print summary
         total = sum(results.values())
-        logger.info("\nNormalization Results:")
-        logger.info("=====================")
+        logger.info("\nNormalization Complete Summary:")
+        logger.info("==============================")
         for table, count in results.items():
             logger.info(f"{table}: {count} tenders processed")
         logger.info(f"Total: {total} tenders processed")
@@ -98,7 +109,7 @@ def main():
                 "total_processed": total,
                 "results_by_table": results,
                 "limit_per_table": limit,
-                "batch_size": args.batch_size
+                "batch_size": batch_size
             }
             
             with open(args.output, 'w') as f:
