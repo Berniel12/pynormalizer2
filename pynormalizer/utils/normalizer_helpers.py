@@ -106,7 +106,13 @@ def normalize_document_links(links_data):
     
     # Handle dict with 'items' key (common pattern)
     elif isinstance(links_data, dict) and 'items' in links_data:
-        return normalize_document_links(links_data['items'])
+        try:
+            items = links_data['items']
+            if items and isinstance(items, (list, dict)):
+                return normalize_document_links(items)
+        except Exception:
+            # In case of any error, return what we have so far
+            pass
     
     # Handle dict with URLs as values
     elif isinstance(links_data, dict):
@@ -119,7 +125,7 @@ def normalize_document_links(links_data):
                     'language': 'en',
                     'description': key if key != 'url' and not key.isdigit() else None
                 })
-            elif isinstance(value, dict) and 'url' in value and value['url'].startswith(('http://', 'https://', 'www.')):
+            elif isinstance(value, dict) and 'url' in value and isinstance(value['url'], str) and value['url'].startswith(('http://', 'https://', 'www.')):
                 # Handle nested link objects
                 doc = {
                     'url': value['url'],
@@ -779,7 +785,12 @@ def extract_sector_info(text: str) -> str:
                 # Calculate a confidence score based on frequency and context
                 count = text_lower.count(keyword)
                 # Check if term appears as a standalone word, not substring
-                standalone = any(re.search(r'\b' + re.escape(keyword) + r'\b', text_lower))
+                standalone = False
+                try:
+                    standalone = bool(re.search(r'\b' + re.escape(keyword) + r'\b', text_lower))
+                except Exception:
+                    # In case of regex errors (e.g., with special characters)
+                    pass
                 
                 confidence = count * (2 if standalone else 1)
                 matches.append((sector, confidence))
@@ -798,11 +809,15 @@ def extract_sector_info(text: str) -> str:
     ]
     
     for pattern, group in sector_phrases:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            potential_sector = match.group(group).strip()
-            # Check if it's not just a generic word
-            if len(potential_sector) > 3 and potential_sector.lower() not in ['this', 'the', 'and', 'for', 'from']:
-                return potential_sector
+        try:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                potential_sector = match.group(group).strip()
+                # Check if it's not just a generic word
+                if len(potential_sector) > 3 and potential_sector.lower() not in ['this', 'the', 'and', 'for', 'from']:
+                    return potential_sector
+        except Exception:
+            # Skip this pattern if regex fails
+            continue
     
     return None 

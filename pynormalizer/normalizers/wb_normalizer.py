@@ -442,22 +442,26 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
         status = standardize_status(status)
         
     # Improve document links handling
-    document_links = None
+    document_links = []  # Initialize as empty list instead of None
+    
+    # Process document_links if available
     if hasattr(wb_obj, 'document_links') and wb_obj.document_links:
-        document_links = normalize_document_links(wb_obj.document_links)
-        
+        try:
+            doc_links = normalize_document_links(wb_obj.document_links)
+            if doc_links:  # Only assign if not None and not empty
+                document_links = doc_links
+        except Exception as e:
+            logger.warning(f"Error normalizing document links: {e}")
+            # Continue with empty document_links
+    
     # Add main URL as document link if not already included
     if hasattr(wb_obj, 'url') and wb_obj.url:
-        if not document_links:
-            document_links = []
-            
         # Check if URL already exists in document_links
         url_exists = False
-        if document_links:
-            for link in document_links:
-                if isinstance(link, dict) and 'url' in link and link['url'] == wb_obj.url:
-                    url_exists = True
-                    break
+        for link in document_links:
+            if isinstance(link, dict) and 'url' in link and link['url'] == wb_obj.url:
+                url_exists = True
+                break
         
         if not url_exists:
             document_links.append({
