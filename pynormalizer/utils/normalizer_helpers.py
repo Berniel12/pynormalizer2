@@ -1322,7 +1322,7 @@ def ensure_country(country: Optional[str],
         "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", 
         "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", 
         "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", 
-        "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", 
+        "Russia", "Rwanda", "Saint Kitts and Nevis",
         "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", 
         "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", 
         "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", 
@@ -1337,9 +1337,15 @@ def ensure_country(country: Optional[str],
     # Extract from text
     if text and isinstance(text, str):
         # First, try extract_location_info which is specialized for this
-        extracted_location = extract_location_info(text)
-        if extracted_location and extracted_location[0]:
-            return extracted_location[0]
+        try:
+            extracted_location = extract_location_info(text)
+            if extracted_location and isinstance(extracted_location, tuple) and len(extracted_location) > 0:
+                extracted_country = extracted_location[0]
+                if extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
+                    return extracted_country.strip()
+        except Exception:
+            # If extraction fails, continue with other methods
+            pass
             
         # Look for country names directly
         for country_name in countries:
@@ -1351,16 +1357,6 @@ def ensure_country(country: Optional[str],
             
             for pattern in patterns:
                 if re.search(pattern, text, re.IGNORECASE):
-                    return country_name
-            
-        # Look for "Country: X" pattern
-        country_pattern = r'(?:Country|Location|Region):\s*([A-Za-z\s]+)'
-        match = re.search(country_pattern, text)
-        if match and match.group(1).strip():
-            country_text = match.group(1).strip()
-            # Check if it's a valid country name
-            for country_name in countries:
-                if country_name.lower() in country_text.lower():
                     return country_name
     
     # Extract from organization name
@@ -1434,7 +1430,6 @@ def ensure_country(country: Optional[str],
             '.za': 'South Africa',
             '.pe': 'Peru',
             '.cl': 'Chile',
-            '.co': 'Colombia',
             '.ec': 'Ecuador',
             '.kr': 'South Korea',
             '.tw': 'Taiwan',

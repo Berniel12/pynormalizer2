@@ -80,16 +80,34 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
     if aiib_obj.pdf_content:
         estimated_value, currency = extract_financial_info(aiib_obj.pdf_content)
     
-    # Try to extract country and city if member field is empty
-    country = aiib_obj.member
+    # Detect language - MOVED UP before country extraction
+    language = "en"  # Default for AIIB
+    if aiib_obj.pdf_content:
+        detected = detect_language(aiib_obj.pdf_content)
+        if detected:
+            language = detected
+    
+    # Try to extract country and city
+    country_value = aiib_obj.member if aiib_obj.member else None
     city = None
     
-    if not country and aiib_obj.pdf_content:
-        extracted_country, extracted_city = extract_location_info(aiib_obj.pdf_content)
-        if extracted_country:
-            country = extracted_country
-        if extracted_city:
-            city = extracted_city
+    if aiib_obj.pdf_content:
+        # Instead of directly assigning the result of extract_location_info
+        # We'll handle the extraction more carefully
+        location_info = extract_location_info(aiib_obj.pdf_content)
+        if location_info and isinstance(location_info, tuple) and len(location_info) > 1:
+            extracted_country, extracted_city = location_info
+            if extracted_city:
+                city = extracted_city
+            # We'll use ensure_country to handle the country value
+    
+    # Ensure we have a country value using our fallback mechanisms
+    country = ensure_country(
+        country=country_value,
+        text=aiib_obj.pdf_content,
+        organization=organization_name,
+        language=language
+    )
     
     # Extract procurement method
     procurement_method = None
@@ -105,13 +123,6 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
         pdf_url = row["pdf"]
         document_links = normalize_document_links(pdf_url)
     
-    # Detect language
-    language = "en"  # Default for AIIB
-    if aiib_obj.pdf_content:
-        detected = detect_language(aiib_obj.pdf_content)
-        if detected:
-            language = detected
-
     # Construct the UnifiedTender
     unified = UnifiedTender(
         # Required fields

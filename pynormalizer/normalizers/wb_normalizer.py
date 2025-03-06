@@ -520,14 +520,16 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
                 "description": "Main tender notice"
             })
     
-    # Make sure country is always populated
-    country = wb_obj.country if hasattr(wb_obj, 'country') and wb_obj.country else None
-    if hasattr(wb_obj, 'project_ctry_name') and wb_obj.project_ctry_name:
-        country = wb_obj.project_ctry_name
+    # Make sure country is always populated - get a string value
+    country_value = None
+    if hasattr(wb_obj, 'country') and wb_obj.country:
+        country_value = wb_obj.country
+    elif hasattr(wb_obj, 'project_ctry_name') and wb_obj.project_ctry_name:
+        country_value = wb_obj.project_ctry_name
     
     # Ensure we have a country value using our fallback mechanisms
     country = ensure_country(
-        country=country,
+        country=country_value,  # Pass string value only, not tuple
         text=wb_obj.description,
         organization=organization_name,
         email=getattr(wb_obj, 'contact_email', None),
