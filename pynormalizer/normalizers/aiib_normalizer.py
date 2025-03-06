@@ -244,7 +244,7 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
         # ONLY pass a string to ensure_country, never a tuple
         try:
             country = ensure_country(
-                country=country_string,  # Now guaranteed to be None or a valid string
+                country_value=country_string,  # Now guaranteed to be None or a valid string
                 text=aiib_obj.pdf_content if isinstance(aiib_obj.pdf_content, str) else None,
                 organization=organization_name,
                 email=None,  # We don't have email in AIIB data
@@ -341,8 +341,12 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
             extraction_methods.append("dictionary")  # Country normalization used dictionaries
         
         # Determine the normalized method based on techniques used
-        normalized_method = determine_normalized_method(extraction_methods)
-        logger.info(f"Using normalized_method: {normalized_method}")
+        # Convert extraction_methods list to a dictionary format that determine_normalized_method expects
+        normalized_method_data = {
+            'source_table': 'aiib',
+            'extraction_methods': extraction_methods
+        }
+        normalized_method = determine_normalized_method(normalized_method_data)
         
         # Construct the UnifiedTender
         unified = UnifiedTender(
