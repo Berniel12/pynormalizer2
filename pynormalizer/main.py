@@ -62,15 +62,16 @@ SOURCE_NORMALIZERS = {
 # Table names in the database
 SOURCE_TABLES = list(SOURCE_NORMALIZERS.keys())
 
-def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optional[int] = None) -> int:
+def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optional[int] = None, progress_callback=None) -> int:
     """
     Normalize a single source table.
     
     Args:
         conn: Database connection
-        table_name: Name of the source table
+        table_name: Name of the table to normalize
         batch_size: Number of rows to process in a batch
-        limit: Maximum number of rows to process (None for all)
+        limit: Maximum number of rows to process (default: all)
+        progress_callback: Callback function for progress updates
         
     Returns:
         Number of rows processed
@@ -103,6 +104,11 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
     process_times = []  # Keep track of processing times for statistics
     
     for i, row in enumerate(rows):
+        # Check if we should continue processing
+        if progress_callback and not progress_callback(processed, total_rows, table_name):
+            logger.warning(f"Processing stopped by callback after {processed}/{total_rows} records")
+            break
+            
         try:
             # Record processing time
             start_process = time.time()
@@ -243,7 +249,8 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
 def normalize_all_tenders(db_config: Dict[str, Any], 
                           tables: Optional[List[str]] = None,
                           batch_size: int = 100,
-                          limit_per_table: Optional[int] = None) -> Dict[str, int]:
+                          limit_per_table: Optional[int] = None,
+                          progress_callback=None) -> Dict[str, int]:
     """
     Normalize tenders from all source tables.
     
@@ -252,6 +259,7 @@ def normalize_all_tenders(db_config: Dict[str, Any],
         tables: List of tables to process (default: all source tables)
         batch_size: Number of rows to process in a batch
         limit_per_table: Maximum number of rows to process per table (None for all)
+        progress_callback: Function to be called with progress updates (processed, total, table_name)
         
     Returns:
         Dictionary of table names to number of rows processed
@@ -284,7 +292,7 @@ def normalize_all_tenders(db_config: Dict[str, Any],
             continue
         
         try:
-            processed = normalize_table(conn, table_name, batch_size, limit_per_table)
+            processed = normalize_table(conn, table_name, batch_size, limit_per_table, progress_callback)
             results[table_name] = processed
         except Exception as e:
             logger.exception(f"Error processing table {table_name}: {e}")
