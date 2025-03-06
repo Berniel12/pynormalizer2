@@ -1350,6 +1350,34 @@ def ensure_country(country: Optional[str],
         logger = logging.getLogger(__name__)
         logger.info("ensure_country called with country=" + str(country))
         
+        # Country name normalization mapping for special cases and alternate forms
+        country_normalization_map = {
+            # Côte d'Ivoire variations
+            "côte d'ivoire": "Côte d'Ivoire",
+            "cote d'ivoire": "Côte d'Ivoire", 
+            "c te d'ivoire": "Côte d'Ivoire",
+            "ivory coast": "Côte d'Ivoire",
+            # Other common variations
+            "usa": "United States",
+            "united states of america": "United States",
+            "u.s.a.": "United States",
+            "u.s.": "United States",
+            "uk": "United Kingdom",
+            "great britain": "United Kingdom",
+            "england": "United Kingdom",
+            "uae": "United Arab Emirates",
+            "holland": "Netherlands",
+            "republic of korea": "South Korea",
+            "drc": "DR Congo",
+            "democratic republic of congo": "DR Congo",
+            "republic of china": "Taiwan",
+            "people's republic of china": "China",
+            "myanmar (burma)": "Myanmar",
+            "burma": "Myanmar",
+            "russia": "Russian Federation",
+            "czech republic": "Czechia"
+        }
+        
         # BULLETPROOF TYPE HANDLING
         # Handle all possible types for country parameter
         try:
@@ -1383,6 +1411,13 @@ def ensure_country(country: Optional[str],
             else:
                 logger.info(f"Country is a valid string: {country}")
                 country = country.strip()
+                
+                # Apply normalization for known variations
+                country_lower = country.lower()
+                if country_lower in country_normalization_map:
+                    normalized_country = country_normalization_map[country_lower]
+                    logger.info(f"Normalized country from '{country}' to '{normalized_country}'")
+                    country = normalized_country
             
             # The next part of the function relies on country being None or a valid string
             logger.info(f"Normalized country value: {country}")
@@ -1459,7 +1494,7 @@ def ensure_country(country: Optional[str],
             "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", 
             "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", 
             "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", 
-            "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan", "Kazakhstan", 
+            "Israel", "Italy", "Côte d'Ivoire", "Ivory Coast", "Jamaica", "Japan", "Jordan", "Kazakhstan", 
             "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", 
             "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", 
             "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", 
@@ -1468,7 +1503,7 @@ def ensure_country(country: Optional[str],
             "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", 
             "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", 
             "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", 
-            "Russia", "Rwanda", "Saint Kitts and Nevis",
+            "Russian Federation", "Rwanda", "Saint Kitts and Nevis",
             "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", 
             "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", 
             "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", 
@@ -1477,7 +1512,7 @@ def ensure_country(country: Optional[str],
             "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", 
             "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", 
             "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "USA", "UK", "UAE", "EU",
-            "Hong Kong", "Puerto Rico"
+            "Hong Kong", "Puerto Rico", "Czechia"
         ]
         
         # Look for country names directly in text
