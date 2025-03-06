@@ -210,18 +210,19 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     language_sample = ""
     
     # Create a combined sample using title + summary + other relevant text
-    if tedeu_obj.title:
+    if hasattr(tedeu_obj, 'title') and tedeu_obj.title:
         language_sample += tedeu_obj.title + " "
     
     if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary:
         # Add a truncated version of the summary (first 300 chars)
         language_sample += tedeu_obj.summary[:300] + " "
     
-    if tedeu_obj.buyer:
+    if hasattr(tedeu_obj, 'buyer') and tedeu_obj.buyer:
         language_sample += tedeu_obj.buyer + " "
     
     # Add organization name if available and different from buyer
-    if organization_name and organization_name != tedeu_obj.buyer:
+    buyer_value = tedeu_obj.buyer if hasattr(tedeu_obj, 'buyer') else None
+    if organization_name and hasattr(tedeu_obj, 'buyer') and organization_name != buyer_value:
         language_sample += organization_name + " "
     
     # Detect language from combined sample
