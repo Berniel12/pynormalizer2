@@ -204,206 +204,218 @@ def normalize_document_links(links_data):
     
     return unique_links
 
-def extract_financial_info(text):
+def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
     """
-    Extract financial information from text including currency and value.
+    Extract financial information (amount and currency) from text.
     
     Args:
         text: Text to extract financial information from
         
     Returns:
-        Tuple of (value, currency)
+        Tuple of (amount as float, currency code)
     """
     if not text:
         return None, None
     
-    # Define common currency codes and symbols with expanded variations
-    currency_patterns = {
-        'USD': ['USD', 'US$', '$', 'Dollar', 'Dollars', 'US Dollar', 'U.S. Dollar'],
-        'EUR': ['EUR', '€', 'Euro', 'Euros', 'euro', 'euros'],
-        'GBP': ['GBP', '£', 'Pound', 'Pounds', 'Sterling', 'British Pound'],
-        'JPY': ['JPY', '¥', 'Yen', 'Japanese Yen'],
-        'CNY': ['CNY', 'RMB', 'Yuan', 'Chinese Yuan'],
-        'INR': ['INR', '₹', 'Rupee', 'Rupees', 'Indian Rupee'],
-        'MWK': ['MWK', 'Malawi Kwacha', 'Kwacha'],
-        'AUD': ['AUD', 'AU$', 'Australian Dollar', 'A$'],
-        'CAD': ['CAD', 'CA$', 'Canadian Dollar', 'C$'],
-        'CHF': ['CHF', 'Swiss Franc', 'Fr'],
-        'XAF': ['XAF', 'CFA Franc', 'FCFA', 'Franc CFA'],
-        'NGN': ['NGN', '₦', 'Naira'],
-        'ZAR': ['ZAR', 'R', 'Rand', 'South African Rand'],
-        'KES': ['KES', 'KSh', 'Kenyan Shilling', 'Shilling'],
-        'BRL': ['BRL', 'R$', 'Real', 'Reais'],
-        'RWF': ['RWF', 'Rwf', 'RF', 'FRw', 'Rwandan Francs', 'Rwandan Franc'],
-        'TZS': ['TZS', 'TSh', 'Tanzanian Shilling'],
-        'UGX': ['UGX', 'USh', 'Ugandan Shilling'],
-        'ETB': ['ETB', 'Birr', 'Ethiopian Birr'],
+    # Define currency symbols and their corresponding codes
+    currency_symbols = {
+        '$': 'USD',
+        '€': 'EUR',
+        '£': 'GBP',
+        '¥': 'JPY',
+        '₹': 'INR',
+        '₽': 'RUB',
+        '₩': 'KRW',
+        '₴': 'UAH',
+        '₺': 'TRY',
+        'R$': 'BRL',
+        'C$': 'CAD',
+        'A$': 'AUD',
+        'HK$': 'HKD',
+        'S$': 'SGD',
+        'Fr': 'CHF',
+        'zł': 'PLN',
+        'kr': 'SEK',  # Note: could also be NOK or DKK
+        '₦': 'NGN',
+        '₱': 'PHP',
+        'RM': 'MYR',
+        '฿': 'THB',
+        '₫': 'VND',
+        'KSh': 'KES',
+        'RWF': 'RWF',
+        'TZS': 'TZS',
+        'UGX': 'UGX',
+        'ETB': 'ETB',
+        'ZAR': 'ZAR',
+        'Kč': 'CZK',
+        'Ft': 'HUF',
+        'lei': 'RON'
     }
     
-    # Check for specific currency patterns with values
-    # First check for Rwanda Franc which is often misidentified
-    rwandan_franc_patterns = [
-        # Various Rwandan Franc patterns with values
-        r'(?:RF|Rwf|RWF|FRw)[\s\:]*([\d,\.]+(?:\s*(?:million|m|billion|b))?)',
-        r'([\d,\.]+(?:\s*(?:million|m|billion|b))?)[\s\:]?(?:RF|Rwf|RWF|FRw)',
-        r'(?:Rwandan Franc[s]?)[\s\:]*([\d,\.]+(?:\s*(?:million|m|billion|b))?)',
-        r'([\d,\.]+(?:\s*(?:million|m|billion|b))?)[\s\:]?(?:Rwandan Franc[s]?)',
+    # Define currency codes that might appear in text (for cases without symbols)
+    currency_codes = [
+        'USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD', 
+        'INR', 'RUB', 'CNY', 'BRL', 'MXN', 'ZAR', 'SGD', 'HKD', 
+        'KRW', 'TRY', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 
+        'RON', 'BGN', 'HRK', 'ISK', 'ILS', 'SAR', 'AED', 'THB', 
+        'MYR', 'IDR', 'PHP', 'TWD', 'KES', 'NGN', 'EGP', 'PKR', 
+        'BDT', 'VND', 'UAH', 'COP', 'ARS', 'PEN', 'CLP', 'CRC',
+        'RWF', 'UGX', 'TZS', 'ETB', 'MAD', 'DZD', 'TND', 'GHS',
+        'XOF', 'XAF', 'XPF'
     ]
     
-    for pattern in rwandan_franc_patterns:
+    # Patterns for financial information
+    patterns = []
+    
+    # Pattern with currency symbol before amount: $1,000,000.00 or $1M or $1.5 million
+    for symbol, code in currency_symbols.items():
+        # Escape special regex characters in symbol
+        escaped_symbol = re.escape(symbol)
+        
+        # Match symbol followed by amount with commas/decimals
+        patterns.append(
+            (rf'{escaped_symbol}\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?', code)
+        )
+        
+        # Match symbol followed by amount with M/B/T suffix
+        patterns.append(
+            (rf'{escaped_symbol}\s*(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)', code)
+        )
+    
+    # Pattern with currency code after amount: 1,000,000.00 USD or 1M USD or 1.5 million USD
+    for code in currency_codes:
+        # Match amount followed by currency code (with or without space)
+        patterns.append(
+            (rf'(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?\s*{code}', code)
+        )
+        
+        # Match amount with M/B/T suffix followed by currency code
+        patterns.append(
+            (rf'(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)\s*{code}', code)
+        )
+    
+    # Special patterns for formats like "EUR 10 million" or "USD 500,000"
+    for code in currency_codes:
+        patterns.append(
+            (rf'{code}\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?', code)
+        )
+        
+        patterns.append(
+            (rf'{code}\s*(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)', code)
+        )
+    
+    # Additional patterns for common phrases
+    special_phrases = [
+        (r'(?:estimated|approximate|approx\.?|est\.?|about|total|contract)\s+(?:cost|value|amount|budget|price)\s+(?:of|is|:)?\s*(?:approximately|approx\.?|about|around)?\s*([A-Z]{3})?(?:\s*)(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?(?:\s*)([A-Z]{3})?'),
+        (r'(?:estimated|approximate|approx\.?|est\.?|about|total|contract)\s+(?:cost|value|amount|budget|price)\s+(?:of|is|:)?\s*(?:approximately|approx\.?|about|around)?\s*([A-Z]{3})?(?:\s*)(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)(?:\s*)([A-Z]{3})?'),
+        (r'(?:budget|contract|project|procurement)\s+(?:cost|value|amount|worth|sum)\s*(?:of|is|:)?\s*(?:approximately|approx\.?|about|around)?\s*([A-Z]{3})?(?:\s*)(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?(?:\s*)([A-Z]{3})?'),
+        (r'(?:budget|contract|project|procurement)\s+(?:cost|value|amount|worth|sum)\s*(?:of|is|:)?\s*(?:approximately|approx\.?|about|around)?\s*([A-Z]{3})?(?:\s*)(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)(?:\s*)([A-Z]{3})?')
+    ]
+    
+    # Try each pattern
+    for pattern, currency in patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
         if matches:
             for match in matches:
-                try:
-                    # Process the value
-                    value_str = match.replace(',', '')
+                amount_str = match.strip()
+                
+                # Clean the amount string
+                amount_str = amount_str.replace(',', '')
+                
+                # Handle million/billion/trillion suffixes
+                if re.search(r'million|mill\.?|mm|m$', amount_str, re.IGNORECASE):
+                    multiplier = 1000000
+                    amount_str = re.sub(r'million|mill\.?|mm|m$', '', amount_str, flags=re.IGNORECASE).strip()
+                elif re.search(r'billion|bill\.?|bb|b$', amount_str, re.IGNORECASE):
+                    multiplier = 1000000000
+                    amount_str = re.sub(r'billion|bill\.?|bb|b$', '', amount_str, flags=re.IGNORECASE).strip()
+                elif re.search(r'trillion|trill\.?|tt|t$', amount_str, re.IGNORECASE):
+                    multiplier = 1000000000000
+                    amount_str = re.sub(r'trillion|trill\.?|tt|t$', '', amount_str, flags=re.IGNORECASE).strip()
+                else:
                     multiplier = 1
-                    
-                    # Check for million/billion indicators
-                    if re.search(r'million|m\b', value_str, re.IGNORECASE):
-                        multiplier = 1000000
-                        value_str = re.sub(r'million|m\b', '', value_str, flags=re.IGNORECASE).strip()
-                    elif re.search(r'billion|b\b', value_str, re.IGNORECASE):
-                        multiplier = 1000000000
-                        value_str = re.sub(r'billion|b\b', '', value_str, flags=re.IGNORECASE).strip()
-                    
-                    value = float(value_str) * multiplier
-                    return value, 'RWF'
+                
+                try:
+                    amount = float(amount_str) * multiplier
+                    return amount, currency
                 except (ValueError, TypeError):
                     continue
     
-    # General currency patterns
-    # Pattern 1: Currency code/symbol followed by value
-    currency_value_pattern = r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+(?:\s*(?:million|m|billion|b))?)'
+    # Try special phrases
+    for pattern in special_phrases:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                if isinstance(match, tuple) and len(match) >= 3:
+                    pre_currency = match[0].strip() if match[0] else None
+                    amount_str = match[1].strip() if match[1] else None
+                    post_currency = match[2].strip() if match[2] else None
+                    
+                    currency = pre_currency or post_currency
+                    
+                    if not amount_str:
+                        continue
+                        
+                    # Clean the amount string
+                    amount_str = amount_str.replace(',', '')
+                    
+                    # Handle million/billion/trillion suffixes
+                    if re.search(r'million|mill\.?|mm|m$', amount_str, re.IGNORECASE):
+                        multiplier = 1000000
+                        amount_str = re.sub(r'million|mill\.?|mm|m$', '', amount_str, flags=re.IGNORECASE).strip()
+                    elif re.search(r'billion|bill\.?|bb|b$', amount_str, re.IGNORECASE):
+                        multiplier = 1000000000
+                        amount_str = re.sub(r'billion|bill\.?|bb|b$', '', amount_str, flags=re.IGNORECASE).strip()
+                    elif re.search(r'trillion|trill\.?|tt|t$', amount_str, re.IGNORECASE):
+                        multiplier = 1000000000000
+                        amount_str = re.sub(r'trillion|trill\.?|tt|t$', '', amount_str, flags=re.IGNORECASE).strip()
+                    else:
+                        multiplier = 1
+                    
+                    try:
+                        amount = float(amount_str) * multiplier
+                        if currency and currency.upper() in currency_codes:
+                            return amount, currency.upper()
+                        else:
+                            # Default to USD if currency can't be determined
+                            return amount, 'USD'
+                    except (ValueError, TypeError):
+                        continue
     
-    # Pattern 2: Value followed by currency code/name
-    value_currency_pattern = r'([\d,\.]+(?:\s*(?:million|m|billion|b))?)\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan|franc)'
-    
-    # Pattern 3: Value with M/B suffix (e.g., $1.5M, 1.5B EUR)
-    value_suffix_pattern = r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+[MB])'
-    suffix_value_pattern = r'([\d,\.]+[MB])\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan|franc)'
-    
-    # Pattern 4: X million/billion [Currency]
-    million_pattern = r'([\d,\.]+)\s+(?:million|billion)\s+([A-Z]{3}|dollars?|euros?|pounds?|francs?|yen|yuan)'
-    
-    # Pattern 5: Contract value/amount/price pattern
-    contract_value_pattern = r'(?:contract|estimated) (?:value|amount|price|cost)[:\s]+([\d,\.]+\s*(?:million|m|billion|b)?)[:\s]*([A-Z]{3}|[€£$¥₹₦])?'
-    contract_value_inv_pattern = r'(?:contract|estimated) (?:value|amount|price|cost)[:\s]*([A-Z]{3}|[€£$¥₹₦])?\s*([\d,\.]+\s*(?:million|m|billion|b)?)'
-    
-    # Try all patterns in sequence
-    patterns = [
-        (currency_value_pattern, 0, 1),  # (pattern, currency_group, value_group)
-        (value_currency_pattern, 1, 0),
-        (value_suffix_pattern, 0, 1),
-        (suffix_value_pattern, 1, 0),
-        (million_pattern, 1, 0),
-        (contract_value_pattern, 1, 0),
-        (contract_value_inv_pattern, 0, 1)
+    # If no match found with currency, try to at least extract a financial amount
+    amount_patterns = [
+        r'(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)',
+        r'(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)'
     ]
     
-    for pattern_info in patterns:
-        pattern, currency_group, value_group = pattern_info
-        matches = re.finditer(pattern, text, re.IGNORECASE)
-        
-        for match in matches:
-            try:
-                groups = match.groups()
-                if len(groups) < 2:
+    for pattern in amount_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                amount_str = match.strip()
+                
+                # Clean the amount string
+                amount_str = amount_str.replace(',', '')
+                
+                # Handle million/billion/trillion suffixes
+                if re.search(r'million|mill\.?|mm|m$', amount_str, re.IGNORECASE):
+                    multiplier = 1000000
+                    amount_str = re.sub(r'million|mill\.?|mm|m$', '', amount_str, flags=re.IGNORECASE).strip()
+                elif re.search(r'billion|bill\.?|bb|b$', amount_str, re.IGNORECASE):
+                    multiplier = 1000000000
+                    amount_str = re.sub(r'billion|bill\.?|bb|b$', '', amount_str, flags=re.IGNORECASE).strip()
+                elif re.search(r'trillion|trill\.?|tt|t$', amount_str, re.IGNORECASE):
+                    multiplier = 1000000000000
+                    amount_str = re.sub(r'trillion|trill\.?|tt|t$', '', amount_str, flags=re.IGNORECASE).strip()
+                else:
+                    multiplier = 1
+                
+                try:
+                    amount = float(amount_str) * multiplier
+                    # Default to USD if no currency specified
+                    return amount, 'USD'
+                except (ValueError, TypeError):
                     continue
-                    
-                currency_indicator = groups[currency_group].strip()
-                value_str = groups[value_group].strip()
-                
-                # Process the value
-                multiplier = 1
-                if re.search(r'million|m\b', value_str, re.IGNORECASE) or re.search(r'million|m\b', match.group(0), re.IGNORECASE):
-                    multiplier = 1000000
-                    value_str = re.sub(r'million|m\b', '', value_str, flags=re.IGNORECASE).strip()
-                elif re.search(r'billion|b\b', value_str, re.IGNORECASE) or re.search(r'billion|b\b', match.group(0), re.IGNORECASE):
-                    multiplier = 1000000000
-                    value_str = re.sub(r'billion|b\b', '', value_str, flags=re.IGNORECASE).strip()
-                
-                # Handle M/B suffixes
-                if value_str.upper().endswith('M'):
-                    multiplier = 1000000
-                    value_str = value_str[:-1]
-                elif value_str.upper().endswith('B'):
-                    multiplier = 1000000000
-                    value_str = value_str[:-1]
-                
-                # Clean value string and convert to float
-                value_str = re.sub(r'[^\d\.]', '', value_str.replace(',', ''))
-                value = float(value_str) * multiplier
-                
-                # Map currency indicator to standard code
-                currency = None
-                for code, indicators in currency_patterns.items():
-                    if any(indicator.upper() == currency_indicator.upper() or currency_indicator.upper() in indicator.upper() for indicator in indicators):
-                        currency = code
-                        break
-                        
-                # If found currency with value, return it
-                if currency and value:
-                    return value, currency
-            except (ValueError, TypeError, IndexError):
-                continue
-    
-    # Fallback pattern: look for standalone monetary values with default currency
-    # Try to guess currency from context if value found
-    value_only_pattern = r'(?:value|amount|cost|price)[:]\s*([\d,\.]+\s*(?:million|m|billion|b)?)'
-    value_only_matches = re.findall(value_only_pattern, text, re.IGNORECASE)
-    
-    if value_only_matches:
-        try:
-            value_str = value_only_matches[0]
-            multiplier = 1
-            
-            if re.search(r'million|m\b', value_str, re.IGNORECASE):
-                multiplier = 1000000
-                value_str = re.sub(r'million|m\b', '', value_str, flags=re.IGNORECASE).strip()
-            elif re.search(r'billion|b\b', value_str, re.IGNORECASE):
-                multiplier = 1000000000
-                value_str = re.sub(r'billion|b\b', '', value_str, flags=re.IGNORECASE).strip()
-            
-            value_str = re.sub(r'[^\d\.]', '', value_str.replace(',', ''))
-            value = float(value_str) * multiplier
-            
-            # Try to detect currency from context
-            currency = None
-            text_lower = text.lower()
-            
-            # Default country-currency mapping
-            if 'rwanda' in text_lower:
-                currency = 'RWF'
-            elif 'kenya' in text_lower:
-                currency = 'KES'
-            elif 'tanzania' in text_lower:
-                currency = 'TZS'
-            elif 'uganda' in text_lower:
-                currency = 'UGX'
-            elif 'south africa' in text_lower:
-                currency = 'ZAR'
-            elif 'nigeria' in text_lower:
-                currency = 'NGN'
-            elif 'ethiopia' in text_lower:
-                currency = 'ETB'
-            elif 'india' in text_lower:
-                currency = 'INR'
-            elif 'euro' in text_lower or 'eur' in text_lower:
-                currency = 'EUR'
-            elif 'dollar' in text_lower or 'usd' in text_lower:
-                currency = 'USD'
-            elif 'pound' in text_lower or 'gbp' in text_lower:
-                currency = 'GBP'
-            
-            if value and currency:
-                return value, currency
-            elif value:
-                # Default to USD if currency can't be determined but value exists
-                return value, 'USD'
-                
-        except (ValueError, TypeError, IndexError):
-            pass
     
     return None, None
 
@@ -926,6 +938,14 @@ def standardize_status(status: str) -> str:
         'active & published': 'Open',
         'posted': 'Open',
         'soliciting': 'Open',
+        'combined synopsis/solicitation': 'Open',
+        'sources sought': 'Open',
+        'request for information': 'Open',
+        'request for proposal': 'Open',
+        'request for quotation': 'Open',
+        'invitation to bid': 'Open',
+        'call for tenders': 'Open',
+        'solicitation': 'Open',
         
         # Closed statuses
         'closed': 'Closed',
@@ -936,6 +956,7 @@ def standardize_status(status: str) -> str:
         'ended': 'Closed',
         'terminated': 'Closed',
         'deadline passed': 'Closed',
+        'inactive': 'Closed',
         
         # Awarded statuses
         'awarded': 'Awarded', 
@@ -943,6 +964,10 @@ def standardize_status(status: str) -> str:
         'award': 'Awarded',
         'completed and awarded': 'Awarded',
         'closed and awarded': 'Awarded',
+        'award notice': 'Awarded',
+        'contract notice': 'Awarded',
+        'contract award': 'Awarded',
+        'contract award notice': 'Awarded',
         
         # Cancelled statuses
         'cancelled': 'Cancelled',
@@ -951,6 +976,7 @@ def standardize_status(status: str) -> str:
         'suspended': 'Cancelled',
         'discontinued': 'Cancelled',
         'terminated early': 'Cancelled',
+        'revoked': 'Cancelled',
         
         # Draft/Planned statuses
         'draft': 'Planned',
@@ -961,13 +987,20 @@ def standardize_status(status: str) -> str:
         'future': 'Planned',
         'not yet published': 'Planned',
         'pre-solicitation': 'Planned',
+        'intent to bundle requirements': 'Planned',
+        'presolicitation': 'Planned',
+        'prior information notice': 'Planned',
+        'prior notice': 'Planned',
         
         # Special statuses
         'under review': 'Under Review',
         'pending': 'Pending',
         'evaluation': 'Under Review',
         'evaluating': 'Under Review',
-        'inactive': 'Inactive'
+        'in evaluation': 'Under Review',
+        'under consideration': 'Under Review',
+        'in selection': 'Under Review',
+        'reviewing': 'Under Review'
     }
     
     # First, check for exact matches in the standardized statuses
@@ -980,12 +1013,18 @@ def standardize_status(status: str) -> str:
             return std_status
     
     # Check specific patterns with phrases
-    if any(term in status_lower for term in ['award', 'awarded', 'contract awarded']):
+    if any(term in status_lower for term in ['award', 'awarded', 'contract awarded', 'winner']):
         return 'Awarded'
-    elif any(term in status_lower for term in ['cancel', 'cancelled', 'canceled', 'withdraw']):
+    elif any(term in status_lower for term in ['cancel', 'cancelled', 'canceled', 'withdraw', 'revoke']):
         return 'Cancelled'
-    elif any(term in status_lower for term in ['review', 'evaluation', 'evaluating', 'processing']):
+    elif any(term in status_lower for term in ['review', 'evaluation', 'evaluating', 'processing', 'assessing']):
         return 'Under Review'
+    elif any(term in status_lower for term in ['plan', 'schedule', 'future', 'upcoming', 'intent', 'pre-', 'prior']):
+        return 'Planned'
+    elif any(term in status_lower for term in ['open', 'active', 'current', 'ongoing', 'accept']):
+        return 'Open'
+    elif any(term in status_lower for term in ['close', 'end', 'complete', 'finish', 'expire', 'deadline pass']):
+        return 'Closed'
     
     # If no match found, return capitalized status as fallback
     words = status.split()
@@ -1238,89 +1277,198 @@ def ensure_country(country: Optional[str],
                   email: Optional[str] = None,
                   language: Optional[str] = None) -> str:
     """
-    Ensure country is not empty, using various fallback strategies.
+    Ensures a valid country value is always returned, using fallback mechanisms if needed.
     
     Args:
-        country: Current country value (may be None or empty)
-        text: Text to extract country from if country is empty
-        organization: Organization name to extract country from if country is empty
-        email: Email to extract domain country from if country is empty
-        language: Language to guess country from if country is empty
+        country: Direct country value if available
+        text: Description or content text that might mention a country
+        organization: Organization name that might include country information
+        email: Email address that might have country TLD
+        language: Language code that could indicate a country
         
     Returns:
-        Non-empty country string, with "Unknown" as last resort
+        A non-empty country string, or "Unknown" as absolute fallback
     """
-    # If country already exists, return it
-    if country:
-        return country
+    # If we already have a valid country, return it
+    if country and isinstance(country, str) and country.strip():
+        return country.strip()
     
-    # Attempt to extract from text if available
-    if text:
-        extracted_country, _ = extract_location_info(text)
-        if extracted_country:
-            return extracted_country
+    # Countries to look for in text
+    countries = [
+        "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", 
+        "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", 
+        "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", 
+        "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", 
+        "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada", 
+        "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", 
+        "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", 
+        "Djibouti", "Dominica", "Dominican Republic", "DR Congo", "Ecuador", "Egypt", 
+        "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", 
+        "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", 
+        "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", 
+        "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", 
+        "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan", "Kazakhstan", 
+        "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", 
+        "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", 
+        "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", 
+        "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", 
+        "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", 
+        "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", 
+        "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", 
+        "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", 
+        "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", 
+        "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", 
+        "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", 
+        "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", 
+        "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", 
+        "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", 
+        "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", 
+        "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", 
+        "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "USA", "UK", "UAE", "EU",
+        "Hong Kong", "Puerto Rico"
+    ]
     
-    # Try to extract from organization name if contains country prefix
-    if organization:
-        country_prefix_match = re.match(r'^([A-Z]{3,})\s*-\s*', organization)
-        if country_prefix_match:
-            country_code = country_prefix_match.group(1).strip()
-            # Skip organization abbreviations
-            if country_code not in ['UNDP', 'UNEP', 'UNHCR', 'UNICEF', 'WHO', 'FAO', 'IBRD', 'ADB', 'AIIB', 'IFC']:
-                return country_code
+    # Extract from text
+    if text and isinstance(text, str):
+        # Look for country names directly
+        for country_name in countries:
+            # Try both "Country" and "COUNTRY" formats
+            patterns = [
+                rf'\b{country_name}\b',
+                rf'\b{country_name.upper()}\b',
+            ]
+            
+            for pattern in patterns:
+                if re.search(pattern, text, re.IGNORECASE):
+                    return country_name
+            
+        # Look for "Country: X" pattern
+        country_pattern = r'(?:Country|Location|Region):\s*([A-Za-z\s]+)'
+        match = re.search(country_pattern, text)
+        if match and match.group(1).strip():
+            country_text = match.group(1).strip()
+            # Check if it's a valid country name
+            for country_name in countries:
+                if country_name.lower() in country_text.lower():
+                    return country_name
     
-    # Try to extract from email domain if available
-    if email and '@' in email:
-        domain = email.split('@')[1]
-        tld = domain.split('.')[-1].lower()
+    # Extract from organization name
+    if organization and isinstance(organization, str):
+        # Look for "COUNTRY - Organization" pattern
+        country_prefix_pattern = r'^([A-Za-z\s]+)\s*[-–:]\s*'
+        match = re.search(country_prefix_pattern, organization)
+        if match and match.group(1).strip():
+            country_text = match.group(1).strip()
+            # Check if it's a valid country name
+            for country_name in countries:
+                if country_name.lower() == country_text.lower():
+                    return country_name
         
-        # Map common TLDs to countries
-        tld_country_map = {
-            'uk': 'United Kingdom',
-            'fr': 'France',
-            'de': 'Germany',
-            'it': 'Italy',
-            'es': 'Spain',
-            'ru': 'Russia',
-            'jp': 'Japan',
-            'cn': 'China',
-            'in': 'India',
-            'br': 'Brazil',
-            'ca': 'Canada',
-            'au': 'Australia',
-            'za': 'South Africa',
-            'ke': 'Kenya',
-            'ng': 'Nigeria',
-            'mx': 'Mexico',
-            'kr': 'South Korea',
-            'nl': 'Netherlands',
-            'se': 'Sweden',
-            'no': 'Norway',
-            'dk': 'Denmark',
-            'fi': 'Finland',
-            'pl': 'Poland',
-            'ua': 'Ukraine',
-            'gr': 'Greece',
-            'rw': 'Rwanda',
-            'lv': 'Latvia',
-            'lt': 'Lithuania',
-            'et': 'Estonia',
-            'tr': 'Turkey'
+        # Look for country name in organization
+        for country_name in countries:
+            if country_name.lower() in organization.lower():
+                return country_name
+                
+    # Extract from email domain
+    if email and isinstance(email, str):
+        # Country TLD mapping (partial list of common ones)
+        tld_to_country = {
+            '.uk': 'United Kingdom',
+            '.us': 'United States',
+            '.ca': 'Canada',
+            '.au': 'Australia',
+            '.fr': 'France',
+            '.de': 'Germany',
+            '.it': 'Italy',
+            '.es': 'Spain',
+            '.jp': 'Japan',
+            '.cn': 'China',
+            '.in': 'India',
+            '.br': 'Brazil',
+            '.ru': 'Russia',
+            '.za': 'South Africa',
+            '.mx': 'Mexico',
+            '.ar': 'Argentina',
+            '.id': 'Indonesia',
+            '.ph': 'Philippines',
+            '.ng': 'Nigeria',
+            '.pk': 'Pakistan',
+            '.ke': 'Kenya',
+            '.rw': 'Rwanda',
+            '.tz': 'Tanzania',
+            '.ug': 'Uganda',
+            '.gh': 'Ghana',
+            '.sg': 'Singapore',
+            '.my': 'Malaysia',
+            '.th': 'Thailand',
+            '.vn': 'Vietnam',
+            '.nl': 'Netherlands',
+            '.se': 'Sweden',
+            '.no': 'Norway',
+            '.fi': 'Finland',
+            '.dk': 'Denmark',
+            '.pl': 'Poland',
+            '.cz': 'Czech Republic',
+            '.hu': 'Hungary',
+            '.ro': 'Romania',
+            '.pt': 'Portugal',
+            '.gr': 'Greece',
+            '.ie': 'Ireland',
+            '.nz': 'New Zealand',
+            '.ae': 'United Arab Emirates',
+            '.sa': 'Saudi Arabia',
+            '.tr': 'Turkey',
+            '.il': 'Israel',
+            '.eg': 'Egypt',
+            '.za': 'South Africa',
+            '.pe': 'Peru',
+            '.cl': 'Chile',
+            '.co': 'Colombia',
+            '.ec': 'Ecuador',
+            '.kr': 'South Korea',
+            '.tw': 'Taiwan',
+            '.hk': 'Hong Kong',
+            '.gov': 'United States',  # .gov typically indicates US government
+            '.mil': 'United States',  # .mil typically indicates US military
         }
         
-        if tld in tld_country_map:
-            return tld_country_map[tld]
+        for tld, country_name in tld_to_country.items():
+            if tld in email.lower():
+                return country_name
         
-        # For gov domains, check for country prefix (e.g., ke.gov, rw.gov)
-        if 'gov' in domain.split('.'):
-            for country_code in tld_country_map.keys():
-                if country_code + '.gov' in domain:
-                    return tld_country_map[country_code]
+        # Look for country domains in email address
+        email_domain = email.split('@')[-1] if '@' in email else email
+        country_domains = {
+            'gov.uk': 'United Kingdom',
+            'nic.in': 'India',
+            'gov.in': 'India',
+            'gov.rw': 'Rwanda',
+            'go.ke': 'Kenya',
+            'go.tz': 'Tanzania',
+            'go.ug': 'Uganda',
+            'gov.ng': 'Nigeria',
+            'gov.gh': 'Ghana',
+            'gob.mx': 'Mexico',
+            'gob.ar': 'Argentina',
+            'gob.pe': 'Peru',
+            'gob.cl': 'Chile',
+            'gov.br': 'Brazil',
+            'gov.co': 'Colombia',
+            'gob.ec': 'Ecuador',
+            'gov.au': 'Australia',
+            'gov.sg': 'Singapore',
+            'gov.my': 'Malaysia',
+            'go.th': 'Thailand',
+            'gov.vn': 'Vietnam'
+        }
+        
+        for domain, country_name in country_domains.items():
+            if domain in email_domain.lower():
+                return country_name
     
-    # Try to guess from language if available
-    if language:
-        # Map common languages to primary countries
-        language_country_map = {
+    # Map language to country (for common languages)
+    if language and isinstance(language, str):
+        language_to_country = {
             'en': 'United States',  # Default for English
             'fr': 'France',
             'es': 'Spain',
@@ -1331,32 +1479,32 @@ def ensure_country(country: Optional[str],
             'zh': 'China',
             'ja': 'Japan',
             'ko': 'South Korea',
-            'ar': 'Saudi Arabia',
+            'ar': 'Saudi Arabia',  # Default for Arabic
             'hi': 'India',
-            'lv': 'Latvia',
-            'lt': 'Lithuania',
-            'et': 'Estonia',
-            'fi': 'Finland',
+            'bn': 'Bangladesh',
+            'ur': 'Pakistan',
+            'fa': 'Iran',
+            'tr': 'Turkey',
+            'nl': 'Netherlands',
+            'pl': 'Poland',
+            'th': 'Thailand',
+            'vi': 'Vietnam',
             'sv': 'Sweden',
             'no': 'Norway',
             'da': 'Denmark',
-            'nl': 'Netherlands',
-            'el': 'Greece',
-            'tr': 'Turkey',
-            'pl': 'Poland',
-            'cs': 'Czech Republic',
-            'sk': 'Slovakia',
+            'fi': 'Finland',
             'hu': 'Hungary',
+            'cs': 'Czech Republic',
+            'el': 'Greece',
+            'he': 'Israel',
+            'id': 'Indonesia',
+            'ms': 'Malaysia',
             'uk': 'Ukraine',
-            'ro': 'Romania',
-            'bg': 'Bulgaria',
-            'sr': 'Serbia',
-            'hr': 'Croatia',
-            'sl': 'Slovenia'
+            'ro': 'Romania'
         }
         
-        if language in language_country_map:
-            return language_country_map[language]
+        if language.lower() in language_to_country:
+            return language_to_country[language.lower()]
     
-    # Last resort: return "Unknown" to ensure field is not empty
+    # If all else fails, return "Unknown"
     return "Unknown" 
