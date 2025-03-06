@@ -15,9 +15,9 @@ COPY . .
 # Make scripts executable
 RUN chmod +x apify_normalize.py run_normalization.py test_normalize.py
 
-# Set script as entrypoint with default test mode
-# Test mode processes only 2 tenders from each source
-ENTRYPOINT ["python", "apify_normalize.py", "--test"]
+# Set script as entrypoint without forcing test mode
+# This will respect the input JSON settings for testMode
+ENTRYPOINT ["python", "apify_normalize.py"]
 
-# To run in production mode (all tenders), override with:
+# To run with specific batch size, you can override with:
 # CMD ["--batch-size", "100"] 
