@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 
 import psycopg2
 
-from pynormalizer.utils.db import get_connection, fetch_rows, ensure_unique_constraint, upsert_unified_tender
+from pynormalizer.utils.db import get_connection, fetch_rows, fetch_unnormalized_rows, ensure_unique_constraint, upsert_unified_tender
 from pynormalizer.utils.translation import setup_translation_models, get_translation_stats
 from pynormalizer.utils.normalizer_helpers import (
     log_before_after,
@@ -63,7 +63,7 @@ SOURCE_NORMALIZERS = {
 # Table names in the database
 SOURCE_TABLES = list(SOURCE_NORMALIZERS.keys())
 
-def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optional[int] = None, progress_callback=None) -> int:
+def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optional[int] = None, progress_callback=None, skip_normalized: bool = True) -> int:
     """
     Normalize a single source table.
     
@@ -73,6 +73,7 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
         batch_size: Number of rows to process in a batch
         limit: Maximum number of rows to process (default: all)
         progress_callback: Callback function for progress updates
+        skip_normalized: Whether to skip already normalized records (default: True)
         
     Returns:
         Number of rows processed
@@ -85,10 +86,17 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
         logger.error(f"No normalizer function found for table: {table_name}")
         return 0
     
-    # Fetch rows from the table
-    rows = fetch_rows(conn, table_name)
+    # Fetch rows from the table (either all or only unnormalized)
+    if skip_normalized:
+        logger.info(f"Fetching only unnormalized records from {table_name}")
+        rows = fetch_unnormalized_rows(conn, table_name)
+        logger.info(f"Found {len(rows)} unnormalized rows to process in {table_name}")
+    else:
+        logger.info(f"Fetching all records from {table_name} (including already normalized)")
+        rows = fetch_rows(conn, table_name)
+        logger.info(f"Found {len(rows)} total rows in {table_name}")
+    
     total_rows = len(rows)
-    logger.info(f"Found {total_rows} rows in {table_name}")
     
     # Apply limit if specified
     if limit is not None and limit < total_rows:
@@ -251,7 +259,8 @@ def normalize_all_tenders(db_config: Dict[str, Any],
                           tables: Optional[List[str]] = None,
                           batch_size: int = 100,
                           limit_per_table: Optional[int] = None,
-                          progress_callback=None) -> Dict[str, int]:
+                          progress_callback=None,
+                          skip_normalized: bool = True) -> Dict[str, int]:
     """
     Normalize tenders from all source tables.
     
@@ -261,6 +270,7 @@ def normalize_all_tenders(db_config: Dict[str, Any],
         batch_size: Number of rows to process in a batch
         limit_per_table: Maximum number of rows to process per table (None for all)
         progress_callback: Function to be called with progress updates (processed, total, table_name)
+        skip_normalized: Whether to skip already normalized records (default: True)
         
     Returns:
         Dictionary of table names to number of rows processed
@@ -293,7 +303,7 @@ def normalize_all_tenders(db_config: Dict[str, Any],
             continue
         
         try:
-            processed = normalize_table(conn, table_name, batch_size, limit_per_table, progress_callback)
+            processed = normalize_table(conn, table_name, batch_size, limit_per_table, progress_callback, skip_normalized)
             results[table_name] = processed
         except Exception as e:
             logger.exception(f"Error processing table {table_name}: {e}")

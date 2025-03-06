@@ -128,6 +128,7 @@ def main():
     parser.add_argument("--limit", type=int, help="Maximum number of records to process per table")
     parser.add_argument("--run-fix", action="store_true", help="Run the country normalization fix")
     parser.add_argument("--timeout", type=int, default=1800, help="Timeout in seconds (default: 1800 = 30 minutes)")
+    parser.add_argument("--process-all", action="store_true", help="Process all records, including already normalized ones")
     args = parser.parse_args()
     
     try:
@@ -168,6 +169,8 @@ def main():
             normalize_cmd.extend(["--batch-size", str(args.batch_size)])
         if args.limit:
             normalize_cmd.extend(["--limit", str(args.limit)])
+        if args.process_all:
+            normalize_cmd.append("--process-all")
         
         # Run the normalization process with the specified timeout
         logger.info(f"Starting main normalization with a timeout of {args.timeout} seconds...")

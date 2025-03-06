@@ -35,6 +35,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=50, help="Batch size for processing")
     parser.add_argument("--limit", type=int, help="Maximum number of records to process per table")
     parser.add_argument("--max-runtime", type=int, default=1800, help="Maximum runtime in seconds (default: 1800 = 30 min)")
+    parser.add_argument("--process-all", action="store_true", help="Process all records, including already normalized ones")
     args = parser.parse_args()
     
     try:
@@ -49,6 +50,7 @@ def main():
         tables = args.tables
         limit_per_table = args.limit
         max_runtime = args.max_runtime
+        skip_normalized = not args.process_all  # Skip by default unless process-all is specified
         
         # Parse Apify input if available (overrides command-line arguments)
         if apify_input:
@@ -76,6 +78,11 @@ def main():
                 if "maxRuntime" in apify_config and apify_config["maxRuntime"] is not None:
                     max_runtime = apify_config["maxRuntime"]
                     logger.info(f"Using maxRuntime from Apify input: {max_runtime} seconds")
+                
+                # Check if we should process all records (including already normalized)
+                if "processAll" in apify_config:
+                    skip_normalized = not apify_config.get("processAll", False)
+                    logger.info(f"Using processAll from Apify input: {not skip_normalized}")
             except Exception as e:
                 logger.error(f"Error parsing Apify input: {e}")
         
@@ -143,13 +150,14 @@ def main():
                 return True  # Return True to continue processing
             
             # Execute normalization with progress callback
-            logger.info("Starting normalization with Tables: " + (", ".join(tables) if tables else "ALL"))
+            logger.info(f"Starting normalization with Tables: {', '.join(tables) if tables else 'ALL'} (skip_normalized={skip_normalized})")
             results = normalize_all_tenders(
                 db_config,
                 tables=tables,  # None means all tables
                 batch_size=args.batch_size,
                 limit_per_table=limit_per_table,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                skip_normalized=skip_normalized
             )
             
             # Print summary
