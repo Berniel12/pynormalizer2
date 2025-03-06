@@ -1289,8 +1289,14 @@ def ensure_country(country: Optional[str],
     Returns:
         A non-empty country string, or "Unknown" as absolute fallback
     """
-    # If we already have a valid country, return it
-    if country and isinstance(country, str) and country.strip():
+    # Handle the case where country might be a tuple (from extract_location_info)
+    if isinstance(country, tuple) and len(country) > 0:
+        # If it's a tuple from extract_location_info, the first element is the country
+        country_val = country[0]
+        if country_val and isinstance(country_val, str) and country_val.strip():
+            return country_val.strip()
+    # Normal string case
+    elif country and isinstance(country, str) and country.strip():
         return country.strip()
     
     # Countries to look for in text
@@ -1330,6 +1336,11 @@ def ensure_country(country: Optional[str],
     
     # Extract from text
     if text and isinstance(text, str):
+        # First, try extract_location_info which is specialized for this
+        extracted_location = extract_location_info(text)
+        if extracted_location and extracted_location[0]:
+            return extracted_location[0]
+            
         # Look for country names directly
         for country_name in countries:
             # Try both "Country" and "COUNTRY" formats
