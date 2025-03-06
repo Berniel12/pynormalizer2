@@ -1326,492 +1326,6 @@ def extract_organization(text: str) -> Optional[str]:
     organization_name, _ = extract_organization_and_buyer(text)
     return organization_name 
 
-def ensure_country(country: Optional[str], 
-                  text: Optional[str] = None, 
-                  organization: Optional[str] = None,
-                  email: Optional[str] = None,
-                  language: Optional[str] = None) -> str:
-    """
-    Ensures a valid country value is always returned, using fallback mechanisms if needed.
-    
-    Args:
-        country: Direct country value if available
-        text: Description or content text that might mention a country
-        organization: Organization name that might include country information
-        email: Email address that might have country TLD
-        language: Language code that could indicate a country
-        
-    Returns:
-        A non-empty country string, or "Unknown" as absolute fallback
-    """
-    # ULTIMATE BULLETPROOF WRAPPER
-    try:
-        # Get logger
-        logger = logging.getLogger(__name__)
-        logger.info("ensure_country called with country=" + str(country))
-        
-        # Country name normalization mapping for special cases and alternate forms
-        country_normalization_map = {
-            # French-English variants
-            "côte d'ivoire": "Côte d'Ivoire",
-            "cote d'ivoire": "Côte d'Ivoire", 
-            "c te d'ivoire": "Côte d'Ivoire",
-            "ivory coast": "Côte d'Ivoire",
-            "république de côte d'ivoire": "Côte d'Ivoire",
-            
-            # Country codes
-            "rca": "Central African Republic",
-            "rdc": "DR Congo",
-            "car": "Central African Republic",
-            "drc": "DR Congo",
-            
-            # Accented French names with English equivalents
-            "algérie": "Algeria",
-            "bénin": "Benin",
-            "égypte": "Egypt",
-            "guinée": "Guinea",
-            "guinée équatoriale": "Equatorial Guinea",
-            "guinée-bissau": "Guinea-Bissau",
-            "guinée equatoriale": "Equatorial Guinea",
-            "libéria": "Liberia",
-            "maroc": "Morocco",
-            "mauritanie": "Mauritania",
-            "nigéria": "Nigeria",
-            "sénégal": "Senegal",
-            "tchad": "Chad",
-            "tunisie": "Tunisia",
-            "république centrafricaine": "Central African Republic",
-            "république démocratique du congo": "DR Congo",
-            "république du congo": "Congo",
-            "comores": "Comoros",
-            
-            # Inconsistent spellings
-            "bostwana": "Botswana",
-            "caboverde": "Cabo Verde",
-            "cabo-verde": "Cabo Verde",
-            "somaliland": "Somalia",
-            "viet nam": "Vietnam",
-            
-            # Generic or invalid terms that should be mapped to proper values
-            "multinational": None,  # Will trigger fallback logic
-            "international": None,  # Will trigger fallback logic
-            "africa": None,         # Will trigger fallback logic
-            
-            # USA/UK variants
-            "usa": "United States",
-            "united states of america": "United States",
-            "u.s.a.": "United States",
-            "u.s.": "United States",
-            "uk": "United Kingdom",
-            "great britain": "United Kingdom",
-            "england": "United Kingdom",
-            "uae": "United Arab Emirates",
-            "holland": "Netherlands",
-            "republic of korea": "South Korea",
-            "democratic republic of congo": "DR Congo",
-            "republic of china": "Taiwan",
-            "people's republic of china": "China",
-            "myanmar (burma)": "Myanmar",
-            "burma": "Myanmar",
-            "russia": "Russian Federation",
-            "czech republic": "Czechia"
-        }
-        
-        # Check for project titles mistakenly entered as countries
-        project_title_indicators = [
-            "cabinet pour", "procurement of", "project", "consultant",
-            "recruitment", "program for", "service de", "amélioration",
-            "contratación", "audit", "vers des", "amélioration",
-            "communities"
-        ]
-        
-        # BULLETPROOF TYPE HANDLING
-        # Handle all possible types for country parameter
-        try:
-            # First, identify and convert tuples
-            if isinstance(country, tuple):
-                logger.info(f"Country is a tuple of length {len(country)}")
-                # Extract first element if it's a tuple (typical from extract_location_info)
-                if len(country) > 0:
-                    country = country[0]  # Now country might be a string or another type
-                    logger.info(f"Extracted first element from tuple: {country}, Type: {type(country).__name__ if country is not None else 'None'}")
-                else:
-                    logger.info("Empty tuple found, setting country to None")
-                    country = None
-            
-            # Now ensure country is a valid string
-            if not country:
-                logger.info("Country is None or empty, setting to None")
-                country = None
-            elif not isinstance(country, str):
-                logger.info(f"Country is not a string but {type(country).__name__}, converting to string")
-                try:
-                    country = str(country).strip()
-                    if not country:
-                        country = None
-                except Exception as e:
-                    logger.error(f"Error converting country to string: {e}")
-                    country = None
-            elif not country.strip():
-                logger.info("Country is an empty string, setting to None")
-                country = None
-            else:
-                logger.info(f"Country is a valid string: {country}")
-                country = country.strip()
-                
-                # Check if it's a project title mistakenly entered as country
-                is_project_title = False
-                if country and len(country) > 15:  # Short country names are unlikely to be project titles
-                    country_lower = country.lower()
-                    for indicator in project_title_indicators:
-                        if indicator.lower() in country_lower:
-                            logger.info(f"Country value appears to be a project title: {country}")
-                            country = None
-                            is_project_title = True
-                            break
-                
-                if not is_project_title:
-                    # Apply normalization for known variations
-                    country_lower = country.lower()
-                    if country_lower in country_normalization_map:
-                        normalized_country = country_normalization_map[country_lower]
-                        logger.info(f"Normalized country from '{country}' to '{normalized_country}'")
-                        country = normalized_country
-            
-            # The next part of the function relies on country being None or a valid string
-            logger.info(f"Normalized country value: {country}")
-            
-            # The old tuple handling code is now redundant but keeping for backward compatibility
-            # with any code paths we haven't updated yet - This should never be reached now
-            if isinstance(country, tuple) and len(country) > 0:
-                # If it's a tuple from extract_location_info, the first element is the country
-                country_val = country[0]
-                if country_val and isinstance(country_val, str) and country_val.strip():
-                    logger.info(f"Legacy tuple handling used: {country_val}")
-                    return country_val.strip()
-            # Normal string case
-            elif country and isinstance(country, str) and country.strip():
-                logger.info(f"Valid country string found: {country}")
-                return country
-            
-            # IMPROVED SAFETY: Type checking for all parameters
-            if text and not isinstance(text, str):
-                logger.info(f"Text is not a string but {type(text).__name__}, setting to None")
-                text = None
-            
-            if organization and not isinstance(organization, str):
-                logger.info(f"Organization is not a string but {type(organization).__name__}, setting to None")
-                organization = None
-            
-            if email and not isinstance(email, str):
-                logger.info(f"Email is not a string but {type(email).__name__}, setting to None")
-                email = None
-            
-            if language and not isinstance(language, str):
-                logger.info(f"Language is not a string but {type(language).__name__}, setting to None")
-                language = None
-        
-            # Extract from text - with additional error handling
-            if text and isinstance(text, str):
-                try:
-                    # First, try extract_location_info which is specialized for this
-                    logger.info("Attempting to extract location from text...")
-                    extracted_location = extract_location_info(text)
-                    logger.info(f"Location extraction result: {extracted_location}, Type: {type(extracted_location).__name__ if extracted_location is not None else 'None'}")
-                    
-                    # IMPROVED SAFETY: More thorough type and value checking
-                    if extracted_location:
-                        if isinstance(extracted_location, tuple) and len(extracted_location) > 0:
-                            extracted_country = extracted_location[0]
-                            if extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
-                                logger.info(f"Using extracted country: {extracted_country}")
-                                return extracted_country.strip()
-                        elif isinstance(extracted_location, str) and extracted_location.strip():
-                            # Handle case where extraction might return a string directly
-                            logger.info(f"Using extracted location as string: {extracted_location}")
-                            return extracted_location.strip()
-                except Exception as e:
-                    # IMPROVED SAFETY: More specific exception handling
-                    logger.error(f"Location extraction failed: {e}")
-                    # If extraction fails, continue with other methods
-                    pass
-        except Exception as e:
-            logger.error(f"Error in ensure_country internal processing: {e}")
-            logger.error(traceback.format_exc())
-        
-        # Countries to look for in text
-        countries = [
-            "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", 
-            "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", 
-            "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", 
-            "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", 
-            "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada", 
-            "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", 
-            "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", 
-            "Djibouti", "Dominica", "Dominican Republic", "DR Congo", "Ecuador", "Egypt", 
-            "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", 
-            "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", 
-            "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", 
-            "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", 
-            "Israel", "Italy", "Côte d'Ivoire", "Ivory Coast", "Jamaica", "Japan", "Jordan", "Kazakhstan", 
-            "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", 
-            "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", 
-            "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", 
-            "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", 
-            "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", 
-            "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", 
-            "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", 
-            "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", 
-            "Russian Federation", "Rwanda", "Saint Kitts and Nevis",
-            "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", 
-            "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", 
-            "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", 
-            "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", 
-            "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", 
-            "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", 
-            "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", 
-            "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "USA", "UK", "UAE", "EU",
-            "Hong Kong", "Puerto Rico", "Czechia"
-        ]
-        
-        # Look for country names directly in text
-        if text and isinstance(text, str):
-            for country_name in countries:
-                # Try both "Country" and "COUNTRY" formats
-                patterns = [
-                    rf'\b{country_name}\b',
-                    rf'\b{country_name.upper()}\b',
-                ]
-                
-                for pattern in patterns:
-                    if re.search(pattern, text, re.IGNORECASE):
-                        logger.info(f"Found country in text: {country_name}")
-                        return country_name
-        
-        # Extract from organization name
-        if organization and isinstance(organization, str):
-            # Look for "COUNTRY - Organization" pattern
-            country_prefix_pattern = r'^([A-Za-z\s]+)\s*[-–:]\s*'
-            match = re.search(country_prefix_pattern, organization)
-            if match and match.group(1).strip():
-                country_text = match.group(1).strip()
-                # Check if it's a valid country name
-                for country_name in countries:
-                    if country_name.lower() == country_text.lower():
-                        logger.info(f"Found country in organization prefix: {country_name}")
-                        return country_name
-            
-            # Look for country name in organization
-            for country_name in countries:
-                if country_name.lower() in organization.lower():
-                    logger.info(f"Found country in organization name: {country_name}")
-                    return country_name
-                    
-        # Extract from email domain
-        if email and isinstance(email, str):
-            # Country TLD mapping (partial list of common ones)
-            tld_to_country = {
-                '.uk': 'United Kingdom',
-                '.us': 'United States',
-                '.ca': 'Canada',
-                '.au': 'Australia',
-                '.fr': 'France',
-                '.de': 'Germany',
-                '.it': 'Italy',
-                '.es': 'Spain',
-                '.jp': 'Japan',
-                '.cn': 'China',
-                '.in': 'India',
-                '.br': 'Brazil',
-                '.ru': 'Russia',
-                '.za': 'South Africa',
-                '.mx': 'Mexico',
-                '.ar': 'Argentina',
-                '.id': 'Indonesia',
-                '.ph': 'Philippines',
-                '.ng': 'Nigeria',
-                '.pk': 'Pakistan',
-                '.ke': 'Kenya',
-                '.rw': 'Rwanda',
-                '.tz': 'Tanzania',
-                '.ug': 'Uganda',
-                '.gh': 'Ghana',
-                '.sg': 'Singapore',
-                '.my': 'Malaysia',
-                '.th': 'Thailand',
-                '.vn': 'Vietnam',
-                '.nl': 'Netherlands',
-                '.se': 'Sweden',
-                '.no': 'Norway',
-                '.fi': 'Finland',
-                '.dk': 'Denmark',
-                '.pl': 'Poland',
-                '.cz': 'Czech Republic',
-                '.hu': 'Hungary',
-                '.ro': 'Romania',
-                '.pt': 'Portugal',
-                '.gr': 'Greece',
-                '.ie': 'Ireland',
-                '.nz': 'New Zealand',
-                '.ae': 'United Arab Emirates',
-                '.sa': 'Saudi Arabia',
-                '.tr': 'Turkey',
-                '.il': 'Israel',
-                '.eg': 'Egypt',
-                '.za': 'South Africa',
-                '.pe': 'Peru',
-                '.cl': 'Chile',
-                '.ec': 'Ecuador',
-                '.kr': 'South Korea',
-                '.tw': 'Taiwan',
-                '.hk': 'Hong Kong',
-                '.gov': 'United States',  # .gov typically indicates US government
-                '.mil': 'United States',  # .mil typically indicates US military
-            }
-            
-            for tld, country_name in tld_to_country.items():
-                if tld in email.lower():
-                    logger.info(f"Found country in email TLD: {country_name}")
-                    return country_name
-            
-            # Look for country domains in email address
-            email_domain = email.split('@')[-1] if '@' in email else email
-            country_domains = {
-                'gov.uk': 'United Kingdom',
-                'nic.in': 'India',
-                'gov.in': 'India',
-                'gc.ca': 'Canada',
-                'gov.au': 'Australia',
-                'go.jp': 'Japan',
-                'gov.cn': 'China',
-                'gov.ru': 'Russia',
-                'gov.za': 'South Africa',
-                'gob.mx': 'Mexico',
-                'gov.ar': 'Argentina',
-                'go.id': 'Indonesia',
-                'gov.ph': 'Philippines',
-                'gov.ng': 'Nigeria',
-                'gov.pk': 'Pakistan',
-                'go.ke': 'Kenya',
-                'gov.rw': 'Rwanda',
-                'go.tz': 'Tanzania',
-                'go.ug': 'Uganda',
-                'gov.gh': 'Ghana',
-                'gov.sg': 'Singapore',
-                'gov.my': 'Malaysia',
-                'go.th': 'Thailand',
-                'gov.vn': 'Vietnam'
-            }
-            
-            for domain, country_name in country_domains.items():
-                if domain in email_domain.lower():
-                    logger.info(f"Found country in email domain: {country_name}")
-                    return country_name
-        
-        # Try to infer from language
-        if language and isinstance(language, str):
-            language_to_country = {
-                'en': 'United States',  # Default to US for English
-                'fr': 'France',
-                'de': 'Germany',
-                'es': 'Spain',
-                'it': 'Italy',
-                'pt': 'Portugal',
-                'ru': 'Russia',
-                'zh': 'China',
-                'ja': 'Japan',
-                'ko': 'South Korea',
-                'ar': 'Saudi Arabia',  # Default for Arabic
-                'hi': 'India',
-                'nl': 'Netherlands',
-                'sv': 'Sweden',
-                'no': 'Norway',
-                'da': 'Denmark',
-                'fi': 'Finland',
-                'pl': 'Poland',
-                'tr': 'Turkey',
-                'he': 'Israel',
-                'th': 'Thailand',
-                'vi': 'Vietnam',
-                'id': 'Indonesia',
-                'uk': 'Ukraine'
-            }
-            
-            if language.lower() in language_to_country:
-                logger.info(f"Inferred country from language: {language_to_country[language.lower()]}")
-                return language_to_country[language.lower()]
-        
-        # If all else fails, return "Unknown"
-        logger.info("No country found, returning Unknown")
-        return "Unknown"
-        
-    except Exception as e:
-        # Ultimate fallback for ANY error
-        logger = logging.getLogger(__name__)
-        logger.error(f"CRITICAL ERROR in ensure_country: {e}")
-        logger.error(traceback.format_exc())
-        return "Unknown"
-
-def determine_normalized_method(row, default=None):
-    """
-    Determine the normalized_method for a tender based on source table and available data.
-    
-    Args:
-        row (dict): Row of data from a source table
-        default (str, optional): Default value if no method can be determined
-        
-    Returns:
-        str: The normalized procurement method
-    """
-    # If normalized_method is already set and valid, return it
-    if row.get('normalized_method') and row['normalized_method'].strip():
-        return row['normalized_method']
-    
-    # Default methods by source table
-    table_defaults = {
-        'wb': 'International Competitive Bidding',
-        'adb': 'Open Competitive Bidding',
-        'afdb': 'International Competitive Bidding', 
-        'afd': 'International Competitive Bidding',
-        'aiib': 'International Open Competitive Tendering',
-        'iadb': 'International Competitive Bidding',
-        'tedeu': 'Open Procedure',
-        'sam_gov': 'Full and Open Competition',
-        'ungm': 'International Competitive Bidding'
-    }
-    
-    # If we have the source table and a procurement method
-    if row.get('source_table') and row.get('procurement_method') and row['procurement_method'].strip():
-        method = row['procurement_method'].lower()
-        
-        # Standardize method names based on common patterns
-        if 'open' in method or 'competitive' in method:
-            if 'international' in method:
-                return 'International Competitive Bidding'
-            elif 'national' in method:
-                return 'National Competitive Bidding'
-            else:
-                return 'Open Competitive Bidding'
-        elif 'direct' in method or 'sole source' in method or 'single source' in method:
-            return 'Direct Procurement'
-        elif 'limited' in method or 'selective' in method or 'restricted' in method:
-            return 'Limited Competitive Bidding'
-        elif 'quality' in method and 'cost' in method:
-            return 'Quality and Cost-Based Selection'
-        elif 'consultant' in method and 'selection' in method:
-            return 'Consultant Qualification Selection'
-        elif 'request for proposal' in method or 'rfp' in method:
-            return 'Request for Proposal'
-        elif 'request for quotation' in method or 'rfq' in method:
-            return 'Request for Quotation'
-    
-    # Use source table default
-    if row.get('source_table') and row['source_table'] in table_defaults:
-        return table_defaults[row['source_table']]
-    
-    # Fallback to the provided default or a generic term
-    return default or 'Competitive Bidding'
-
 def ensure_country(country_value):
     """
     Normalize country names to standard English names.
@@ -1832,6 +1346,24 @@ def ensure_country(country_value):
     country_value = country_value.strip()
     if not country_value:
         return None
+    
+    # Special cases that need exact matching
+    special_cases = {
+        "multinational": "Multinational",
+        "rca": "Central African Republic",
+        "rdc": "Democratic Republic of the Congo",
+        "program for integrated rural sanitation in upper egypt": "Egypt",
+        "program for integrated rural sanitation in upper egypt (simplified)": "Egypt",
+        "cabo verde": "Cape Verde",
+        "caboverde": "Cape Verde",
+        "eswatini": "Eswatini",
+        "bostwana": "Botswana",
+    }
+    
+    # Check for exact match in special cases first (case insensitive)
+    normalized = special_cases.get(country_value.lower())
+    if normalized:
+        return normalized
     
     # Common country name variations (including French names and abbreviations)
     country_mapping = {
@@ -1996,12 +1528,64 @@ def ensure_country(country_value):
     if normalized:
         return normalized
     
-    # Check for partial matches (for longer country names)
+    # Check for exact matches in country names (to avoid partial matching errors)
+    exact_country_names = [
+        "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda",
+        "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain",
+        "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan",
+        "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria",
+        "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada",
+        "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros",
+        "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark",
+        "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador",
+        "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland",
+        "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
+        "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary",
+        "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy",
+        "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait",
+        "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
+        "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia",
+        "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico",
+        "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique",
+        "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua",
+        "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
+        "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines",
+        "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
+        "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino",
+        "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles",
+        "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
+        "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan",
+        "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania",
+        "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia",
+        "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates",
+        "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City",
+        "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "Ivory Coast",
+        "Democratic Republic of the Congo", "Republic of the Congo", "Cape Verde"
+    ]
+    
+    # Check if the country value is an exact match (case insensitive)
+    for country in exact_country_names:
+        if country_value.lower() == country.lower():
+            return country
+    
+    # More careful partial matching - only for longer country names and with stricter criteria
     if len(country_value) > 5:
+        # Create a list of potential matches
+        potential_matches = []
+        
         for key, value in country_mapping.items():
-            # Check if the key is in the country value or vice versa
-            if key in country_value.lower() or country_value.lower() in key:
-                return value
+            # Only consider keys that are actual words, not codes
+            if len(key) > 2:
+                # Check if the key is a substantial part of the country value
+                if key in country_value.lower():
+                    potential_matches.append((key, value, len(key)))
+        
+        # Sort by length of match (longer matches are more likely to be correct)
+        potential_matches.sort(key=lambda x: x[2], reverse=True)
+        
+        # If we have matches, return the longest one
+        if potential_matches:
+            return potential_matches[0][1]
     
     # If no match found, return the original value with proper capitalization
     # This handles standard English country names that don't need mapping
