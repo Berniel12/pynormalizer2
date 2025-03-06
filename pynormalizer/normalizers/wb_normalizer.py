@@ -4,6 +4,7 @@ import re
 import json
 import logging
 from typing import Dict, Any, Optional, List, Tuple
+import traceback
 
 from pynormalizer.models.source_models import WBTender
 from pynormalizer.models.unified_model import UnifiedTender
@@ -540,26 +541,62 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
                 "description": "Main tender notice"
             })
     
+    # DEBUG: Add comprehensive logging
+    logger.info(f"WB Normalizer - Processing country extraction for ID: {row.get('id', 'unknown')}")
+    
+    # DEBUG: Log country_value details
+    logger.info(f"country_value before processing: {country_value}, Type: {type(country_value).__name__ if country_value is not None else 'None'}")
+    
     # Ensure we have a country value using our fallback mechanisms - FIXED
     # Ensure country_value is a proper string before passing to ensure_country
     # to prevent the 'tuple' object has no attribute 'strip' error
     country_str = None
-    if country_value:
-        if isinstance(country_value, tuple) and len(country_value) > 0:
-            # If country_value is a tuple, extract the first element if it's a string
-            if isinstance(country_value[0], str):
-                country_str = country_value[0].strip() if country_value[0].strip() else None
-        elif isinstance(country_value, str) and country_value.strip():
-            country_str = country_value.strip()
+    try:
+        if country_value:
+            logger.info(f"Processing country_value: {country_value}, Type: {type(country_value).__name__}")
+            if isinstance(country_value, tuple):
+                logger.info(f"country_value is a tuple of length {len(country_value)}")
+                if len(country_value) > 0:
+                    # If country_value is a tuple, extract the first element if it's a string
+                    if isinstance(country_value[0], str):
+                        country_str = country_value[0].strip() if country_value[0].strip() else None
+                        logger.info(f"Extracted string from tuple: {country_str}")
+                    else:
+                        logger.warning(f"First element of tuple is not a string: {type(country_value[0]).__name__}")
+            elif isinstance(country_value, str) and country_value.strip():
+                country_str = country_value.strip()
+                logger.info(f"country_value is a string: {country_str}")
+            else:
+                logger.warning(f"country_value is neither tuple nor string: {type(country_value).__name__}")
+    except Exception as e:
+        logger.error(f"Error processing country_value: {e}")
+        logger.error(traceback.format_exc())
+    
+    logger.info(f"Final country_str: {country_str}, Type: {type(country_str).__name__ if country_str is not None else 'None'}")
+    
+    # DEBUG: Log parameters being passed to ensure_country
+    logger.info("ensure_country parameters:")
+    logger.info(f"- country: {country_str}, Type: {type(country_str).__name__ if country_str is not None else 'None'}")
+    logger.info(f"- text: {wb_obj.description[:100] if hasattr(wb_obj, 'description') and wb_obj.description else None}..., Type: {type(wb_obj.description).__name__ if hasattr(wb_obj, 'description') and wb_obj.description is not None else 'None'}")
+    logger.info(f"- organization: {organization_name}, Type: {type(organization_name).__name__ if organization_name is not None else 'None'}")
+    logger.info(f"- email: {getattr(wb_obj, 'contact_email', None)}, Type: {type(getattr(wb_obj, 'contact_email', None)).__name__ if getattr(wb_obj, 'contact_email', None) is not None else 'None'}")
+    logger.info(f"- language: {language}, Type: {type(language).__name__ if language is not None else 'None'}")
     
     # Now safely call ensure_country with a properly validated string (or None)
-    country = ensure_country(
-        country=country_str,  # Will be None or a valid string, never a tuple
-        text=wb_obj.description if hasattr(wb_obj, 'description') and isinstance(wb_obj.description, str) else None,
-        organization=organization_name,
-        email=getattr(wb_obj, 'contact_email', None),
-        language=language
-    )
+    try:
+        country = ensure_country(
+            country=country_str,  # Will be None or a valid string, never a tuple
+            text=wb_obj.description if hasattr(wb_obj, 'description') and isinstance(wb_obj.description, str) else None,
+            organization=organization_name,
+            email=getattr(wb_obj, 'contact_email', None),
+            language=language
+        )
+        logger.info(f"ensure_country returned: {country}")
+    except Exception as e:
+        logger.error(f"ensure_country failed with error: {e}")
+        logger.error(traceback.format_exc())
+        # Fall back to a safe value
+        country = "Unknown"
     
     # Create UnifiedTender object
     normalized_tender = UnifiedTender(
