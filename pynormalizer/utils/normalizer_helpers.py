@@ -5,7 +5,7 @@ import json
 import logging
 import re
 from typing import Any, Dict, Optional, Tuple, List, Union
-from datetime import datetime
+from datetime import datetime, date
 from pynormalizer.models.unified_model import UnifiedTender
 from pynormalizer.utils.translation import translate_to_english
 
@@ -217,136 +217,193 @@ def extract_financial_info(text):
     if not text:
         return None, None
     
-    # Define common currency codes and symbols
+    # Define common currency codes and symbols with expanded variations
     currency_patterns = {
-        'USD': ['USD', 'US$', '$', 'Dollar', 'Dollars'],
-        'EUR': ['EUR', '€', 'Euro', 'Euros'],
-        'GBP': ['GBP', '£', 'Pound', 'Pounds'],
-        'JPY': ['JPY', '¥', 'Yen'],
-        'CNY': ['CNY', 'RMB', 'Yuan'],
-        'INR': ['INR', '₹', 'Rupee', 'Rupees'],
-        'MWK': ['MWK', 'Malawi Kwacha'],
-        'AUD': ['AUD', 'AU$', 'Australian Dollar'],
-        'CAD': ['CAD', 'CA$', 'Canadian Dollar'],
-        'CHF': ['CHF', 'Swiss Franc'],
-        'XAF': ['XAF', 'CFA Franc'],
+        'USD': ['USD', 'US$', '$', 'Dollar', 'Dollars', 'US Dollar', 'U.S. Dollar'],
+        'EUR': ['EUR', '€', 'Euro', 'Euros', 'euro', 'euros'],
+        'GBP': ['GBP', '£', 'Pound', 'Pounds', 'Sterling', 'British Pound'],
+        'JPY': ['JPY', '¥', 'Yen', 'Japanese Yen'],
+        'CNY': ['CNY', 'RMB', 'Yuan', 'Chinese Yuan'],
+        'INR': ['INR', '₹', 'Rupee', 'Rupees', 'Indian Rupee'],
+        'MWK': ['MWK', 'Malawi Kwacha', 'Kwacha'],
+        'AUD': ['AUD', 'AU$', 'Australian Dollar', 'A$'],
+        'CAD': ['CAD', 'CA$', 'Canadian Dollar', 'C$'],
+        'CHF': ['CHF', 'Swiss Franc', 'Fr'],
+        'XAF': ['XAF', 'CFA Franc', 'FCFA', 'Franc CFA'],
         'NGN': ['NGN', '₦', 'Naira'],
-        'ZAR': ['ZAR', 'R', 'Rand'],
-        'KES': ['KES', 'KSh', 'Kenyan Shilling'],
+        'ZAR': ['ZAR', 'R', 'Rand', 'South African Rand'],
+        'KES': ['KES', 'KSh', 'Kenyan Shilling', 'Shilling'],
         'BRL': ['BRL', 'R$', 'Real', 'Reais'],
-        'RWF': ['RWF', 'Rwf', 'Rwandan Francs', 'Rwandan Franc'],
+        'RWF': ['RWF', 'Rwf', 'RF', 'FRw', 'Rwandan Francs', 'Rwandan Franc'],
+        'TZS': ['TZS', 'TSh', 'Tanzanian Shilling'],
+        'UGX': ['UGX', 'USh', 'Ugandan Shilling'],
+        'ETB': ['ETB', 'Birr', 'Ethiopian Birr'],
     }
     
-    # First, check for specific Rwanda franc pattern which is often missed
-    # Pattern like: "Rwf 10,000" or "10,000 Rwandan Francs"
-    rwf_patterns = [
-        r'(?:Rwf|RWF)\s*([\d,\.]+(?:\s*million|\s*M|\s*billion|\s*B)?)',
-        r'([\d,\.]+)(?:\s*million|\s*M|\s*billion|\s*B)?\s*(?:Rwandan Francs?|RWF|Rwf)'
+    # Check for specific currency patterns with values
+    # First check for Rwanda Franc which is often misidentified
+    rwandan_franc_patterns = [
+        # Various Rwandan Franc patterns with values
+        r'(?:RF|Rwf|RWF|FRw)[\s\:]*([\d,\.]+(?:\s*(?:million|m|billion|b))?)',
+        r'([\d,\.]+(?:\s*(?:million|m|billion|b))?)[\s\:]?(?:RF|Rwf|RWF|FRw)',
+        r'(?:Rwandan Franc[s]?)[\s\:]*([\d,\.]+(?:\s*(?:million|m|billion|b))?)',
+        r'([\d,\.]+(?:\s*(?:million|m|billion|b))?)[\s\:]?(?:Rwandan Franc[s]?)',
     ]
     
-    for pattern in rwf_patterns:
+    for pattern in rwandan_franc_patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
         if matches:
-            try:
-                # Process the first match
-                value_str = matches[0].replace(',', '')
-                multiplier = 1
-                
-                # Check for million/billion indicators
-                if re.search(r'million|M', text, re.IGNORECASE):
-                    multiplier = 1000000
-                    value_str = re.sub(r'million|M', '', value_str, flags=re.IGNORECASE).strip()
-                elif re.search(r'billion|B', text, re.IGNORECASE):
-                    multiplier = 1000000000
-                    value_str = re.sub(r'billion|B', '', value_str, flags=re.IGNORECASE).strip()
-                    
-                value = float(value_str) * multiplier
-                return value, 'RWF'
-            except (ValueError, IndexError):
-                # Skip if value can't be parsed
-                pass
-    
-    # Find financial values with currency indicators
-    # Pattern matches both "USD 1,000,000" and "1,000,000 USD" formats
-    # Also handles decimal points and various separators
-    financial_patterns = [
-        # Currency code/symbol followed by number: USD 1,000,000.00
-        r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+)(?:\s*(?:million|billion|m|b))?',
-        # Number followed by currency code/name: 1,000,000.00 USD
-        r'([\d,\.]+)(?:\s*(?:million|billion|m|b))?\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan)',
-        # Numeric with M/B suffix: USD 1.5M, 1.5B USD
-        r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+[MB])',
-        r'([\d,\.]+[MB])\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan)',
-        # Additional pattern for "X million USD" format
-        r'([\d,\.]+)\s+(?:million|billion)\s+([A-Z]{3}|dollars?|euros?|pounds?)'
-    ]
-    
-    # Search for patterns in text
-    for pattern in financial_patterns:
-        matches = re.finditer(pattern, text, re.IGNORECASE)
-        for match in matches:
-            groups = match.groups()
-            
-            # Determine which group is the currency and which is the value
-            currency_indicator = None
-            value_str = None
-            
-            # Check if first group looks like a currency
-            first_group = groups[0].strip().upper()
-            if first_group in currency_patterns or any(first_group in patterns for patterns in currency_patterns.values()):
-                currency_indicator = first_group
-                value_str = groups[1]
-            else:
-                # Second group must be the currency
-                currency_indicator = groups[1].strip().upper()
-                value_str = groups[0]
-            
-            # Clean up the value string
-            if value_str:
-                # Handle million/billion indicators
-                million_multiplier = 1
-                if 'M' in value_str.upper() or 'MILLION' in value_str.upper() or 'million' in text.lower():
-                    million_multiplier = 1000000
-                    value_str = value_str.upper().replace('M', '').replace('MILLION', '')
-                elif 'B' in value_str.upper() or 'BILLION' in value_str.upper() or 'billion' in text.lower():
-                    million_multiplier = 1000000000
-                    value_str = value_str.upper().replace('B', '').replace('BILLION', '')
-                
-                # Extract just digits and decimal point
-                value_str = re.sub(r'[^\d\.]', '', value_str.replace(',', ''))
-                
+            for match in matches:
                 try:
-                    value = float(value_str) * million_multiplier
+                    # Process the value
+                    value_str = match.replace(',', '')
+                    multiplier = 1
                     
-                    # Map currency indicator to standard code
-                    currency = None
-                    for code, indicators in currency_patterns.items():
-                        if any(indicator.upper() == currency_indicator.upper() or 
-                               indicator.upper() in currency_indicator.upper() for indicator in indicators):
-                            currency = code
-                            break
+                    # Check for million/billion indicators
+                    if re.search(r'million|m\b', value_str, re.IGNORECASE):
+                        multiplier = 1000000
+                        value_str = re.sub(r'million|m\b', '', value_str, flags=re.IGNORECASE).strip()
+                    elif re.search(r'billion|b\b', value_str, re.IGNORECASE):
+                        multiplier = 1000000000
+                        value_str = re.sub(r'billion|b\b', '', value_str, flags=re.IGNORECASE).strip()
                     
-                    if currency:
-                        return value, currency
+                    value = float(value_str) * multiplier
+                    return value, 'RWF'
                 except (ValueError, TypeError):
                     continue
     
-    # Look for numeric-only amounts without explicit currency if context suggests a currency
-    if 'rwandan francs' in text.lower() or 'rwf' in text.lower():
-        amount_pattern = r'([\d,\.]+)(?:\s*million|\s*billion)?'
-        matches = re.findall(amount_pattern, text)
-        if matches:
+    # General currency patterns
+    # Pattern 1: Currency code/symbol followed by value
+    currency_value_pattern = r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+(?:\s*(?:million|m|billion|b))?)'
+    
+    # Pattern 2: Value followed by currency code/name
+    value_currency_pattern = r'([\d,\.]+(?:\s*(?:million|m|billion|b))?)\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan|franc)'
+    
+    # Pattern 3: Value with M/B suffix (e.g., $1.5M, 1.5B EUR)
+    value_suffix_pattern = r'([A-Z]{3}|[€£$¥₹₦])\s*([\d,\.]+[MB])'
+    suffix_value_pattern = r'([\d,\.]+[MB])\s*([A-Z]{3}|[€£$¥₹₦]|dollars?|euros?|pounds?|yen|yuan|franc)'
+    
+    # Pattern 4: X million/billion [Currency]
+    million_pattern = r'([\d,\.]+)\s+(?:million|billion)\s+([A-Z]{3}|dollars?|euros?|pounds?|francs?|yen|yuan)'
+    
+    # Pattern 5: Contract value/amount/price pattern
+    contract_value_pattern = r'(?:contract|estimated) (?:value|amount|price|cost)[:\s]+([\d,\.]+\s*(?:million|m|billion|b)?)[:\s]*([A-Z]{3}|[€£$¥₹₦])?'
+    contract_value_inv_pattern = r'(?:contract|estimated) (?:value|amount|price|cost)[:\s]*([A-Z]{3}|[€£$¥₹₦])?\s*([\d,\.]+\s*(?:million|m|billion|b)?)'
+    
+    # Try all patterns in sequence
+    patterns = [
+        (currency_value_pattern, 0, 1),  # (pattern, currency_group, value_group)
+        (value_currency_pattern, 1, 0),
+        (value_suffix_pattern, 0, 1),
+        (suffix_value_pattern, 1, 0),
+        (million_pattern, 1, 0),
+        (contract_value_pattern, 1, 0),
+        (contract_value_inv_pattern, 0, 1)
+    ]
+    
+    for pattern_info in patterns:
+        pattern, currency_group, value_group = pattern_info
+        matches = re.finditer(pattern, text, re.IGNORECASE)
+        
+        for match in matches:
             try:
-                value_str = matches[0].replace(',', '')
+                groups = match.groups()
+                if len(groups) < 2:
+                    continue
+                    
+                currency_indicator = groups[currency_group].strip()
+                value_str = groups[value_group].strip()
+                
+                # Process the value
                 multiplier = 1
-                if 'million' in text.lower():
+                if re.search(r'million|m\b', value_str, re.IGNORECASE) or re.search(r'million|m\b', match.group(0), re.IGNORECASE):
                     multiplier = 1000000
-                elif 'billion' in text.lower():
+                    value_str = re.sub(r'million|m\b', '', value_str, flags=re.IGNORECASE).strip()
+                elif re.search(r'billion|b\b', value_str, re.IGNORECASE) or re.search(r'billion|b\b', match.group(0), re.IGNORECASE):
                     multiplier = 1000000000
+                    value_str = re.sub(r'billion|b\b', '', value_str, flags=re.IGNORECASE).strip()
+                
+                # Handle M/B suffixes
+                if value_str.upper().endswith('M'):
+                    multiplier = 1000000
+                    value_str = value_str[:-1]
+                elif value_str.upper().endswith('B'):
+                    multiplier = 1000000000
+                    value_str = value_str[:-1]
+                
+                # Clean value string and convert to float
+                value_str = re.sub(r'[^\d\.]', '', value_str.replace(',', ''))
                 value = float(value_str) * multiplier
-                return value, 'RWF'
-            except (ValueError, IndexError):
-                pass
+                
+                # Map currency indicator to standard code
+                currency = None
+                for code, indicators in currency_patterns.items():
+                    if any(indicator.upper() == currency_indicator.upper() or currency_indicator.upper() in indicator.upper() for indicator in indicators):
+                        currency = code
+                        break
+                        
+                # If found currency with value, return it
+                if currency and value:
+                    return value, currency
+            except (ValueError, TypeError, IndexError):
+                continue
+    
+    # Fallback pattern: look for standalone monetary values with default currency
+    # Try to guess currency from context if value found
+    value_only_pattern = r'(?:value|amount|cost|price)[:]\s*([\d,\.]+\s*(?:million|m|billion|b)?)'
+    value_only_matches = re.findall(value_only_pattern, text, re.IGNORECASE)
+    
+    if value_only_matches:
+        try:
+            value_str = value_only_matches[0]
+            multiplier = 1
+            
+            if re.search(r'million|m\b', value_str, re.IGNORECASE):
+                multiplier = 1000000
+                value_str = re.sub(r'million|m\b', '', value_str, flags=re.IGNORECASE).strip()
+            elif re.search(r'billion|b\b', value_str, re.IGNORECASE):
+                multiplier = 1000000000
+                value_str = re.sub(r'billion|b\b', '', value_str, flags=re.IGNORECASE).strip()
+            
+            value_str = re.sub(r'[^\d\.]', '', value_str.replace(',', ''))
+            value = float(value_str) * multiplier
+            
+            # Try to detect currency from context
+            currency = None
+            text_lower = text.lower()
+            
+            # Default country-currency mapping
+            if 'rwanda' in text_lower:
+                currency = 'RWF'
+            elif 'kenya' in text_lower:
+                currency = 'KES'
+            elif 'tanzania' in text_lower:
+                currency = 'TZS'
+            elif 'uganda' in text_lower:
+                currency = 'UGX'
+            elif 'south africa' in text_lower:
+                currency = 'ZAR'
+            elif 'nigeria' in text_lower:
+                currency = 'NGN'
+            elif 'ethiopia' in text_lower:
+                currency = 'ETB'
+            elif 'india' in text_lower:
+                currency = 'INR'
+            elif 'euro' in text_lower or 'eur' in text_lower:
+                currency = 'EUR'
+            elif 'dollar' in text_lower or 'usd' in text_lower:
+                currency = 'USD'
+            elif 'pound' in text_lower or 'gbp' in text_lower:
+                currency = 'GBP'
+            
+            if value and currency:
+                return value, currency
+            elif value:
+                # Default to USD if currency can't be determined but value exists
+                return value, 'USD'
+                
+        except (ValueError, TypeError, IndexError):
+            pass
     
     return None, None
 
@@ -534,58 +591,103 @@ def extract_location_info(text: str) -> Tuple[Optional[str], Optional[str]]:
     
     return country, city
 
-def extract_organization(text: str) -> Optional[str]:
+def extract_organization_and_buyer(text: str) -> Tuple[Optional[str], Optional[str]]:
     """
-    Extract organization name from text.
+    Extract organization and buyer information from text.
     
     Args:
-        text: Text to extract from
+        text: Text to extract organization and buyer information from
         
     Returns:
-        Organization name or None if not found
+        Tuple of (organization_name, buyer)
     """
-    if not text or not isinstance(text, str):
-        return None
+    if not text:
+        return None, None
     
-    # Common patterns for organization names
+    organization_name = None
+    buyer = None
+    
+    # Extract organization patterns
     org_patterns = [
-        # Government ministries
-        r"Ministry of ([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*)",
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Ministry",
-        # Departments
-        r"Department of ([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*)",
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Department",
-        # Authorities, agencies, boards, etc.
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Authority",
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Agency",
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Board",
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Commission",
-        # Offices
-        r"Office of ([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*)",
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Office",
-        # Banks, funds
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Bank",
-        r"([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) Fund",
-        # Full organization names (common patterns)
-        r"(?:The )?([A-Z][a-z]+(?:\s+[A-Za-z][a-z]+)*) (?:Authority|Agency|Bank|Board|Commission|Corporation|Council|Fund|Group|Institute|Organization|Programme|Project|Service|Trust|Unit)",
-        # Client: or buyer: patterns
-        r"Client: ([^\.]+)",
-        r"Buyer: ([^\.]+)",
-        r"Employer: ([^\.]+)",
-        r"Procuring entity: ([^\.]+)",
-        r"Executing agency: ([^\.]+)"
+        # Common organization intro phrases
+        r'(?:by|from|for|issued by|on behalf of)\s+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+in|\s+for|\s+at|\s+\(|\.|$)',
+        # Organization followed by action
+        r'([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)\s+(?:invites|announces|requests|is seeking|has issued)',
+        # Explicit mentions
+        r'(?:implementing agency|contracting authority|issuing authority|procurement entity|client)[\s\:]+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+|\.|$)',
+        # Specific to World Bank/ADB
+        r'(?:borrower|recipient|purchaser)[\s\:]+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+|\.|$)',
+        # For buyer/client specific patterns
+        r'(?:buyer|client|purchaser|employer)[\s\:]+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+|\.|$)',
+        # Awarded to pattern
+        r'(?:awarded to|contract awarded to)[\s\:]+([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:\s+|\.|$)'
     ]
     
-    # Check each pattern
-    for pattern in org_patterns:
-        matches = re.findall(pattern, text)
-        if matches:
-            # Return the first non-empty match
-            for match in matches:
-                if match and isinstance(match, str) and match.strip():
-                    return match.strip()
+    # Try each pattern for organization
+    for pattern in org_patterns[:4]:  # First 4 patterns are for organizations
+        try:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                for match in matches:
+                    potential_org = match.strip()
+                    # Filter out false positives
+                    if (len(potential_org) > 4 and 
+                        potential_org.lower() not in ['the', 'this', 'that', 'these', 'those', 'their', 'our'] and
+                        not re.match(r'^\d+$', potential_org)):
+                        organization_name = potential_org
+                        break
+                if organization_name:
+                    break
+        except Exception:
+            continue
     
-    return None
+    # Try buyer-specific patterns
+    for pattern in org_patterns[4:]:  # Last 2 patterns are for buyers
+        try:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                for match in matches:
+                    potential_buyer = match.strip()
+                    # Filter out false positives
+                    if (len(potential_buyer) > 4 and 
+                        potential_buyer.lower() not in ['the', 'this', 'that', 'these', 'those', 'their', 'our'] and
+                        not re.match(r'^\d+$', potential_buyer)):
+                        buyer = potential_buyer
+                        break
+                if buyer:
+                    break
+        except Exception:
+            continue
+    
+    # Special case for World Bank awarded contracts
+    awarded_pattern = r'Awarded Bidder\(s\):\s*([A-Za-z0-9\s\(\)&,\.\-\']{5,50}?)(?:,|\(|$)'
+    if not buyer:
+        awarded_match = re.search(awarded_pattern, text)
+        if awarded_match:
+            buyer = awarded_match.group(1).strip()
+    
+    # If we have only a buyer but no organization, set organization to buyer
+    if buyer and not organization_name:
+        organization_name = buyer
+    
+    # Handle country prefixes in organization names (e.g., "RWANDA - Organization Name")
+    if organization_name:
+        country_prefix_match = re.match(r'^([A-Z]{2,})\s*-\s*(.+)$', organization_name)
+        if country_prefix_match:
+            country_code = country_prefix_match.group(1).strip()
+            org_name = country_prefix_match.group(2).strip()
+            
+            # Only separate if first part looks like a country code
+            if len(country_code) > 3 and country_code not in ['UNDP', 'UNEP', 'UNHCR', 'UNICEF', 'WHO', 'FAO', 'IBRD', 'ADB', 'AIIB', 'IFC']:
+                organization_name = org_name
+    
+    # Clean up names
+    if organization_name:
+        organization_name = re.sub(r'\s+', ' ', organization_name).strip()
+    if buyer:
+        buyer = re.sub(r'\s+', ' ', buyer).strip()
+    
+    return organization_name, buyer
 
 def extract_procurement_method(text: str) -> Optional[str]:
     """
@@ -709,53 +811,72 @@ def extract_procurement_method(text: str) -> Optional[str]:
 
 def extract_status(deadline: Optional[datetime] = None, 
                    status_text: Optional[str] = None, 
-                   description: Optional[str] = None) -> Optional[str]:
+                   description: Optional[str] = None,
+                   publication_date: Optional[datetime] = None) -> Optional[str]:
     """
-    Extract or determine status of a tender from various fields.
+    Determine the status of a tender based on the deadline, status text, and description.
     
     Args:
-        deadline: Deadline date if available
+        deadline: Deadline date for the tender
         status_text: Explicit status text if available
-        description: Description text to extract status from if other methods fail
+        description: Description text to extract status from
+        publication_date: Publication date for the tender
         
     Returns:
-        Status string or None if unable to determine
+        Standardized status string or None if cannot be determined
     """
-    # If explicit status is provided, use specific status mappings
+    # Current time for comparison
+    now = datetime.now()
+    
+    # If explicit status text is provided, standardize it
     if status_text:
-        status_text = status_text.lower()
-        
-        # Common status mappings
-        if any(term in status_text for term in ['active', 'open', 'ongoing', 'current', 'published']):
-            return 'Open'
-        elif any(term in status_text for term in ['closed', 'complete', 'awarded', 'finished', 'expired']):
-            return 'Closed'
-        elif any(term in status_text for term in ['cancel', 'withdrawn', 'suspend']):
-            return 'Canceled'
-        elif any(term in status_text for term in ['upcoming', 'planned', 'future']):
-            return 'Planned'
+        return standardize_status(status_text)
     
-    # Check deadline if available
-    if deadline:
-        # If deadline has passed, mark as closed
-        if deadline < datetime.now():
-            return 'Closed'
-        else:
-            return 'Open'
-    
-    # Try to extract from description as last resort
+    # Check for status keywords in description
     if description:
-        description = description.lower()
+        # Look for common status phrases
+        status_patterns = {
+            r'(?:tender|bid) (?:status|is)\s*(?::|is)?\s*(active|open|closed|cancelled|canceled|awarded|complete|in progress|pending|published)': 1,
+            r'status\s*(?::|is)?\s*(active|active & open|open|closed|cancelled|canceled|awarded|complete|completed|under review|in progress|pending|published)': 1,
+            r'(?:this|the) (?:tender|opportunity) is (active|open|closed|cancelled|canceled|awarded|complete|in progress|pending|published)': 1,
+            r'(?:project|procurement) status\s*(?::|is)?\s*(active|open|closed|cancelled|canceled|awarded|complete|in progress|pending|published)': 1,
+            # World Bank "Status: Active" pattern in project_number field
+            r'Status:\s*(Active|Open|Closed|Cancelled|Canceled|Awarded|Complete|In Progress|Pending|Published)': 1
+        }
         
-        # Check for status indicators in description
-        if any(term in description for term in ['has been awarded', 'contract awarded', 'tender closed', 'bidding closed']):
-            return 'Closed'
-        elif any(term in description for term in ['is now open', 'bidding open', 'currently accepting', 'submit bid by']):
-            return 'Open'
-        elif any(term in description for term in ['has been canceled', 'tender canceled', 'bidding canceled']):
-            return 'Canceled'
+        for pattern, group in status_patterns.items():
+            match = re.search(pattern, description, re.IGNORECASE)
+            if match:
+                found_status = match.group(group).strip().lower()
+                return standardize_status(found_status)
+        
+        # Check for contract award language
+        if re.search(r'contract(?:\s+has been)?\s+awarded', description, re.IGNORECASE):
+            return "Awarded"
+        
+        # Check for cancellation language
+        if re.search(r'(?:tender|bid|procurement)(?:\s+has been)?\s+cancelled', description, re.IGNORECASE) or \
+           re.search(r'(?:tender|bid|procurement)(?:\s+has been)?\s+canceled', description, re.IGNORECASE):
+            return "Cancelled"
     
-    # Unable to determine    
+    # Determine status based on deadline
+    if deadline:
+        if deadline > now:
+            return "Open"
+        else:
+            return "Closed"
+    
+    # Use publication date as fallback
+    if publication_date:
+        # If published in the last 30 days and no deadline, assume Open
+        thirty_days = 30 * 24 * 60 * 60  # 30 days in seconds
+        if (now - publication_date).total_seconds() < thirty_days:
+            return "Open"
+        else:
+            # If older than 30 days and no deadline, assume Closed
+            return "Closed"
+    
+    # Default status if no other information
     return None
 
 def log_before_after(source_type: str, source_id: str, before: Dict[str, Any], after: UnifiedTender):
@@ -776,10 +897,10 @@ def log_before_after(source_type: str, source_id: str, before: Dict[str, Any], a
 
 def standardize_status(status: str) -> str:
     """
-    Standardize status values across different sources.
+    Standardize a status string to a common format.
     
     Args:
-        status: Original status string
+        status: Raw status string
         
     Returns:
         Standardized status string
@@ -787,69 +908,89 @@ def standardize_status(status: str) -> str:
     if not status:
         return None
         
-    status = status.strip().lower()
+    status_lower = status.lower().strip()
     
-    # Status mapping to standard values
-    status_mapping = {
-        # Active statuses
-        'active': 'Active',
+    # Standardized status mapping
+    status_map = {
+        # Open/Active statuses
         'open': 'Open',
-        'current': 'Active',
-        'ongoing': 'Active',
-        'in progress': 'Active',
-        'published': 'Published',
+        'active': 'Open',
+        'active & open': 'Open',
+        'published': 'Open',
+        'current': 'Open',
+        'ongoing': 'Open',
+        'live': 'Open',
+        'in progress': 'Open',
+        'accepting': 'Open',
+        'accepting bids': 'Open',
+        'active & published': 'Open',
+        'posted': 'Open',
+        'soliciting': 'Open',
         
         # Closed statuses
         'closed': 'Closed',
-        'canceled': 'Cancelled',
-        'cancelled': 'Cancelled',
-        'completed': 'Completed',
-        'terminated': 'Cancelled',
+        'complete': 'Closed',
+        'completed': 'Closed',
         'expired': 'Closed',
+        'finished': 'Closed',
+        'ended': 'Closed',
+        'terminated': 'Closed',
+        'deadline passed': 'Closed',
         
-        # Award statuses
-        'awarded': 'Awarded',
-        'award': 'Awarded',
-        'contract award': 'Awarded',
-        'awarded contract': 'Awarded',
+        # Awarded statuses
+        'awarded': 'Awarded', 
         'contract awarded': 'Awarded',
+        'award': 'Awarded',
+        'completed and awarded': 'Awarded',
+        'closed and awarded': 'Awarded',
         
-        # Pending statuses
-        'pending': 'Pending',
-        'evaluation': 'Under Evaluation',
-        'under evaluation': 'Under Evaluation',
-        'evaluating': 'Under Evaluation',
+        # Cancelled statuses
+        'cancelled': 'Cancelled',
+        'canceled': 'Cancelled',
+        'withdrawn': 'Cancelled',
+        'suspended': 'Cancelled',
+        'discontinued': 'Cancelled',
+        'terminated early': 'Cancelled',
         
-        # Draft statuses
-        'draft': 'Draft',
-        'planned': 'Planned',
+        # Draft/Planned statuses
+        'draft': 'Planned',
         'planning': 'Planned',
+        'planned': 'Planned',
+        'upcoming': 'Planned',
+        'scheduled': 'Planned',
+        'future': 'Planned',
+        'not yet published': 'Planned',
+        'pre-solicitation': 'Planned',
         
-        # Other statuses
-        'request for quotation': 'Open',
-        'request for proposal': 'Open',
-        'request for information': 'Open',
-        'request for interest': 'Open'
+        # Special statuses
+        'under review': 'Under Review',
+        'pending': 'Pending',
+        'evaluation': 'Under Review',
+        'evaluating': 'Under Review',
+        'inactive': 'Inactive'
     }
     
-    # Try exact match first
-    if status in status_mapping:
-        return status_mapping[status]
+    # First, check for exact matches in the standardized statuses
+    if status_lower in status_map:
+        return status_map[status_lower]
     
-    # Try partial match if exact match fails
-    for key, value in status_mapping.items():
-        if key in status:
-            return value
+    # If not an exact match, check for key terms within the status
+    for key_term, std_status in status_map.items():
+        if key_term in status_lower:
+            return std_status
     
-    # Handle special cases with keyword detection
-    if any(keyword in status for keyword in ['rfp', 'rfq', 'rfi', 'tender']):
-        return 'Open'
-    
-    if any(keyword in status for keyword in ['award', 'awarded', 'contract']):
+    # Check specific patterns with phrases
+    if any(term in status_lower for term in ['award', 'awarded', 'contract awarded']):
         return 'Awarded'
+    elif any(term in status_lower for term in ['cancel', 'cancelled', 'canceled', 'withdraw']):
+        return 'Cancelled'
+    elif any(term in status_lower for term in ['review', 'evaluation', 'evaluating', 'processing']):
+        return 'Under Review'
     
-    # Default to returning the original status with proper capitalization
-    return status.title()
+    # If no match found, return capitalized status as fallback
+    words = status.split()
+    capitalized = ' '.join(word.capitalize() for word in words)
+    return capitalized
 
 def extract_sector_info(text: str) -> str:
     """
@@ -929,3 +1070,164 @@ def extract_sector_info(text: str) -> str:
             continue
     
     return None 
+
+def parse_date_from_text(text: str) -> Optional[datetime]:
+    """
+    Extract and parse dates from text using various patterns.
+    
+    Args:
+        text: Text containing date information
+        
+    Returns:
+        Parsed datetime or None if no date found
+    """
+    if not text:
+        return None
+        
+    # Handle common date formats in text
+    date_patterns = [
+        # Formal date patterns
+        r'(?:deadline|due date|closing date|submission date)[:\s]+(\d{1,2}[\s\-\.]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\-\.]+\d{4})',
+        r'(?:deadline|due date|closing date|submission date)[:\s]+(\d{1,2}[\s\-\.]+(?:January|February|March|April|May|June|July|August|September|October|November|December)[a-z]*[\s\-\.]+\d{4})',
+        r'(?:deadline|due date|closing date|submission date)[:\s]+(\d{4}[\s\-\.]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\-\.]+\d{1,2})',
+        r'(?:deadline|due date|closing date|submission date)[:\s]+(\d{4}[\s\-\.]+(?:January|February|March|April|May|June|July|August|September|October|November|December)[a-z]*[\s\-\.]+\d{1,2})',
+        
+        # Date in format DD Month YYYY
+        r'(\d{1,2}(?:st|nd|rd|th)?[\s\-\.]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\-\.]+\d{4})',
+        r'(\d{1,2}(?:st|nd|rd|th)?[\s\-\.]+(?:January|February|March|April|May|June|July|August|September|October|November|December)[a-z]*[\s\-\.]+\d{4})',
+        
+        # Date in format Month DD, YYYY
+        r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\-\.]+\d{1,2}(?:st|nd|rd|th)?[\s\,\-\.]+\d{4})',
+        r'((?:January|February|March|April|May|June|July|August|September|October|November|December)[a-z]*[\s\-\.]+\d{1,2}(?:st|nd|rd|th)?[\s\,\-\.]+\d{4})',
+        
+        # Date in format YYYY/MM/DD or YYYY-MM-DD
+        r'(\d{4}[\s\-\.\/]+\d{1,2}[\s\-\.\/]+\d{1,2})',
+        
+        # Date in format DD/MM/YYYY or DD-MM-YYYY
+        r'(\d{1,2}[\s\-\.\/]+\d{1,2}[\s\-\.\/]+\d{4})'
+    ]
+    
+    # Try each pattern
+    for pattern in date_patterns:
+        try:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                date_str = matches[0].strip()
+                
+                # Try multiple date formats
+                date_formats = [
+                    "%d %b %Y", "%d %B %Y", 
+                    "%b %d, %Y", "%B %d, %Y",
+                    "%d-%b-%Y", "%d-%B-%Y",
+                    "%d.%m.%Y", "%m.%d.%Y",
+                    "%d/%m/%Y", "%m/%d/%Y",
+                    "%Y-%m-%d", "%Y/%m/%d",
+                    "%d %m %Y", "%m %d %Y",
+                    "%Y %m %d"
+                ]
+                
+                # Clean up the date string
+                date_str = re.sub(r'(?:st|nd|rd|th)', '', date_str)
+                date_str = re.sub(r'\s+', ' ', date_str)
+                date_str = date_str.strip()
+                
+                # Try each format
+                for fmt in date_formats:
+                    try:
+                        dt = datetime.strptime(date_str, fmt)
+                        return dt
+                    except ValueError:
+                        continue
+        except Exception as e:
+            logger.debug(f"Error parsing date from pattern {pattern}: {e}")
+            continue
+    
+    # Special case for "Status: Active    Deadline: 13 Mar 2025" format
+    deadline_match = re.search(r'Deadline:?\s*(\d{1,2}\s+[A-Za-z]{3,}\s+\d{4})', text)
+    if deadline_match:
+        deadline_str = deadline_match.group(1).strip()
+        try:
+            return datetime.strptime(deadline_str, "%d %b %Y")
+        except ValueError:
+            try:
+                return datetime.strptime(deadline_str, "%d %B %Y")
+            except ValueError:
+                pass
+    
+    return None
+
+def parse_date_string(date_str: Optional[Union[str, datetime, date]]) -> Optional[datetime]:
+    """
+    Parse a date string in various formats into a datetime object.
+    
+    Args:
+        date_str: Date string to parse
+        
+    Returns:
+        Parsed datetime or None if parsing fails
+    """
+    if not date_str:
+        return None
+        
+    # If already a datetime or date, convert/return it
+    if isinstance(date_str, datetime):
+        return date_str
+    elif isinstance(date_str, date):
+        return datetime.combine(date_str, datetime.min.time())
+    
+    # For string dates, try multiple formats
+    if isinstance(date_str, str):
+        # Strip any timezone indicators for simpler parsing
+        clean_date_str = date_str.strip().split('+')[0].split('Z')[0].strip()
+        
+        # Try ISO format first
+        try:
+            return datetime.fromisoformat(clean_date_str)
+        except (ValueError, TypeError):
+            pass
+        
+        # Try common formats
+        date_formats = [
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M:%S.%f",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+            "%d/%m/%Y",
+            "%m/%d/%Y",
+            "%d-%m-%Y",
+            "%m-%d-%Y",
+            "%d %b %Y",
+            "%d %B %Y",
+            "%b %d, %Y",
+            "%B %d, %Y"
+        ]
+        
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(clean_date_str, fmt)
+            except (ValueError, TypeError):
+                continue
+        
+        # Try to extract a date from text
+        return parse_date_from_text(clean_date_str)
+    
+    return None 
+
+def extract_organization(text: str) -> Optional[str]:
+    """
+    Extract organization name from text.
+    
+    Args:
+        text: Text to extract from
+        
+    Returns:
+        Organization name or None if not found
+    """
+    if not text or not isinstance(text, str):
+        return None
+        
+    # Use the new enhanced function and return just the organization
+    organization_name, _ = extract_organization_and_buyer(text)
+    return organization_name 

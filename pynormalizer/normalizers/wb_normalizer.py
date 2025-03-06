@@ -1,9 +1,9 @@
-import json
-import re
-import logging
-from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import uuid
+import re
+import json
+import logging
+from typing import Dict, Any, Optional, List, Tuple
 
 from pynormalizer.models.source_models import WBTender
 from pynormalizer.models.unified_model import UnifiedTender
@@ -16,9 +16,10 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_location_info,
     extract_procurement_method,
     extract_organization,
+    extract_organization_and_buyer,
     extract_status,
-    standardize_status,
-    extract_sector_info
+    extract_sector_info,
+    parse_date_string
 )
 
 # Initialize logger
@@ -428,6 +429,17 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
                     title_project_match = re.search(r'([^:]+?)\s+Project', wb_obj.title)
                     if title_project_match:
                         project_name = title_project_match.group(1).strip()
+    
+    # For contract awards, extract deadline from description if not available in object
+    if hasattr(wb_obj, 'notice_type') and wb_obj.notice_type and 'Award' in wb_obj.notice_type and not deadline_dt and wb_obj.description:
+        # Try to extract deadline from description text
+        deadline_match = re.search(r'(?:Deadline|Due Date|Closing Date)[:;]?\s*(\d{1,2}[\s\-/\.]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\-/\.]+\d{4}|\d{4}[\s\-/\.]+\d{1,2}[\s\-/\.]+\d{1,2})', wb_obj.description, re.IGNORECASE)
+        if deadline_match:
+            deadline_text = deadline_match.group(1).strip()
+            try:
+                deadline_dt = parse_date_string(deadline_text)
+            except Exception as e:
+                logger.warning(f"Failed to parse deadline date '{deadline_text}': {e}")
     
     # If we have a project ID but no project name, try to create a generic project name
     if project_id and not project_name:

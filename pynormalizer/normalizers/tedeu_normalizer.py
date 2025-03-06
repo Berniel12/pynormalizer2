@@ -15,7 +15,8 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_location_info,
     extract_procurement_method,
     extract_organization,
-    extract_status
+    extract_status,
+    extract_organization_and_buyer
 )
 
 def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
@@ -148,34 +149,38 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     if hasattr(tedeu_obj, 'links') and tedeu_obj.links:
         document_links = normalize_document_links(tedeu_obj.links)
     
-    # Extract organization information
+    # Try to extract status based on dates and notice_status
+    status = None
+    if hasattr(tedeu_obj, 'notice_status') and tedeu_obj.notice_status:
+        status = tedeu_obj.notice_status
+    
+    # Use the improved extract_status function to determine status using multiple inputs
+    status = extract_status(
+        deadline=deadline_dt, 
+        status_text=status,
+        description=tedeu_obj.summary if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary else None,
+        publication_date=publication_dt
+    )
+    
+    # Extract organization information using the enhanced functions
     organization_name = None
     buyer = None
     
-    if hasattr(tedeu_obj, 'authority_name') and tedeu_obj.authority_name:
-        organization_name = tedeu_obj.authority_name
+    # First try from direct fields
+    if hasattr(tedeu_obj, 'organisation_name') and tedeu_obj.organisation_name:
+        organization_name = tedeu_obj.organisation_name
     
     if hasattr(tedeu_obj, 'buyer_name') and tedeu_obj.buyer_name:
         buyer = tedeu_obj.buyer_name
     
-    # Determine status based on dates and explicit status field
-    status = None
-    if hasattr(tedeu_obj, 'status') and tedeu_obj.status:
-        status = tedeu_obj.status
-    else:
-        # Derive status from dates if not explicitly set
-        current_dt = datetime.now()
-        
-        if deadline_dt and current_dt > deadline_dt:
-            status = "Closed"
-        elif publication_dt and current_dt >= publication_dt:
-            status = "Open"
-        elif publication_dt and current_dt < publication_dt:
-            status = "Planned"
-        else:
-            # Default to Active if we have any dates
-            if publication_dt or deadline_dt:
-                status = "Active"
+    # Try to extract from summary if not found
+    if not organization_name or not buyer:
+        if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary:
+            extracted_org, extracted_buyer = extract_organization_and_buyer(tedeu_obj.summary)
+            if not organization_name and extracted_org:
+                organization_name = extracted_org
+            if not buyer and extracted_buyer:
+                buyer = extracted_buyer
     
     # Extract contact information
     contact_name = None

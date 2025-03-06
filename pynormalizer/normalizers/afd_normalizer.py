@@ -14,7 +14,10 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_location_info,
     extract_organization,
     extract_procurement_method,
-    extract_status
+    extract_status,
+    extract_organization_and_buyer,
+    parse_date_string,
+    parse_date_from_text
 )
 
 def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
@@ -37,55 +40,22 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
     publication_dt = None
     deadline_dt = None
     
-    try:
-        if afd_obj.publication_date:
-            publication_dt = datetime.fromisoformat(afd_obj.publication_date.replace('Z', '+00:00'))
-    except (ValueError, TypeError):
-        # Try additional date formats
-        if afd_obj.publication_date and isinstance(afd_obj.publication_date, str):
-            date_formats = [
-                "%Y-%m-%dT%H:%M:%S",
-                "%Y-%m-%dT%H:%M:%S.%f",
-                "%Y-%m-%d",
-                "%Y/%m/%d",
-                "%d/%m/%Y",
-                "%d-%m-%Y",
-                "%d %b %Y",
-                "%d-%b-%Y",
-                "%B %d, %Y",
-                "%d %B %Y"
-            ]
-            for fmt in date_formats:
-                try:
-                    publication_dt = datetime.strptime(afd_obj.publication_date, fmt)
-                    break
-                except ValueError:
-                    continue
-        
-    try:
-        if afd_obj.deadline:
-            deadline_dt = datetime.fromisoformat(afd_obj.deadline.replace('Z', '+00:00'))
-    except (ValueError, TypeError):
-        # Try additional date formats
-        if afd_obj.deadline and isinstance(afd_obj.deadline, str):
-            date_formats = [
-                "%Y-%m-%dT%H:%M:%S",
-                "%Y-%m-%dT%H:%M:%S.%f",
-                "%Y-%m-%d",
-                "%Y/%m/%d",
-                "%d/%m/%Y",
-                "%d-%m-%Y",
-                "%d %b %Y",
-                "%d-%b-%Y",
-                "%B %d, %Y",
-                "%d %B %Y"
-            ]
-            for fmt in date_formats:
-                try:
-                    deadline_dt = datetime.strptime(afd_obj.deadline, fmt)
-                    break
-                except ValueError:
-                    continue
+    # Try to extract publication date from various fields
+    if afd_obj.publication_date:
+        publication_dt = parse_date_string(afd_obj.publication_date)
+    
+    # If still no publication date, try to extract from notice content
+    if not publication_dt and afd_obj.notice_content and afd_obj.notice_content != "NO CONTENT":
+        publication_dt = parse_date_from_text(afd_obj.notice_content)
+    
+    # Try to extract deadline date from deadline field
+    if afd_obj.deadline:
+        deadline_dt = parse_date_string(afd_obj.deadline)
+    
+    # If no deadline found, try to extract from notice content
+    if not deadline_dt and afd_obj.notice_content and afd_obj.notice_content != "NO CONTENT":
+        # Look for deadline patterns in the content
+        deadline_dt = parse_date_from_text(afd_obj.notice_content)
     
     # Detect language using combined text from title and description
     language_sample = ""
@@ -96,11 +66,29 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
     
     language = detect_language(language_sample.strip()) or "fr"  # Default to French for AFD
     
-    # Extract status based on deadline
+    # Use the improved extract_status function
     status = extract_status(
         deadline=deadline_dt,
-        description=afd_obj.notice_content if afd_obj.notice_content != "NO CONTENT" else None
+        description=afd_obj.notice_content if afd_obj.notice_content != "NO CONTENT" else None,
+        publication_date=publication_dt
     )
+    
+    # Use the improved organization extraction
+    organization_name, buyer_info = extract_organization_and_buyer(
+        afd_obj.notice_content if afd_obj.notice_content != "NO CONTENT" else None
+    )
+    
+    # If no organization from extraction, use the agency field
+    if not organization_name and afd_obj.agency:
+        organization_name = afd_obj.agency
+    
+    # If no buyer from extraction, use the buyer field
+    if not buyer_info and afd_obj.buyer:
+        buyer_info = afd_obj.buyer
+        
+    # If still no organization but we have buyer, use that
+    if not organization_name and buyer_info:
+        organization_name = buyer_info
     
     # Extract tender_type from notice title or content
     tender_type = None
@@ -195,7 +183,7 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
         deadline_date=deadline_dt,
         country=afd_obj.country,
         city=afd_obj.city_locality,
-        buyer=afd_obj.buyer,
+        buyer=buyer_info,
         organization_name=organization_name,
         language=language,
         contact_email=afd_obj.email,
