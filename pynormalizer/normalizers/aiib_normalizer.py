@@ -88,24 +88,36 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
             language = detected
     
     # Try to extract country and city
-    country_value = aiib_obj.member if aiib_obj.member else None
+    country_value = None
     city = None
     
-    if aiib_obj.pdf_content:
-        # Instead of directly assigning the result of extract_location_info
-        # We'll handle the extraction more carefully
-        location_info = extract_location_info(aiib_obj.pdf_content)
-        if location_info and isinstance(location_info, tuple) and len(location_info) > 1:
-            extracted_country, extracted_city = location_info
-            if extracted_city:
-                city = extracted_city
-            # We'll use ensure_country to handle the country value
+    # First try to get country from member field
+    if aiib_obj.member and isinstance(aiib_obj.member, str) and aiib_obj.member.strip():
+        country_value = aiib_obj.member.strip()
+    
+    # If no country from member field, try to extract from content
+    if not country_value and aiib_obj.pdf_content:
+        try:
+            # Extract location info but don't assign directly to country
+            location_info = extract_location_info(aiib_obj.pdf_content)
+            if location_info and isinstance(location_info, tuple) and len(location_info) > 1:
+                extracted_country, extracted_city = location_info
+                # Only use extracted country if it's a valid string
+                if extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
+                    country_value = extracted_country.strip()
+                # Only use extracted city if it's a valid string
+                if extracted_city and isinstance(extracted_city, str) and extracted_city.strip():
+                    city = extracted_city.strip()
+        except Exception:
+            # If extraction fails, continue with other methods
+            pass
     
     # Ensure we have a country value using our fallback mechanisms
     country = ensure_country(
-        country=country_value,
+        country=country_value,  # Pass string value only, not tuple
         text=aiib_obj.pdf_content,
         organization=organization_name,
+        email=None,  # We don't have email in AIIB data
         language=language
     )
     

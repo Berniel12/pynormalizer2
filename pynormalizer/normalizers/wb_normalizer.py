@@ -202,30 +202,50 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
         status = "Active"
     
     # Extract country and city - try direct attributes first
-    country = None
+    country_value = None
     city = None
     
-    if hasattr(wb_obj, 'country') and wb_obj.country:
-        country = wb_obj.country
+    # First try to get country from direct attributes
+    if hasattr(wb_obj, 'country') and wb_obj.country and isinstance(wb_obj.country, str) and wb_obj.country.strip():
+        country_value = wb_obj.country.strip()
+    elif hasattr(wb_obj, 'project_ctry_name') and wb_obj.project_ctry_name and isinstance(wb_obj.project_ctry_name, str) and wb_obj.project_ctry_name.strip():
+        country_value = wb_obj.project_ctry_name.strip()
     
-    if hasattr(wb_obj, 'city') and wb_obj.city:
-        city = wb_obj.city
+    # Get city if available
+    if hasattr(wb_obj, 'city') and wb_obj.city and isinstance(wb_obj.city, str) and wb_obj.city.strip():
+        city = wb_obj.city.strip()
     
     # Try to extract from contact_address if available
-    if (not country or not city) and hasattr(wb_obj, 'contact_address') and wb_obj.contact_address:
-        extracted_country, extracted_city = extract_location_info(wb_obj.contact_address)
-        if not country and extracted_country:
-            country = extracted_country
-        if not city and extracted_city:
-            city = extracted_city
+    if (not country_value or not city) and hasattr(wb_obj, 'contact_address') and wb_obj.contact_address:
+        try:
+            extracted_location = extract_location_info(wb_obj.contact_address)
+            if extracted_location and isinstance(extracted_location, tuple) and len(extracted_location) > 1:
+                extracted_country, extracted_city = extracted_location
+                # Only use extracted country if it's a valid string and we don't already have one
+                if not country_value and extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
+                    country_value = extracted_country.strip()
+                # Only use extracted city if it's a valid string and we don't already have one
+                if not city and extracted_city and isinstance(extracted_city, str) and extracted_city.strip():
+                    city = extracted_city.strip()
+        except Exception:
+            # If extraction fails, continue with other methods
+            pass
     
     # If still no country or city, try to extract from description
-    if (not country or not city) and hasattr(wb_obj, 'description') and wb_obj.description:
-        extracted_country, extracted_city = extract_location_info(wb_obj.description)
-        if not country and extracted_country:
-            country = extracted_country
-        if not city and extracted_city:
-            city = extracted_city
+    if (not country_value or not city) and hasattr(wb_obj, 'description') and wb_obj.description:
+        try:
+            extracted_location = extract_location_info(wb_obj.description)
+            if extracted_location and isinstance(extracted_location, tuple) and len(extracted_location) > 1:
+                extracted_country, extracted_city = extracted_location
+                # Only use extracted country if it's a valid string and we don't already have one
+                if not country_value and extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
+                    country_value = extracted_country.strip()
+                # Only use extracted city if it's a valid string and we don't already have one
+                if not city and extracted_city and isinstance(extracted_city, str) and extracted_city.strip():
+                    city = extracted_city.strip()
+        except Exception:
+            # If extraction fails, continue with other methods
+            pass
     
     # Extract organization name
     organization_name = None
@@ -519,13 +539,6 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
                 "language": language,
                 "description": "Main tender notice"
             })
-    
-    # Make sure country is always populated - get a string value
-    country_value = None
-    if hasattr(wb_obj, 'country') and wb_obj.country:
-        country_value = wb_obj.country
-    elif hasattr(wb_obj, 'project_ctry_name') and wb_obj.project_ctry_name:
-        country_value = wb_obj.project_ctry_name
     
     # Ensure we have a country value using our fallback mechanisms
     country = ensure_country(
