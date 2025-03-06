@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Entry point script for Apify that:
-1. Runs the country normalization fix script
+1. Runs the country normalization fix script (optional, now skipped by default)
 2. Then runs the main normalization process
 """
 import os
@@ -126,7 +126,7 @@ def main():
     parser.add_argument("--tables", type=str, nargs="*", help="Specific tables to process")
     parser.add_argument("--batch-size", type=int, default=50, help="Batch size for processing")
     parser.add_argument("--limit", type=int, help="Maximum number of records to process per table")
-    parser.add_argument("--skip-fix", action="store_true", help="Skip the country normalization fix")
+    parser.add_argument("--run-fix", action="store_true", help="Run the country normalization fix")
     parser.add_argument("--timeout", type=int, default=1800, help="Timeout in seconds (default: 1800 = 30 minutes)")
     args = parser.parse_args()
     
@@ -136,8 +136,8 @@ def main():
             logger.error("Supabase environment variables not set. Please set SUPABASE_URL and SUPABASE_KEY.")
             sys.exit(1)
         
-        # 1. Run country normalization fix first (unless skipped)
-        if not args.skip_fix:
+        # 1. Run country normalization fix first (only if explicitly requested)
+        if args.run_fix:
             logger.info("Running country normalization fix...")
             fix_cmd = ["python", "fix_country_normalization.py", "--batch-size", str(args.batch_size or 100)]
             
@@ -153,7 +153,7 @@ def main():
             if fix_code != 0:
                 logger.warning("Country fix did not complete successfully, but continuing with main normalization")
         else:
-            logger.info("Skipping country normalization fix as requested")
+            logger.info("Skipping country normalization fix (already completed)")
         
         # 2. Run main normalization process
         logger.info("Running main normalization process...")
