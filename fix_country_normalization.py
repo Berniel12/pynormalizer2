@@ -63,20 +63,20 @@ def fix_incorrect_country_normalizations(db_config=None, batch_size=100, dry_run
     }
     
     try:
-        # Connect to the database
-        conn = get_connection(db_config)
-        cursor = conn.cursor()
+        # Connect to the database using Supabase client
+        supabase = get_connection(db_config)
         
         # Process each incorrect country normalization
         for incorrect, correct in COUNTRY_FIXES.items():
             logger.info(f"Checking for records with country='{incorrect}'")
             
             # Count records with this country value
-            cursor.execute(
-                "SELECT COUNT(*) FROM unified_tenders WHERE country = %s",
-                (incorrect,)
-            )
-            count = cursor.fetchone()[0]
+            count_response = supabase.table('unified_tenders') \
+                .select('id', count='exact') \
+                .eq('country', incorrect) \
+                .execute()
+            
+            count = count_response.count or 0
             logger.info(f"Found {count} records with country='{incorrect}'")
             stats["total_checked"] += count
             
@@ -94,31 +94,32 @@ def fix_incorrect_country_normalizations(db_config=None, batch_size=100, dry_run
             
             while offset < count:
                 # Get a batch of records
-                cursor.execute(
-                    "SELECT id, country FROM unified_tenders WHERE country = %s LIMIT %s OFFSET %s",
-                    (incorrect, batch_size, offset)
-                )
-                records = cursor.fetchall()
+                records_response = supabase.table('unified_tenders') \
+                    .select('id, country') \
+                    .eq('country', incorrect) \
+                    .range(offset, offset + batch_size - 1) \
+                    .execute()
+                
+                records = records_response.data
                 
                 if not records:
                     break
                     
                 # Process each record
-                for record_id, country in records:
+                for record in records:
+                    record_id = record['id']
+                    country = record['country']
+                    
                     log_before_after("country", country, correct)
                     
                     if not dry_run:
                         # Update the record
-                        cursor.execute(
-                            "UPDATE unified_tenders SET country = %s WHERE id = %s",
-                            (correct, record_id)
-                        )
+                        supabase.table('unified_tenders') \
+                            .update({'country': correct}) \
+                            .eq('id', record_id) \
+                            .execute()
                     
                     fixed_count += 1
-                
-                # Commit the batch
-                if not dry_run:
-                    conn.commit()
                 
                 offset += batch_size
                 logger.info(f"Processed {min(offset, count)}/{count} records with country='{incorrect}'")
@@ -143,9 +144,6 @@ def fix_incorrect_country_normalizations(db_config=None, batch_size=100, dry_run
     except Exception as e:
         logger.exception(f"Error fixing country normalizations: {e}")
         raise
-    finally:
-        if 'conn' in locals() and conn:
-            conn.close()
 
 def main():
     """Run the country normalization fix script."""

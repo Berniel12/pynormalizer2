@@ -1603,3 +1603,63 @@ def log_before_after(field, before, after):
     if before != after:
         logger.info(f"Normalized {field}: '{before}' -> '{after}'")
     return after
+
+def determine_normalized_method(row, default=None):
+    """
+    Determine the normalized_method for a tender based on source table and available data.
+    
+    Args:
+        row (dict): Row of data from a source table
+        default (str, optional): Default value if no method can be determined
+        
+    Returns:
+        str: The normalized procurement method
+    """
+    # If normalized_method is already set and valid, return it
+    if row.get('normalized_method') and row['normalized_method'].strip():
+        return row['normalized_method']
+    
+    # Default methods by source table
+    table_defaults = {
+        'wb': 'International Competitive Bidding',
+        'adb': 'Open Competitive Bidding',
+        'afdb': 'International Competitive Bidding', 
+        'afd': 'International Competitive Bidding',
+        'aiib': 'International Open Competitive Tendering',
+        'iadb': 'International Competitive Bidding',
+        'tedeu': 'Open Procedure',
+        'sam_gov': 'Full and Open Competition',
+        'ungm': 'International Competitive Bidding'
+    }
+    
+    # If we have the source table and a procurement method
+    if row.get('source_table') and row.get('procurement_method') and row['procurement_method'].strip():
+        method = row['procurement_method'].lower()
+        
+        # Standardize method names based on common patterns
+        if 'open' in method or 'competitive' in method:
+            if 'international' in method:
+                return 'International Competitive Bidding'
+            elif 'national' in method:
+                return 'National Competitive Bidding'
+            else:
+                return 'Open Competitive Bidding'
+        elif 'direct' in method or 'sole source' in method or 'single source' in method:
+            return 'Direct Procurement'
+        elif 'limited' in method or 'selective' in method or 'restricted' in method:
+            return 'Limited Competitive Bidding'
+        elif 'quality' in method and 'cost' in method:
+            return 'Quality and Cost-Based Selection'
+        elif 'consultant' in method and 'selection' in method:
+            return 'Consultant Qualification Selection'
+        elif 'request for proposal' in method or 'rfp' in method:
+            return 'Request for Proposal'
+        elif 'request for quotation' in method or 'rfq' in method:
+            return 'Request for Quotation'
+    
+    # Use source table default
+    if row.get('source_table') and row['source_table'] in table_defaults:
+        return table_defaults[row['source_table']]
+    
+    # Fallback to the provided default or a generic term
+    return default or 'Competitive Bidding'
