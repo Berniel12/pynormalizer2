@@ -60,6 +60,13 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
     # Use project_notice as the title if available, otherwise use a placeholder
     title = aiib_obj.project_notice or f"AIIB Tender - {aiib_obj.id}"
     
+    # Detect language - MOVED UP before country extraction
+    language = "en"  # Default for AIIB
+    if aiib_obj.pdf_content:
+        detected = detect_language(aiib_obj.pdf_content)
+        if detected:
+            language = detected
+    
     # Extract status from text or dates
     status = None
     if aiib_obj.type:
@@ -80,42 +87,40 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
     if aiib_obj.pdf_content:
         estimated_value, currency = extract_financial_info(aiib_obj.pdf_content)
     
-    # Detect language - MOVED UP before country extraction
-    language = "en"  # Default for AIIB
-    if aiib_obj.pdf_content:
-        detected = detect_language(aiib_obj.pdf_content)
-        if detected:
-            language = detected
-    
-    # Try to extract country and city
-    country_value = None
+    # Try to extract country and city - COMPLETELY REWRITTEN for safety
+    country_string = None  # This will hold our final string value for country
     city = None
     
-    # First try to get country from member field
+    # First try to get country from member field - with strict type checking
     if aiib_obj.member and isinstance(aiib_obj.member, str) and aiib_obj.member.strip():
-        country_value = aiib_obj.member.strip()
+        country_string = aiib_obj.member.strip()
     
     # If no country from member field, try to extract from content
-    if not country_value and aiib_obj.pdf_content:
+    if not country_string and aiib_obj.pdf_content and isinstance(aiib_obj.pdf_content, str):
         try:
-            # Extract location info but don't assign directly to country
-            location_info = extract_location_info(aiib_obj.pdf_content)
-            if location_info and isinstance(location_info, tuple) and len(location_info) > 1:
-                extracted_country, extracted_city = location_info
-                # Only use extracted country if it's a valid string
+            # Extract location info safely
+            location_tuple = extract_location_info(aiib_obj.pdf_content)
+            
+            # Properly unpack the tuple with type checking
+            if isinstance(location_tuple, tuple) and len(location_tuple) >= 2:
+                extracted_country, extracted_city = location_tuple
+                
+                # Verify extracted country is a valid string
                 if extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
-                    country_value = extracted_country.strip()
-                # Only use extracted city if it's a valid string
+                    country_string = extracted_country.strip()
+                
+                # Verify extracted city is a valid string
                 if extracted_city and isinstance(extracted_city, str) and extracted_city.strip():
                     city = extracted_city.strip()
         except Exception:
-            # If extraction fails, continue with other methods
+            # If extraction fails, keep country_string as None
             pass
     
     # Ensure we have a country value using our fallback mechanisms
+    # ONLY pass a string to ensure_country, never a tuple
     country = ensure_country(
-        country=country_value,  # Pass string value only, not tuple
-        text=aiib_obj.pdf_content,
+        country=country_string,  # Now guaranteed to be None or a valid string
+        text=aiib_obj.pdf_content if isinstance(aiib_obj.pdf_content, str) else None,
         organization=organization_name,
         email=None,  # We don't have email in AIIB data
         language=language

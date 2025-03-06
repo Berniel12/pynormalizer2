@@ -1289,7 +1289,15 @@ def ensure_country(country: Optional[str],
     Returns:
         A non-empty country string, or "Unknown" as absolute fallback
     """
-    # Handle the case where country might be a tuple (from extract_location_info)
+    # IMPROVED SAFETY: Additional defensive type checking at the start
+    # This should catch any tuple, list or other non-string types passed in
+    if not country or not isinstance(country, str):
+        country = None
+    elif isinstance(country, str) and not country.strip():
+        country = None
+        
+    # The old tuple handling code is now redundant, but keeping for backward compatibility
+    # with any code paths we haven't updated yet
     if isinstance(country, tuple) and len(country) > 0:
         # If it's a tuple from extract_location_info, the first element is the country
         country_val = country[0]
@@ -1298,6 +1306,22 @@ def ensure_country(country: Optional[str],
     # Normal string case
     elif country and isinstance(country, str) and country.strip():
         return country.strip()
+    
+    # IMPROVED SAFETY: Additional text type checking
+    if text and not isinstance(text, str):
+        text = None
+    
+    # IMPROVED SAFETY: Additional organization type checking
+    if organization and not isinstance(organization, str):
+        organization = None
+    
+    # IMPROVED SAFETY: Additional email type checking
+    if email and not isinstance(email, str):
+        email = None
+    
+    # IMPROVED SAFETY: Additional language type checking
+    if language and not isinstance(language, str):
+        language = None
     
     # Countries to look for in text
     countries = [
@@ -1339,12 +1363,18 @@ def ensure_country(country: Optional[str],
         # First, try extract_location_info which is specialized for this
         try:
             extracted_location = extract_location_info(text)
-            if extracted_location and isinstance(extracted_location, tuple) and len(extracted_location) > 0:
-                extracted_country = extracted_location[0]
-                if extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
-                    return extracted_country.strip()
-        except Exception:
-            # If extraction fails, continue with other methods
+            # IMPROVED SAFETY: More thorough type and value checking
+            if extracted_location:
+                if isinstance(extracted_location, tuple) and len(extracted_location) > 0:
+                    extracted_country = extracted_location[0]
+                    if extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
+                        return extracted_country.strip()
+                elif isinstance(extracted_location, str) and extracted_location.strip():
+                    # Handle case where extraction might return a string directly
+                    return extracted_location.strip()
+        except Exception as e:
+            # IMPROVED SAFETY: More specific exception handling
+            # If extraction fails, log the error type and continue with other methods
             pass
             
         # Look for country names directly

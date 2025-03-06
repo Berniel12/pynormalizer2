@@ -540,10 +540,22 @@ def normalize_wb(row: Dict[str, Any]) -> UnifiedTender:
                 "description": "Main tender notice"
             })
     
-    # Ensure we have a country value using our fallback mechanisms
+    # Ensure we have a country value using our fallback mechanisms - FIXED
+    # Ensure country_value is a proper string before passing to ensure_country
+    # to prevent the 'tuple' object has no attribute 'strip' error
+    country_str = None
+    if country_value:
+        if isinstance(country_value, tuple) and len(country_value) > 0:
+            # If country_value is a tuple, extract the first element if it's a string
+            if isinstance(country_value[0], str):
+                country_str = country_value[0].strip() if country_value[0].strip() else None
+        elif isinstance(country_value, str) and country_value.strip():
+            country_str = country_value.strip()
+    
+    # Now safely call ensure_country with a properly validated string (or None)
     country = ensure_country(
-        country=country_value,  # Pass string value only, not tuple
-        text=wb_obj.description,
+        country=country_str,  # Will be None or a valid string, never a tuple
+        text=wb_obj.description if hasattr(wb_obj, 'description') and isinstance(wb_obj.description, str) else None,
         organization=organization_name,
         email=getattr(wb_obj, 'contact_email', None),
         language=language
