@@ -790,7 +790,10 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
         "hongkong": "Hong Kong",
         "ivory coast": "Côte d'Ivoire",
         "burma": "Myanmar",
-        "macedonia": "North Macedonia"
+        "macedonia": "North Macedonia",
+        "vietnam": "Vietnam",
+        "viet nam": "Vietnam",
+        "armenia": "Armenia"
     }
     normalized = country_names.get(country_value.lower())
     if normalized:
@@ -809,12 +812,27 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
     # Validate against known countries
     known_countries = {
         "United States", "China", "India", "Germany",
-        "France", "United Kingdom", "Japan", "Brazil"
-        # ... (full list of recognized countries)
+        "France", "United Kingdom", "Japan", "Brazil",
+        "Armenia", "Vietnam", "Australia", "Canada",
+        "Mexico", "Russia", "Italy", "Spain", "South Korea",
+        "Indonesia", "Saudi Arabia", "Turkey", "Pakistan",
+        "Thailand", "Philippines", "Malaysia", "Singapore",
+        "Bangladesh", "Sri Lanka", "Nepal", "Cambodia",
+        "Laos", "Myanmar", "North Korea", "Mongolia",
+        "South Africa", "Nigeria", "Egypt", "Kenya",
+        "Ghana", "Ethiopia", "Tanzania", "Uganda",
+        "Zimbabwe", "Botswana", "Namibia", "Zambia",
+        "Mozambique", "Angola", "Senegal", "Côte d'Ivoire"
+        # More countries will be recognized automatically through title case
     }
     if cleaned in known_countries:
         return cleaned
     
+    # For country values that match basic validation patterns but aren't in known_countries,
+    # accept them if they are properly capitalized and don't contain numbers
+    if re.match(r'^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$', cleaned) and not re.search(r'\d', cleaned):
+        return cleaned
+        
     return None
 
 def log_before_after(field, before, after):
