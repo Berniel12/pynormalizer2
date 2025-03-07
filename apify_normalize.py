@@ -19,24 +19,57 @@ logger.info(f"Working Directory: {os.getcwd()}")
 logger.info(f"Directory Contents: {os.listdir('.')}")
 logger.info(f"Pynormalizer Directory: {os.path.exists('pynormalizer')}")
 
+# Try multiple import strategies to increase reliability
+normalize_all_tenders = None
+
+# Strategy 1: Import through the package structure (recommended way)
 try:
     from pynormalizer.utils.db import get_supabase_client
-    logger.info("Successfully imported get_supabase_client")
+    logger.info("✅ Successfully imported get_supabase_client")
     
-    from pynormalizer.main import normalize_all_tenders
-    logger.info("Successfully imported normalize_all_tenders")
+    # Try importing directly from pynormalizer package
+    from pynormalizer import normalize_all_tenders
+    logger.info("✅ Successfully imported normalize_all_tenders from package")
     
     from pynormalizer.utils.translation import setup_translation_models, get_supported_languages
-    logger.info("Successfully imported translation modules")
+    logger.info("✅ Successfully imported translation modules")
 except ImportError as e:
-    logger.error(f"Import error: {e}")
-    logger.error(f"Module info - pynormalizer exists: {os.path.exists('pynormalizer')}")
-    if os.path.exists('pynormalizer'):
-        logger.error(f"Pynormalizer contents: {os.listdir('pynormalizer')}")
-        if os.path.exists('pynormalizer/main.py'):
-            with open('pynormalizer/main.py', 'r') as f:
-                logger.error(f"First 10 lines of main.py: {f.readlines()[:10]}")
-    raise
+    logger.warning(f"Package import failed: {e}, trying alternative import method...")
+    
+    # Strategy 2: Direct import from main module
+    try:
+        from pynormalizer.main import normalize_all_tenders
+        logger.info("✅ Successfully imported normalize_all_tenders from main module")
+    except ImportError as e:
+        logger.error(f"Main module import failed: {e}")
+        
+        # Strategy 3: Direct import with module loading
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("main", "pynormalizer/main.py")
+            main = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(main)
+            normalize_all_tenders = main.normalize_all_tenders
+            logger.info("✅ Successfully imported normalize_all_tenders using importlib")
+        except Exception as e:
+            logger.error(f"All import strategies failed: {e}")
+            logger.error(f"Module info - pynormalizer exists: {os.path.exists('pynormalizer')}")
+            if os.path.exists('pynormalizer'):
+                logger.error(f"Pynormalizer contents: {os.listdir('pynormalizer')}")
+                if os.path.exists('pynormalizer/main.py'):
+                    with open('pynormalizer/main.py', 'r') as f:
+                        logger.error(f"First 20 lines of main.py: {f.readlines()[:20]}")
+                if os.path.exists('pynormalizer/__init__.py'):
+                    with open('pynormalizer/__init__.py', 'r') as f:
+                        logger.error(f"__init__.py contents: {f.read()}")
+            raise
+
+# Verify that we successfully imported the function
+if normalize_all_tenders is None:
+    logger.error("Failed to import normalize_all_tenders using any method")
+    raise ImportError("normalize_all_tenders could not be imported")
+else:
+    logger.info(f"✅ normalize_all_tenders successfully imported: {normalize_all_tenders.__module__}")
 
 # Configure logging
 logging.basicConfig(

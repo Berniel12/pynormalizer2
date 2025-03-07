@@ -36,14 +36,23 @@ def run_with_timeout(cmd, timeout_seconds=1800):  # Default 30-minute timeout
     """
     start_time = time.time()
     
-    # Start the process
+    # Setup enhanced environment with correct PYTHONPATH
+    env = os.environ.copy()
+    env['PYTHONPATH'] = '/usr/src/app:' + env.get('PYTHONPATH', '')
+    
+    # Log command and environment for debugging
+    logger.info(f"Running command: {' '.join(cmd)}")
+    logger.info(f"With PYTHONPATH: {env.get('PYTHONPATH')}")
+    
+    # Start the process with enhanced environment
     process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
-        universal_newlines=True
+        universal_newlines=True,
+        env=env
     )
     
     # Initialize output buffers
