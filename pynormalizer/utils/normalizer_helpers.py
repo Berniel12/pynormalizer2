@@ -758,9 +758,48 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
     # Store the original value before cleaning in case we need to fall back to it
     original_value = country_value
     
-    country_value = re.sub(r'[^a-zA-Z0-9\s-]', '', country_value).strip()
-    if not country_value:
+    # Convert to string and clean
+    if not isinstance(country_value, str):
+        country_value = str(country_value)
+    
+    # Store the original value before cleaning in case we need to fall back to it
+    original_value = country_value
+    
+    # Instead of just removing special characters, replace accented characters with non-accented equivalents
+    # This maintains readability of country names
+    accent_map = {
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a',
+        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+        'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o',
+        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+        'ý': 'y', 'ÿ': 'y',
+        'ç': 'c', 'ñ': 'n',
+        'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+        'Á': 'A', 'À': 'A', 'Â': 'A', 'Ä': 'A',
+        'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+        'Ó': 'O', 'Ò': 'O', 'Ô': 'O', 'Ö': 'O',
+        'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+        'Ý': 'Y', 'Ç': 'C', 'Ñ': 'N',
+        'ã': 'a', 'õ': 'o', 'Ã': 'A', 'Õ': 'O'  # Portuguese characters
+    }
+    
+    # Replace accented characters
+    for accented, non_accented in accent_map.items():
+        country_value = country_value.replace(accented, non_accented)
+    
+    # Handle apostrophes and special cases
+    country_value = country_value.replace("'", " ").replace("`", " ")
+    
+    # Now remove any remaining non-alphanumeric characters except spaces and hyphens
+    cleaned_value = re.sub(r'[^a-zA-Z0-9\s-]', ' ', country_value).strip()
+    cleaned_value = re.sub(r'\s+', ' ', cleaned_value)  # Replace multiple spaces with a single space
+    
+    if not cleaned_value:
         return original_value  # Return the original value if cleaning resulted in empty string
+    
+    # Use the cleaned value for further processing
+    country_value = cleaned_value
     
     # Special cases that need exact matching
     special_cases = {
@@ -831,11 +870,19 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
         "northern ireland": "United Kingdom",
         "hongkong": "Hong Kong",
         "ivory coast": "Côte d'Ivoire",
+        "cote divoire": "Côte d'Ivoire",
+        "cte divoire": "Côte d'Ivoire",
         "burma": "Myanmar",
         "macedonia": "North Macedonia",
         "vietnam": "Vietnam",
         "viet nam": "Vietnam",
-        "armenia": "Armenia"
+        "armenia": "Armenia",
+        "senegal": "Senegal",
+        "guinea": "Guinea",
+        "benin": "Benin", 
+        "nigeria": "Nigeria",
+        "algeria": "Algeria",
+        "equatorial guinea": "Equatorial Guinea"
     }
     normalized = country_names.get(country_value.lower())
     if normalized:

@@ -37,8 +37,10 @@ COUNTRY_FIXES = {
     "Eswatini": "Eswatini",            # Keep as is, don't map to India
     "RDC": "Democratic Republic of the Congo",  # Expand abbreviation
     "RCA": "Central African Republic",  # Expand abbreviation
-    "Côte D'Ivoire": "Ivory Coast",     # Standardize to English name
-    "Côte d'Ivoire": "Ivory Coast",     # Standardize to English name
+    "Côte D'Ivoire": "Cote d'Ivoire",   # Replace accents with regular characters
+    "Côte d'Ivoire": "Cote d'Ivoire",   # Replace accents with regular characters
+    "Sénégal": "Senegal",              # Replace accents with regular characters
+    "Guinée": "Guinea",                # Replace accents with regular characters
     "Program for Integrated Rural Sanitation In Upper Egypt": "Egypt",  # Fix project title as country
     "Program for Integrated Rural Sanitation In Upper Egypt (simplified)": "Egypt"  # Fix project title as country
 }
