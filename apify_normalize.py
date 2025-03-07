@@ -3,15 +3,40 @@
 Script to run the normalization process on Apify using Supabase.
 """
 import os
+import sys
 import logging
 import time
 import argparse
 import json
 from datetime import datetime
 
-from pynormalizer.utils.db import get_supabase_client
-from pynormalizer.main import normalize_all_tenders
-from pynormalizer.utils.translation import setup_translation_models, get_supported_languages
+# Debug import paths before attempting imports
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+logger.info(f"Python Path: {sys.path}")
+logger.info(f"Working Directory: {os.getcwd()}")
+logger.info(f"Directory Contents: {os.listdir('.')}")
+logger.info(f"Pynormalizer Directory: {os.path.exists('pynormalizer')}")
+
+try:
+    from pynormalizer.utils.db import get_supabase_client
+    logger.info("Successfully imported get_supabase_client")
+    
+    from pynormalizer.main import normalize_all_tenders
+    logger.info("Successfully imported normalize_all_tenders")
+    
+    from pynormalizer.utils.translation import setup_translation_models, get_supported_languages
+    logger.info("Successfully imported translation modules")
+except ImportError as e:
+    logger.error(f"Import error: {e}")
+    logger.error(f"Module info - pynormalizer exists: {os.path.exists('pynormalizer')}")
+    if os.path.exists('pynormalizer'):
+        logger.error(f"Pynormalizer contents: {os.listdir('pynormalizer')}")
+        if os.path.exists('pynormalizer/main.py'):
+            with open('pynormalizer/main.py', 'r') as f:
+                logger.error(f"First 10 lines of main.py: {f.readlines()[:10]}")
+    raise
 
 # Configure logging
 logging.basicConfig(

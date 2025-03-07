@@ -3,6 +3,9 @@ FROM python:3.9-slim
 # Set working directory
 WORKDIR /usr/src/app
 
+# Set PYTHONPATH for proper module resolution
+ENV PYTHONPATH="/usr/src/app:$PYTHONPATH"
+
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
