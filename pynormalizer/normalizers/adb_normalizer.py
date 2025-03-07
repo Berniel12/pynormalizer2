@@ -54,23 +54,26 @@ def normalize_adb(row: Dict[str, Any]) -> UnifiedTender:
     # Handle country normalization - ensure it's never None
     country = adb_obj.country
     
-    # Use ensure_country to normalize the country value
-    normalized_country = ensure_country(
-        country_value=country,
-        text=adb_obj.description,
-        organization=adb_obj.project_name  # Use project_name instead of executing_agency
-    )
-    
-    # Never use None as a country value
-    if normalized_country is not None:
-        country = normalized_country
-    elif country is None and adb_obj.project_name and 'philippines' in adb_obj.project_name.lower():
-        # ADB is headquartered in the Philippines, use as fallback
-        country = 'Philippines'
-    elif country is None:
-        # If everything fails, use 'Unknown' instead of None
-        country = 'Unknown'
-        logger.warning(f"Could not determine country for ADB tender {adb_obj.id}, using 'Unknown'")
+    # Keep the original country value if it's not None
+    # Only try to normalize if needed
+    if country is None or country == '':
+        # Use ensure_country to normalize the country value
+        normalized_country = ensure_country(
+            country_value=country,
+            text=adb_obj.description,
+            organization=adb_obj.project_name  # Use project_name instead of executing_agency
+        )
+        
+        # Use normalized_country if it's not None
+        if normalized_country is not None and normalized_country != '':
+            country = normalized_country
+        elif adb_obj.project_name and 'philippines' in adb_obj.project_name.lower():
+            # ADB is headquartered in the Philippines, use as fallback
+            country = 'Philippines'
+        else:
+            # If everything fails, use 'Unknown' instead of None
+            country = 'Unknown'
+            logger.warning(f"Could not determine country for ADB tender {adb_obj.id}, using 'Unknown'")
     
     # Construct the UnifiedTender
     unified = UnifiedTender(

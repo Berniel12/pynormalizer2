@@ -725,7 +725,7 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
         language: Language code to infer country (lowest priority fallback)
         
     Returns:
-        str: Normalized country name or None if invalid
+        str: Normalized country name or original value if can't be normalized
     """
     # Handle both keyword and positional arguments for backward compatibility
     # The old API only had the country_value parameter
@@ -733,21 +733,34 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
     if 'country' in locals() or 'country' in globals():
         country_value = locals().get('country') or globals().get('country')
     
-    if not country_value:
+    # If the original value is empty, try to extract from text
+    if not country_value or country_value == '':
         # Try to extract from text if no value provided
         if text:
             country_from_text, _ = extract_location_info(text)
             if country_from_text:
                 return country_from_text
-        return None
+        
+        # If we have organization info, try to extract from that
+        if organization:
+            for country_name in ["Philippines", "Bangladesh", "Pakistan", "India", "Nepal", "Vietnam", "China"]:
+                if country_name.lower() in organization.lower():
+                    return country_name
+        
+        # At this point, we couldn't find a country, but we don't want to return None
+        # since that can cause issues in the unified tender model
+        return country_value  # Return the original value, even if it's empty
     
     # Convert to string and clean
     if not isinstance(country_value, str):
         country_value = str(country_value)
     
+    # Store the original value before cleaning in case we need to fall back to it
+    original_value = country_value
+    
     country_value = re.sub(r'[^a-zA-Z0-9\s-]', '', country_value).strip()
     if not country_value:
-        return None
+        return original_value  # Return the original value if cleaning resulted in empty string
     
     # Special cases that need exact matching
     special_cases = {
@@ -760,6 +773,23 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
         "caboverde": "Cape Verde",
         "eswatini": "Eswatini",
         "bostwana": "Botswana",
+        
+        # Add common ADB country names
+        "kyrgyz": "Kyrgyz Republic",
+        "kyrgyzstan": "Kyrgyz Republic",
+        "republic of korea": "South Korea",
+        "korea republic": "South Korea",
+        "democratic republic of korea": "North Korea",
+        "uzbek": "Uzbekistan",
+        "micronesia": "Federated States of Micronesia",
+        "fiji": "Fiji",
+        "kazakhstan": "Kazakhstan",
+        "mongolia": "Mongolia",
+        "papua": "Papua New Guinea",
+        "papua new guinea": "Papua New Guinea",
+        "philippines": "Philippines",
+        "uzbekistan": "Uzbekistan",
+        "indonesia": "Indonesia"
     }
     
     # Check for exact match in special cases first (case insensitive)
@@ -775,8 +805,20 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
         "DRC": "Democratic Republic of the Congo",
         "ROK": "South Korea", "PRC": "China",
         "PRY": "Paraguay", "CHE": "Switzerland",
-        "TWN": "Taiwan", "PSE": "Palestine"
+        "TWN": "Taiwan", "PSE": "Palestine",
+        
+        # Add codes for countries typically found in ADB records
+        "KGZ": "Kyrgyz Republic",
+        "UZB": "Uzbekistan",
+        "KAZ": "Kazakhstan",
+        "MNG": "Mongolia",
+        "PNG": "Papua New Guinea",
+        "PHL": "Philippines",
+        "IDN": "Indonesia",
+        "REG": "Regional",  # ADB uses REG for regional projects
+        "FJI": "Fiji"
     }
+    
     if country_value.upper() in country_code_map:
         return country_code_map[country_value.upper()]
     
@@ -801,6 +843,19 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
     
     # Try to extract from organization name
     if organization:
+        # Updated list of countries to search for in organization name
+        common_countries = [
+            "Philippines", "Bangladesh", "Pakistan", "India", "Nepal",
+            "Vietnam", "China", "Kyrgyz Republic", "Uzbekistan", "Kazakhstan",
+            "Mongolia", "Papua New Guinea", "Fiji", "Indonesia"
+        ]
+        
+        # Search for common countries in organization name
+        for country in common_countries:
+            if country.lower() in organization.lower():
+                return country
+        
+        # If no match found with common countries, try broader pattern matching
         org_country_pattern = r'\b({})\b'.format('|'.join(re.escape(c) for c in country_code_map.values()))
         match = re.search(org_country_pattern, organization, re.I)
         if match:
@@ -809,31 +864,50 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
     # Final cleanup and title case
     cleaned = re.sub(r'\s+', ' ', country_value).title()
     
-    # Validate against known countries
+    # Expanded list of known countries with a focus on ADB member countries
     known_countries = {
-        "United States", "China", "India", "Germany",
-        "France", "United Kingdom", "Japan", "Brazil",
-        "Armenia", "Vietnam", "Australia", "Canada",
-        "Mexico", "Russia", "Italy", "Spain", "South Korea",
-        "Indonesia", "Saudi Arabia", "Turkey", "Pakistan",
-        "Thailand", "Philippines", "Malaysia", "Singapore",
-        "Bangladesh", "Sri Lanka", "Nepal", "Cambodia",
-        "Laos", "Myanmar", "North Korea", "Mongolia",
-        "South Africa", "Nigeria", "Egypt", "Kenya",
-        "Ghana", "Ethiopia", "Tanzania", "Uganda",
-        "Zimbabwe", "Botswana", "Namibia", "Zambia",
-        "Mozambique", "Angola", "Senegal", "Côte d'Ivoire"
-        # More countries will be recognized automatically through title case
+        # Major countries
+        "United States", "China", "India", "Germany", "France", "United Kingdom", "Japan", "Brazil",
+        
+        # ADB regional member countries
+        "Afghanistan", "Armenia", "Australia", "Azerbaijan", "Bangladesh", "Bhutan",
+        "Brunei Darussalam", "Cambodia", "Cook Islands", "Fiji", "Georgia", "Hong Kong",
+        "Indonesia", "Kazakhstan", "Kiribati", "Kyrgyz Republic", "Lao People's Democratic Republic",
+        "Malaysia", "Maldives", "Marshall Islands", "Micronesia", "Mongolia", "Myanmar", "Nauru",
+        "Nepal", "New Zealand", "Niue", "Pakistan", "Palau", "Papua New Guinea", "Philippines",
+        "Republic of Korea", "Samoa", "Singapore", "Solomon Islands", "Sri Lanka", "Taiwan",
+        "Tajikistan", "Thailand", "Timor-Leste", "Tonga", "Turkmenistan", "Tuvalu",
+        "Uzbekistan", "Vanuatu", "Vietnam",
+        
+        # Other common countries
+        "Russia", "Italy", "Spain", "Mexico", "Canada", "Brazil", "South Africa", "Nigeria",
+        "Egypt", "Kenya", "Ghana", "Ethiopia", "Tanzania", "Uganda", "Zimbabwe", "Botswana",
+        "Namibia", "Zambia", "Mozambique", "Angola", "Senegal", "Côte d'Ivoire", "Saudi Arabia",
+        "Turkey", "Portugal", "Iceland", "Ireland", "Sweden", "Norway", "Finland", "Denmark",
+        "Belgium", "Netherlands", "Luxembourg", "Switzerland", "Austria", "Greece",
+        "Albania", "Bulgaria", "Serbia", "Croatia", "Bosnia and Herzegovina", "Romania",
+        "Ukraine", "Moldova", "Belarus", "Lithuania", "Latvia", "Estonia", "Poland",
+        "Czech Republic", "Slovakia", "Hungary", "Slovenia", "North Macedonia",
+        "Montenegro", "Mali", "Niger", "Chad", "Sudan", "South Sudan", "Eritrea",
+        "Djibouti", "Somalia", "Morocco", "Tunisia", "Libya", "Algeria", "Mauritania",
+        "Senegal", "Gambia", "Guinea-Bissau", "Guinea", "Sierra Leone", "Liberia",
+        "Togo", "Benin", "Burkina Faso", "Cape Verde", "Cameroon", "Central African Republic",
+        "Gabon", "Equatorial Guinea", "Republic of the Congo", "Democratic Republic of the Congo",
+        "Burundi", "Rwanda", "Malawi", "Lesotho", "Eswatini", "Madagascar", "Mauritius",
+        "Seychelles", "Comoros", "North Korea", "South Korea"
     }
+    
     if cleaned in known_countries:
         return cleaned
     
-    # For country values that match basic validation patterns but aren't in known_countries,
-    # accept them if they are properly capitalized and don't contain numbers
+    # More lenient validation for country-like strings
+    # Accept any string that looks like a properly capitalized name and doesn't contain numbers
     if re.match(r'^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$', cleaned) and not re.search(r'\d', cleaned):
         return cleaned
-        
-    return None
+    
+    # Extremely lenient fallback - just return the original value if we couldn't normalize it
+    # This prevents country fields from being set to None/null in the database
+    return original_value
 
 def log_before_after(field, before, after):
     """
