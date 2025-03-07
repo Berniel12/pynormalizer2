@@ -87,14 +87,31 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
         return 0
     
     # Fetch rows from the table (either all or only unnormalized)
-    if skip_normalized:
-        logger.info(f"Fetching only unnormalized records from {table_name}")
-        rows = fetch_unnormalized_rows(conn, table_name)
-        logger.info(f"Found {len(rows)} unnormalized rows to process in {table_name}")
-    else:
-        logger.info(f"Fetching all records from {table_name} (including already normalized)")
-        rows = fetch_rows(conn, table_name)
-        logger.info(f"Found {len(rows)} total rows in {table_name}")
+    try:
+        if skip_normalized:
+            logger.info(f"Fetching only unnormalized records from {table_name}")
+            start_time = time.time()
+            rows = fetch_unnormalized_rows(conn, table_name)
+            fetch_time = time.time() - start_time
+            
+            # Count total records for comparison
+            total_records = len(fetch_rows(conn, table_name))
+            skipped_count = total_records - len(rows)
+            
+            logger.info(f"Found {len(rows)} unnormalized rows to process in {table_name} (skipped {skipped_count} already normalized records)")
+            logger.info(f"Fetch operation completed in {fetch_time:.2f} seconds")
+            
+            # If we didn't skip any records but skip_normalized is True, log a warning
+            if skipped_count == 0 and total_records > 0:
+                logger.warning(f"No records were skipped in {table_name} despite skip_normalized=True. This could indicate an issue with the normalization tracking.")
+        else:
+            logger.info(f"Fetching all records from {table_name} (including already normalized)")
+            rows = fetch_rows(conn, table_name)
+            logger.info(f"Found {len(rows)} total rows in {table_name}")
+    except Exception as e:
+        logger.error(f"Error fetching rows from {table_name}: {e}")
+        logger.warning(f"Unable to process table {table_name} due to fetch error")
+        return 0
     
     total_rows = len(rows)
     

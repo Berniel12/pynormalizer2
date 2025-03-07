@@ -114,11 +114,11 @@ def fetch_unnormalized_rows(conn, table_name: str) -> List[Dict[str, Any]]:
     if SUPABASE_AVAILABLE and isinstance(conn, Client):
         try:
             # First get IDs of records already in unified_tenders with proper syntax
-            # Using 'not.eq.null' instead of 'is.not.null' for Supabase PostgREST syntax
+            # For Supabase, we need to use "is_" instead of directly comparing with None
             response = conn.table('unified_tenders') \
                 .select('source_id') \
                 .eq('source_table', table_name) \
-                .not_.eq('normalized_at', None) \
+                .not_.is_('normalized_at', 'null') \
                 .execute()
                 
             if hasattr(response, 'data'):
@@ -142,8 +142,37 @@ def fetch_unnormalized_rows(conn, table_name: str) -> List[Dict[str, Any]]:
                 return response
         except Exception as e:
             logger.error(f"Error filtering normalized records with Supabase API: {e}")
-            logger.warning("Falling back to fetching all records (skipping normalized will be done in memory)")
-            # Fall back to fetching all records if the filter fails
+            logger.warning("Attempting alternative query method for Supabase")
+            
+            try:
+                # Alternative approach: first fetch all records, then filter in a second step
+                logger.info("Using two-step query approach with Supabase")
+                
+                # Step 1: Get all normalized IDs
+                normalized_query = conn.table('unified_tenders') \
+                    .select('source_id') \
+                    .eq('source_table', table_name) \
+                    .not_.is_('normalized_at', 'null') \
+                    .execute()
+                
+                if hasattr(normalized_query, 'data'):
+                    normalized_ids = [r['source_id'] for r in normalized_query.data]
+                    logger.info(f"Found {len(normalized_ids)} already normalized records for {table_name}")
+                    
+                    # Step 2: Get all records from source table
+                    all_records = conn.table(table_name).select("*").execute()
+                    
+                    if hasattr(all_records, 'data'):
+                        # Filter in memory
+                        unnormalized = [r for r in all_records.data if str(r['id']) not in normalized_ids]
+                        logger.info(f"Filtered to {len(unnormalized)} unnormalized records from {len(all_records.data)} total in {table_name}")
+                        return unnormalized
+                    return []
+            except Exception as nested_e:
+                logger.error(f"Alternative query approach also failed: {nested_e}")
+                logger.warning("Falling back to fetching all records (skipping normalized will be done in memory)")
+            
+            # Final fallback: fetch all records
             response = conn.table(table_name).select("*").execute()
             if hasattr(response, 'data'):
                 logger.info(f"Fetched all {len(response.data)} records from {table_name}")
