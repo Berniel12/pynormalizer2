@@ -20,6 +20,10 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
+# Set Supabase environment variables
+os.environ["SUPABASE_URL"] = "https://xmakjwxlwlsrblytfibm.supabase.co"
+os.environ["SUPABASE_KEY"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhtYWtqd3hsd2xzcmJseXRmaWJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk3MDc5MDcsImV4cCI6MjAyNTI4MzkwN30.r8_6_WI2SJlzfCjXxZdGdzLQtJYx0Z8EXbZBL4-6ZVA"
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -32,7 +36,7 @@ logging.basicConfig(
 logger = logging.getLogger("fix_normalization")
 
 # Import helper functions
-from pynormalizer.db.connection import get_connection
+from pynormalizer.utils.db import get_connection
 from pynormalizer.utils.normalizer_helpers import ensure_country, determine_normalized_method, extract_organization, log_before_after
 
 def fix_country_values(conn, batch_size: int = 100) -> Dict[str, int]:
@@ -84,7 +88,7 @@ def fix_country_values(conn, batch_size: int = 100) -> Dict[str, int]:
                 source_table = record[2]
                 
                 # Apply country normalization
-                normalized_country = ensure_country(original_country)
+                normalized_country = ensure_country(country_value=original_country)
                 
                 # Update if changed
                 if normalized_country != original_country:

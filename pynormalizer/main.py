@@ -178,7 +178,7 @@ def normalize_table(conn, table_name: str, batch_size: int = 100, limit: Optiona
             if unified_tender.country:
                 # Apply enhanced country normalization
                 original_country = unified_tender.country
-                normalized_country = ensure_country(unified_tender.country)
+                normalized_country = ensure_country(country_value=unified_tender.country)
                 if normalized_country != original_country:
                     log_before_after("country", original_country, normalized_country)
                     unified_tender.country = normalized_country
