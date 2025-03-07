@@ -58,13 +58,13 @@ def normalize_adb(row: Dict[str, Any]) -> UnifiedTender:
     normalized_country = ensure_country(
         country_value=country,
         text=adb_obj.description,
-        organization=adb_obj.executing_agency or adb_obj.borrower
+        organization=adb_obj.project_name  # Use project_name instead of executing_agency
     )
     
     # Never use None as a country value
     if normalized_country is not None:
         country = normalized_country
-    elif country is None and adb_obj.borrower and 'philippines' in adb_obj.borrower.lower():
+    elif country is None and adb_obj.project_name and 'philippines' in adb_obj.project_name.lower():
         # ADB is headquartered in the Philippines, use as fallback
         country = 'Philippines'
     elif country is None:
