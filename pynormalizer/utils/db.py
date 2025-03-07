@@ -112,66 +112,87 @@ def fetch_unnormalized_rows(conn, table_name: str) -> List[Dict[str, Any]]:
     
     # Check if using Supabase
     if SUPABASE_AVAILABLE and isinstance(conn, Client):
-        # First get IDs of records already in unified_tenders
-        response = conn.table('unified_tenders') \
-            .select('source_id') \
-            .eq('source_table', table_name) \
-            .not_('normalized_at', 'is.null') \
-            .execute()
-            
-        if hasattr(response, 'data'):
-            normalized_ids = [r['source_id'] for r in response.data]
-            logger.info(f"Found {len(normalized_ids)} already normalized records for {table_name}")
-            
-            # Then fetch records from source table that are not in normalized_ids
-            if normalized_ids:
-                response = conn.table(table_name) \
-                    .select('*') \
-                    .not_.in_('id', normalized_ids) \
-                    .execute()
-            else:
-                response = conn.table(table_name) \
-                    .select('*') \
-                    .execute()
-                    
+        try:
+            # First get IDs of records already in unified_tenders with proper syntax
+            # Using 'not.eq.null' instead of 'is.not.null' for Supabase PostgREST syntax
+            response = conn.table('unified_tenders') \
+                .select('source_id') \
+                .eq('source_table', table_name) \
+                .not_.eq('normalized_at', None) \
+                .execute()
+                
             if hasattr(response, 'data'):
-                logger.info(f"Fetched {len(response.data)} unnormalized records from {table_name}")
+                normalized_ids = [r['source_id'] for r in response.data]
+                logger.info(f"Found {len(normalized_ids)} already normalized records for {table_name}")
+                
+                # Then fetch records from source table that are not in normalized_ids
+                if normalized_ids:
+                    response = conn.table(table_name) \
+                        .select('*') \
+                        .not_.in_('id', normalized_ids) \
+                        .execute()
+                else:
+                    response = conn.table(table_name) \
+                        .select('*') \
+                        .execute()
+                        
+                if hasattr(response, 'data'):
+                    logger.info(f"Fetched {len(response.data)} unnormalized records from {table_name}")
+                    return response.data
+                return response
+        except Exception as e:
+            logger.error(f"Error filtering normalized records with Supabase API: {e}")
+            logger.warning("Falling back to fetching all records (skipping normalized will be done in memory)")
+            # Fall back to fetching all records if the filter fails
+            response = conn.table(table_name).select("*").execute()
+            if hasattr(response, 'data'):
+                logger.info(f"Fetched all {len(response.data)} records from {table_name}")
                 return response.data
             return response
     
     # Otherwise use direct PostgreSQL connection
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        # First count how many records would be fetched
-        count_query = f"""
-        SELECT COUNT(*) as count 
-        FROM {table_name} src
-        LEFT JOIN unified_tenders ut ON 
-            ut.source_table = %s AND 
-            ut.source_id = CAST(src.id AS TEXT) AND
-            ut.normalized_at IS NOT NULL
-        WHERE ut.id IS NULL
-        """
-        cur.execute(count_query, (table_name,))
-        count_result = cur.fetchone()
-        unnormalized_count = count_result['count'] if count_result else 0
-        
-        # Log how many records will be processed
-        cur.execute(f"SELECT COUNT(*) as total FROM {table_name}")
-        total_count = cur.fetchone()['total']
-        logger.info(f"Found {unnormalized_count} unnormalized records out of {total_count} total in {table_name}")
-        
-        # Query that excludes already normalized records
-        query = f"""
-        SELECT src.* 
-        FROM {table_name} src
-        LEFT JOIN unified_tenders ut ON 
-            ut.source_table = %s AND 
-            ut.source_id = CAST(src.id AS TEXT) AND
-            ut.normalized_at IS NOT NULL
-        WHERE ut.id IS NULL
-        """
-        cur.execute(query, (table_name,))
-        return cur.fetchall()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # First count how many records would be fetched
+            count_query = f"""
+            SELECT COUNT(*) as count 
+            FROM {table_name} src
+            LEFT JOIN unified_tenders ut ON 
+                ut.source_table = %s AND 
+                ut.source_id = CAST(src.id AS TEXT) AND
+                ut.normalized_at IS NOT NULL
+            WHERE ut.id IS NULL
+            """
+            cur.execute(count_query, (table_name,))
+            count_result = cur.fetchone()
+            unnormalized_count = count_result['count'] if count_result else 0
+            
+            # Log how many records will be processed
+            cur.execute(f"SELECT COUNT(*) as total FROM {table_name}")
+            total_count = cur.fetchone()['total']
+            logger.info(f"Found {unnormalized_count} unnormalized records out of {total_count} total in {table_name}")
+            
+            # Query that excludes already normalized records
+            query = f"""
+            SELECT src.* 
+            FROM {table_name} src
+            LEFT JOIN unified_tenders ut ON 
+                ut.source_table = %s AND 
+                ut.source_id = CAST(src.id AS TEXT) AND
+                ut.normalized_at IS NOT NULL
+            WHERE ut.id IS NULL
+            """
+            cur.execute(query, (table_name,))
+            return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Error filtering normalized records with PostgreSQL: {e}")
+        logger.warning("Falling back to fetching all records")
+        # Fall back to fetching all records if the filter fails
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(f"SELECT * FROM {table_name};")
+            all_records = cur.fetchall()
+            logger.info(f"Fetched all {len(all_records)} records from {table_name}")
+            return all_records
 
 def ensure_unique_constraint(conn):
     """
