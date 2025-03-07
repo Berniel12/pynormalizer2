@@ -168,7 +168,7 @@ def normalize_document_links(links_data):
                         'description': key if key != 'url' and not key.isdigit() else None
                     })
                 if not urls and value.startswith(('http://', 'https://', 'www.')):
-                normalized_links.append({
+                    normalized_links.append({
                         'url': value,
                         'type': 'unknown',
                         'language': 'en',
