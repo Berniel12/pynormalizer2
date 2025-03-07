@@ -315,7 +315,7 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
     
     # Try each pattern
     for pattern, currency in patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+        matches = re.findall(pattern, text, re.IGNORECASE)
         if matches:
             for match in matches:
                 # Handle cases where match might be a tuple or a string
@@ -357,8 +357,8 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
     # Try special phrases
     for pattern in special_phrases:
         matches = re.findall(pattern, text, re.IGNORECASE)
-            if matches:
-                for match in matches:
+        if matches:
+            for match in matches:
                 if isinstance(match, tuple) and len(match) >= 3:
                     pre_currency = match[0].strip() if match[0] else None
                     amount_str = match[1].strip() if match[1] else None
@@ -374,10 +374,10 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
                     
                     # Handle million/billion/trillion suffixes
                     if re.search(r'million|mill\.?|mm|m$', amount_str, re.IGNORECASE):
-                                multiplier = 1000000
+                        multiplier = 1000000
                         amount_str = re.sub(r'million|mill\.?|mm|m$', '', amount_str, flags=re.IGNORECASE).strip()
                     elif re.search(r'billion|bill\.?|bb|b$', amount_str, re.IGNORECASE):
-                                multiplier = 1000000000
+                        multiplier = 1000000000
                         amount_str = re.sub(r'billion|bill\.?|bb|b$', '', amount_str, flags=re.IGNORECASE).strip()
                     elif re.search(r'trillion|trill\.?|tt|t$', amount_str, re.IGNORECASE):
                         multiplier = 1000000000000
@@ -392,7 +392,7 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
                         else:
                             # Default to USD if currency can't be determined
                             return amount, 'USD'
-                        except (ValueError, TypeError):
+                    except (ValueError, TypeError):
                         continue
     
     # If no match found with currency, try to at least extract a financial amount
@@ -889,3 +889,371 @@ def determine_normalized_method(row, default=None):
     
     # Fallback to the provided default or a generic term
     return default or 'Competitive Bidding'
+
+
+def log_tender_normalization(source_table, source_id, log_data):
+    """
+    Log detailed information about a tender normalization process.
+    
+    Args:
+        source_table: The source table name
+        source_id: The ID in the source table
+        log_data: Dictionary of data to log
+    """
+    try:
+        if not isinstance(log_data, dict):
+            log_data = {"data": str(log_data)}
+            
+        formatted_data = format_for_logging(log_data)
+        logger.info(f"Normalizing tender from {source_table} (ID: {source_id}): {formatted_data}")
+    except Exception as e:
+        logger.error(f"Error logging tender normalization: {str(e)}")
+
+
+def clean_price(price_value):
+    """
+    Clean and normalize a price value.
+    
+    Args:
+        price_value: The price value to clean (can be string, float, int, or None)
+        
+    Returns:
+        Cleaned price as float or None if invalid
+    """
+    if price_value is None:
+        return None
+        
+    if isinstance(price_value, (int, float)):
+        return float(price_value)
+        
+    if not isinstance(price_value, str):
+        try:
+            return float(price_value)
+        except (ValueError, TypeError):
+            return None
+    
+    # Clean string representation
+    price_str = price_value.strip()
+    
+    # Remove currency symbols and other non-numeric characters
+    price_str = re.sub(r'[^0-9.,]', '', price_str)
+    
+    # Handle different decimal and thousand separators
+    if ',' in price_str and '.' in price_str:
+        # If both are present, determine which is the decimal separator
+        if price_str.rindex('.') > price_str.rindex(','):
+            # Format like 1,000.00
+            price_str = price_str.replace(',', '')
+        else:
+            # Format like 1.000,00
+            price_str = price_str.replace('.', '').replace(',', '.')
+    elif ',' in price_str:
+        # Could be either 1,000 or 1,00
+        if len(price_str.split(',')[1]) == 2:
+            # Likely a decimal separator (1,50)
+            price_str = price_str.replace(',', '.')
+    
+    # Handle empty result after cleaning
+    if not price_str:
+        return None
+        
+    try:
+        return float(price_str)
+    except ValueError:
+        return None
+
+
+def extract_procurement_method(text):
+    """
+    Extract procurement method information from text.
+    
+    Args:
+        text: Text to extract procurement method from
+        
+    Returns:
+        Normalized procurement method (open, limited, selective) or None if not found
+    """
+    if not text or not isinstance(text, str):
+        return None
+        
+    text = text.lower()
+    
+    # Check for open/competitive procurement
+    if any(term in text for term in ['open tender', 'open bidding', 'open procedure', 'competitive tender', 
+                                    'competitive bidding', 'public tender', 'public procurement']):
+        return 'open'
+        
+    # Check for limited/direct procurement
+    if any(term in text for term in ['limited tender', 'direct award', 'sole source', 'single source', 
+                                    'negotiated procedure', 'restricted procedure', 'direct procurement']):
+        return 'limited'
+        
+    # Check for selective procurement
+    if any(term in text for term in ['selective tender', 'invitation to tender', 'pre-qualified', 
+                                    'shortlist', 'selected bidders', 'invitation only']):
+        return 'selective'
+        
+    return None
+
+
+def clean_date(date_value):
+    """
+    Clean and normalize a date value to ISO format (YYYY-MM-DD).
+    
+    Args:
+        date_value: The date value to clean (can be string, datetime, date, or None)
+        
+    Returns:
+        Cleaned date as string in ISO format or None if invalid
+    """
+    if date_value is None:
+        return None
+        
+    # If already a date or datetime object, format it
+    if isinstance(date_value, (datetime, date)):
+        return date_value.strftime('%Y-%m-%d')
+    
+    if not isinstance(date_value, str):
+        try:
+            # Try to convert to string
+            date_value = str(date_value)
+        except (ValueError, TypeError):
+            return None
+    
+    # Clean string representation
+    date_str = date_value.strip()
+    
+    # Common date formats to try
+    date_formats = [
+        '%Y-%m-%d',       # 2023-01-30
+        '%d/%m/%Y',       # 30/01/2023
+        '%m/%d/%Y',       # 01/30/2023
+        '%d-%m-%Y',       # 30-01-2023
+        '%m-%d-%Y',       # 01-30-2023
+        '%d.%m.%Y',       # 30.01.2023
+        '%m.%d.%Y',       # 01.30.2023
+        '%Y/%m/%d',       # 2023/01/30
+        '%B %d, %Y',      # January 30, 2023
+        '%d %B %Y',       # 30 January 2023
+        '%d %b %Y',       # 30 Jan 2023
+        '%b %d, %Y'       # Jan 30, 2023
+    ]
+    
+    for fmt in date_formats:
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            return dt.strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    
+    # Special handling for Unix timestamps
+    if date_str.isdigit() and len(date_str) >= 10:
+        try:
+            # Try as Unix timestamp (seconds since epoch)
+            dt = datetime.fromtimestamp(int(date_str[:10]))
+            return dt.strftime('%Y-%m-%d')
+        except (ValueError, OverflowError):
+            pass
+    
+    # If all parsing attempts fail
+    return None
+
+
+def extract_status(text):
+    """
+    Extract tender status information from text.
+    
+    Args:
+        text: Text to extract status from
+        
+    Returns:
+        Normalized status (active, complete, cancelled) or None if not found
+    """
+    if not text or not isinstance(text, str):
+        return None
+        
+    text = text.lower()
+    
+    # Check for active status
+    if any(term in text for term in ['active', 'ongoing', 'in progress', 'open for bids', 
+                                    'accepting bids', 'open for proposals', 'current']):
+        return 'active'
+        
+    # Check for completed status
+    if any(term in text for term in ['complete', 'completed', 'closed', 'awarded', 'finished', 
+                                    'concluded', 'contract awarded', 'successful']):
+        return 'complete'
+        
+    # Check for cancelled status
+    if any(term in text for term in ['cancelled', 'canceled', 'terminated', 'withdrawn', 
+                                    'abandoned', 'unsuccessful', 'failed', 'not awarded']):
+        return 'cancelled'
+        
+    return None
+
+
+def parse_date_string(date_str):
+    """
+    Parse a date string into a datetime object.
+    
+    Args:
+        date_str: String containing a date
+        
+    Returns:
+        datetime object or None if parsing fails
+    """
+    if not date_str or not isinstance(date_str, str):
+        return None
+        
+    # Clean the string
+    date_str = date_str.strip()
+    
+    # Common date formats to try
+    date_formats = [
+        '%Y-%m-%d',       # 2023-01-30
+        '%Y-%m-%dT%H:%M:%S',  # 2023-01-30T14:30:00
+        '%Y-%m-%dT%H:%M:%SZ', # 2023-01-30T14:30:00Z
+        '%Y-%m-%d %H:%M:%S',  # 2023-01-30 14:30:00
+        '%d/%m/%Y',       # 30/01/2023
+        '%m/%d/%Y',       # 01/30/2023
+        '%d-%m-%Y',       # 30-01-2023
+        '%m-%d-%Y',       # 01-30-2023
+        '%d.%m.%Y',       # 30.01.2023
+        '%m.%d.%Y',       # 01.30.2023
+        '%Y/%m/%d',       # 2023/01/30
+        '%B %d, %Y',      # January 30, 2023
+        '%d %B %Y',       # 30 January 2023
+        '%d %b %Y',       # 30 Jan 2023
+        '%b %d, %Y'       # Jan 30, 2023
+    ]
+    
+    for fmt in date_formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    
+    # If all parsing attempts fail
+    return None
+
+
+def parse_date_from_text(text):
+    """
+    Extract and parse a date from free-form text.
+    
+    Args:
+        text: Free-form text that might contain a date
+        
+    Returns:
+        datetime object or None if no date found
+    """
+    if not text or not isinstance(text, str):
+        return None
+        
+    # Common date patterns in text
+    date_patterns = [
+        r'\b(\d{4})[-/\.](\d{1,2})[-/\.](\d{1,2})\b',  # YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
+        r'\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{4})\b',  # DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY
+        r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* (\d{1,2}),? (\d{4})\b',  # Month DD, YYYY
+        r'\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* (\d{4})\b',  # DD Month YYYY
+        r'\b(\d{1,2})\s?(?:st|nd|rd|th)? of (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* (\d{4})\b'  # DDth of Month YYYY
+    ]
+    
+    for pattern in date_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                # Try to construct a date string and parse it
+                date_str = ' '.join(match).strip()
+                parsed_date = parse_date_string(date_str)
+                if parsed_date:
+                    return parsed_date
+    
+    # If no patterns matched
+    return None
+
+
+def extract_sector_info(text):
+    """
+    Extract sector information from text.
+    
+    Args:
+        text: Text to extract sectors from
+        
+    Returns:
+        List of identified sectors or None if no sectors found
+    """
+    if not text or not isinstance(text, str):
+        return None
+        
+    text = text.lower()
+    
+    # Define common sectors in the procurement domain
+    sector_keywords = {
+        'agriculture': ['agriculture', 'farming', 'irrigation', 'crop', 'livestock'],
+        'construction': ['construction', 'building', 'infrastructure', 'roads', 'highways', 'bridges'],
+        'education': ['education', 'school', 'university', 'college', 'teaching', 'learning'],
+        'energy': ['energy', 'electricity', 'power', 'renewable', 'solar', 'wind', 'hydropower'],
+        'finance': ['finance', 'banking', 'insurance', 'investment', 'financial'],
+        'health': ['health', 'medical', 'hospital', 'clinic', 'medicine', 'healthcare'],
+        'ict': ['ict', 'information technology', 'technology', 'telecom', 'software', 'hardware', 'digital'],
+        'manufacturing': ['manufacturing', 'industrial', 'production', 'factory'],
+        'mining': ['mining', 'mineral', 'extraction', 'coal', 'ore'],
+        'transportation': ['transportation', 'transport', 'logistics', 'railway', 'aviation', 'maritime'],
+        'water': ['water', 'sanitation', 'sewage', 'wastewater', 'utility']
+    }
+    
+    identified_sectors = []
+    
+    # Check for each sector's keywords in the text
+    for sector, keywords in sector_keywords.items():
+        if any(keyword in text for keyword in keywords):
+            identified_sectors.append(sector)
+    
+    return identified_sectors if identified_sectors else None
+
+
+def standardize_status(status_text):
+    """
+    Standardize various status values to a common set of status values.
+    
+    Args:
+        status_text: The status text to standardize
+        
+    Returns:
+        Standardized status value (active, complete, cancelled, etc.)
+    """
+    if not status_text:
+        return None
+        
+    if not isinstance(status_text, str):
+        status_text = str(status_text)
+        
+    status_text = status_text.lower().strip()
+    
+    # Active/Open status mappings
+    if any(term in status_text for term in ['active', 'ongoing', 'open', 'current', 'in progress', 
+                                         'pending', 'published', 'accepting', 'available']):
+        return 'active'
+        
+    # Complete/Closed status mappings
+    if any(term in status_text for term in ['complete', 'completed', 'closed', 'awarded', 'finished', 
+                                         'done', 'executed', 'successful', 'implemented', 'issued']):
+        return 'complete'
+        
+    # Cancelled status mappings
+    if any(term in status_text for term in ['cancel', 'cancelled', 'canceled', 'terminated', 'withdrawn', 
+                                         'failed', 'abandoned', 'unsuccessful']):
+        return 'cancelled'
+        
+    # Planned/Upcoming status mappings
+    if any(term in status_text for term in ['planned', 'upcoming', 'future', 'announced', 'notice', 
+                                         'forecast', 'scheduled', 'preliminary']):
+        return 'planned'
+        
+    # Draft status mappings
+    if any(term in status_text for term in ['draft', 'preparation', 'preparatory', 'pre-release']):
+        return 'draft'
+        
+    # If we can't determine the status, return the original text
+    return status_text
