@@ -174,7 +174,7 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
     
     # Use our fallback mechanisms to ensure country is populated
     country = ensure_country(
-        country=country,
+        country_value=country,
         text=afd_obj.notice_content if afd_obj.notice_content and afd_obj.notice_content != "NO CONTENT" else None,
         organization=organization_name,
         email=afd_obj.email,
