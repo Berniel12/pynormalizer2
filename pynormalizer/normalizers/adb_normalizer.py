@@ -11,7 +11,8 @@ from pynormalizer.utils.translation import (
 from pynormalizer.utils.normalizer_helpers import (
     normalize_document_links, 
     extract_financial_info,
-    log_before_after
+    log_before_after,
+    ensure_country
 )
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,27 @@ def normalize_adb(row: Dict[str, Any]) -> UnifiedTender:
     
     logger.debug(f"Detected language for ADB tender {adb_obj.id}: {language}")
 
+    # Handle country normalization - ensure it's never None
+    country = adb_obj.country
+    
+    # Use ensure_country to normalize the country value
+    normalized_country = ensure_country(
+        country_value=country,
+        text=adb_obj.description,
+        organization=adb_obj.executing_agency or adb_obj.borrower
+    )
+    
+    # Never use None as a country value
+    if normalized_country is not None:
+        country = normalized_country
+    elif country is None and adb_obj.borrower and 'philippines' in adb_obj.borrower.lower():
+        # ADB is headquartered in the Philippines, use as fallback
+        country = 'Philippines'
+    elif country is None:
+        # If everything fails, use 'Unknown' instead of None
+        country = 'Unknown'
+        logger.warning(f"Could not determine country for ADB tender {adb_obj.id}, using 'Unknown'")
+    
     # Construct the UnifiedTender
     unified = UnifiedTender(
         # Required fields
@@ -62,7 +84,7 @@ def normalize_adb(row: Dict[str, Any]) -> UnifiedTender:
         tender_type=adb_obj.type,
         publication_date=publication_dt,
         deadline_date=deadline_dt,
-        country=adb_obj.country,
+        country=country,
         project_name=adb_obj.project_name,
         project_id=adb_obj.project_id,
         project_number=adb_obj.project_number,

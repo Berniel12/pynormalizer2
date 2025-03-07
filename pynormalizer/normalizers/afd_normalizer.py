@@ -173,13 +173,19 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
     country = afd_obj.country if afd_obj.country else None
     
     # Use our fallback mechanisms to ensure country is populated
-    country = ensure_country(
+    normalized_country = ensure_country(
         country_value=country,
         text=afd_obj.notice_content if afd_obj.notice_content and afd_obj.notice_content != "NO CONTENT" else None,
         organization=organization_name,
         email=afd_obj.email,
         language=language
     )
+    
+    # Never use None as a country value - keep the original value if normalization returns None
+    if normalized_country is not None:
+        country = normalized_country
+    elif not country and organization_name and 'france' in organization_name.lower():
+        country = 'France'  # Default country for AFD is France when no other information is available
 
     # Construct the UnifiedTender
     unified = UnifiedTender(
