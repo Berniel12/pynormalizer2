@@ -145,7 +145,7 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
         # Extract status from text or dates
         status = None
         if aiib_obj.type:
-            status = extract_status(status_text=aiib_obj.type)
+            status = extract_status(text=aiib_obj.type)
         
         # Try to extract status from description if not found
         if not status and aiib_obj.pdf_content:
