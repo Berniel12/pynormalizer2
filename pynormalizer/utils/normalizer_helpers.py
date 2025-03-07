@@ -1059,37 +1059,73 @@ def clean_date(date_value):
     return None
 
 
-def extract_status(text):
+def extract_status(text=None, deadline=None, publication_date=None, description=None):
     """
-    Extract tender status information from text.
+    Extract tender status information from text and date information.
     
     Args:
         text: Text to extract status from
+        deadline: Deadline date for the tender
+        publication_date: Publication date of the tender
+        description: Description text to extract status from (used if text is None)
         
     Returns:
         Normalized status (active, complete, cancelled) or None if not found
     """
-    if not text or not isinstance(text, str):
-        return None
+    # Use description as text if text is None
+    if text is None and description is not None:
+        text = description
         
-    text = text.lower()
+    status_from_text = None
+    if text and isinstance(text, str):
+        text_lower = text.lower()
+        
+        # Check for active status
+        if any(term in text_lower for term in ['active', 'ongoing', 'in progress', 'open for bids', 
+                                        'accepting bids', 'open for proposals', 'current']):
+            status_from_text = 'active'
+            
+        # Check for completed status
+        elif any(term in text_lower for term in ['complete', 'completed', 'closed', 'awarded', 'finished', 
+                                            'concluded', 'contract awarded', 'successful']):
+            status_from_text = 'complete'
+            
+        # Check for cancelled status
+        elif any(term in text_lower for term in ['cancelled', 'canceled', 'terminated', 'withdrawn', 
+                                            'abandoned', 'unsuccessful', 'failed', 'not awarded']):
+            status_from_text = 'cancelled'
     
-    # Check for active status
-    if any(term in text for term in ['active', 'ongoing', 'in progress', 'open for bids', 
-                                    'accepting bids', 'open for proposals', 'current']):
-        return 'active'
+    # If we have date information, use it to determine status
+    if deadline or publication_date:
+        from datetime import datetime
+        current_date = datetime.now().date()
         
-    # Check for completed status
-    if any(term in text for term in ['complete', 'completed', 'closed', 'awarded', 'finished', 
-                                    'concluded', 'contract awarded', 'successful']):
-        return 'complete'
-        
-    # Check for cancelled status
-    if any(term in text for term in ['cancelled', 'canceled', 'terminated', 'withdrawn', 
-                                    'abandoned', 'unsuccessful', 'failed', 'not awarded']):
-        return 'cancelled'
-        
-    return None
+        # If deadline is in the future and we have a publication date, tender is active
+        if deadline and hasattr(deadline, 'date'):
+            deadline_date = deadline.date()
+            if deadline_date >= current_date:
+                # Text-based status takes precedence over date-based status
+                if status_from_text in ['complete', 'cancelled']:
+                    return status_from_text
+                return 'active'
+            else:
+                # Deadline has passed, so tender is likely complete unless explicitly cancelled
+                if status_from_text == 'cancelled':
+                    return 'cancelled'
+                return 'complete'
+                
+        # If we only have publication date and no deadline
+        elif publication_date and hasattr(publication_date, 'date'):
+            # If publication date is very recent (within 90 days), tender is likely active
+            days_since_publication = (current_date - publication_date.date()).days
+            if days_since_publication <= 90:
+                # Text-based status takes precedence over date-based status
+                if status_from_text in ['complete', 'cancelled']:
+                    return status_from_text
+                return 'active'
+    
+    # Return text-based status if found, otherwise None
+    return status_from_text
 
 
 def parse_date_string(date_str):
