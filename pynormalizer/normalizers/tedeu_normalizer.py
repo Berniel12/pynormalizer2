@@ -289,7 +289,7 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
         
     # Ensure country is populated using fallback mechanisms
     country = ensure_country(
-        country=country,
+        country_value=country,
         text=tedeu_obj.summary if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary else None,
         organization=organization_name,
         email=tedeu_obj.contact_email if hasattr(tedeu_obj, 'contact_email') and tedeu_obj.contact_email else None,
