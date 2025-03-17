@@ -136,7 +136,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=50, help="Batch size for processing")
     parser.add_argument("--limit", type=int, help="Maximum number of records to process per table")
     parser.add_argument("--run-fix", action="store_true", help="Run the country normalization fix")
-    parser.add_argument("--timeout", type=int, default=1800, help="Timeout in seconds (default: 1800 = 30 minutes)")
+    parser.add_argument("--timeout", type=int, default=18000, help="Timeout in seconds (default: 18000 = 5 hours)")
     parser.add_argument("--process-all", action="store_true", help="Process all records, including already normalized ones")
     args = parser.parse_args()
     

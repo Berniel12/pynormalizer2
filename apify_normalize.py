@@ -92,7 +92,7 @@ def main():
     parser.add_argument("--tables", type=str, nargs="*", help="Specific tables to process")
     parser.add_argument("--batch-size", type=int, default=50, help="Batch size for processing")
     parser.add_argument("--limit", type=int, help="Maximum number of records to process per table")
-    parser.add_argument("--max-runtime", type=int, default=1800, help="Maximum runtime in seconds (default: 1800 = 30 min)")
+    parser.add_argument("--max-runtime", type=int, default=18000, help="Maximum runtime in seconds (default: 18000 = 5 hours)")
     parser.add_argument("--process-all", action="store_true", help="Process all records, including already normalized ones")
     args = parser.parse_args()
     
