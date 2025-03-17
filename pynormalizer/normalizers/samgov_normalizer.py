@@ -14,9 +14,13 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
         Normalized UnifiedTender instance
     """
     # Pre-process contacts field if it's a list instead of a dict
-    if 'contacts' in row and isinstance(row['contacts'], list) and row['contacts']:
-        # Convert list to dict by using the first contact
-        row['contacts'] = row['contacts'][0]
+    if 'contacts' in row and isinstance(row['contacts'], list):
+        if row['contacts']:
+            # Convert list to dict by using the first contact
+            row['contacts'] = row['contacts'][0]
+        else:
+            # Handle empty list case
+            row['contacts'] = {}
     
     # Validate with Pydantic
     try:
