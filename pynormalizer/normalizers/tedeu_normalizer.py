@@ -178,7 +178,7 @@ def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
     # Use the improved extract_status function to determine status using multiple inputs
     status = extract_status(
         deadline=deadline_dt, 
-        status_text=status,
+        text=status,
         description=tedeu_obj.summary if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary else None,
         publication_date=publication_dt
     )
