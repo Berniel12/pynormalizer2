@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List
 import uuid
 
-from pynormalizer.models.source_models import TEDTender
+from pynormalizer.models.source_models import TEDEuTender as TEDTender
 from pynormalizer.models.unified_model import UnifiedTender
 from pynormalizer.utils.translation import (
     translate_to_english,
