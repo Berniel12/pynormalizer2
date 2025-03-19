@@ -37,39 +37,39 @@ from pynormalizer.utils.standardization import (
 
 logger = logging.getLogger(__name__)
 
-def extract_tedeu_country(tender: TEDTender) -> Optional[str]:
+def extract_tedeu_country(tender: Dict[str, Any]) -> Optional[str]:
     """Extract country from TED.eu tender data."""
     # Try org country first
-    if hasattr(tender, 'organisation_country') and tender.organisation_country:
-        return tender.organisation_country
+    if 'organisation_country' in tender and tender['organisation_country']:
+        return tender['organisation_country']
     
     # Try NUTS code
-    if hasattr(tender, 'nuts_code') and tender.nuts_code:
+    if 'nuts_code' in tender and tender['nuts_code']:
         # Extract country code from NUTS code (first two chars)
-        return tender.nuts_code[:2]
+        return tender['nuts_code'][:2]
     
     # Try from original address or name
-    if hasattr(tender, 'organisation_address') and tender.organisation_address:
+    if 'organisation_address' in tender and tender['organisation_address']:
         # Extract from address
-        _, country = extract_location_info(tender.organisation_address)
+        _, country = extract_location_info(tender['organisation_address'])
         if country:
             return country
     
     # Try from summary
-    if hasattr(tender, 'summary') and tender.summary:
+    if 'summary' in tender and tender['summary']:
         # Extract from summary
-        country, _ = extract_location_info(tender.summary)
+        country, _ = extract_location_info(tender['summary'])
         if country:
             return country
     
     return None
 
-def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
+def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
     """
     Normalize TED.eu tender to unified format.
     
     Args:
-        tender: TEDTender object containing source data
+        tender: Dictionary containing source data
         
     Returns:
         UnifiedTender object with normalized data
@@ -79,26 +79,33 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
         tender_id = str(uuid.uuid4())
         
         # Initialize unified tender
+        source_id = tender.get('id') or tender.get('publication_number', str(uuid.uuid4()))
+        source_url = tender.get('url')
+        
         unified = UnifiedTender(
             id=tender_id,
             source="tedeu",
-            source_id=tender.id or str(tender.publication_number),
-            source_url=getattr(tender, 'url', None)
+            source_id=str(source_id),
+            source_url=source_url,
+            source_table="ted_eu"  # Add source_table which is a required field
         )
         
         # Use summary as description
-        description = getattr(tender, 'summary', '')
+        description = tender.get('summary', '')
+        
+        # Get title, defaulting to empty string if not present
+        title = tender.get('title', '')
         
         # Normalize title
-        unified.title = normalize_title(tender.title)
-        log_tender_normalization(tender_id, "title", tender.title, unified.title)
+        unified.title = normalize_title(title)
+        log_tender_normalization(tender_id, "title", title, unified.title)
         
         # Normalize description
         unified.description = normalize_description(description)
         log_tender_normalization(tender_id, "description", description, unified.description)
         
         # Detect language
-        language = getattr(tender, 'language', None) or detect_language(tender.title)
+        language = tender.get('language') or detect_language(title)
         unified.language = language or 'en'
         
         if language and language != 'en':
@@ -131,9 +138,6 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
         country = extract_tedeu_country(tender)
         country_name, country_code, country_code_3 = ensure_country(country)
         unified.country = country_name
-        # Don't add these to unified_tenders as they aren't in the schema yet
-        # unified.country_code = country_code
-        # unified.country_code_3 = country_code_3
         log_tender_normalization(tender_id, "country", country, unified.country)
         
         # Extract additional location info if needed
@@ -150,9 +154,9 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
         amount, currency = None, None
         
         # Try value_magnitude first
-        if hasattr(tender, 'value_magnitude') and tender.value_magnitude:
-            amount = clean_price(tender.value_magnitude)
-            currency = getattr(tender, 'currency', None)
+        if 'value_magnitude' in tender and tender['value_magnitude']:
+            amount = clean_price(tender['value_magnitude'])
+            currency = tender.get('currency')
         
         # Fall back to extraction from description
         if not amount or not currency:
@@ -169,8 +173,8 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
         method = None
         
         # Try procedure_type first
-        if hasattr(tender, 'procedure_type') and tender.procedure_type:
-            method = tender.procedure_type
+        if 'procedure_type' in tender and tender['procedure_type']:
+            method = tender['procedure_type']
         
         # Fall back to extraction from description
         if not method:
@@ -184,8 +188,8 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
         org_name = None
         
         # Try organisation_name first
-        if hasattr(tender, 'organisation_name') and tender.organisation_name:
-            org_name = tender.organisation_name
+        if 'organisation_name' in tender and tender['organisation_name']:
+            org_name = tender['organisation_name']
         
         # Fall back to extraction from description
         if not org_name:
@@ -204,8 +208,8 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
         status = None
         
         # Try notice_status first
-        if hasattr(tender, 'notice_status') and tender.notice_status:
-            status = tender.notice_status
+        if 'notice_status' in tender and tender['notice_status']:
+            status = tender['notice_status']
         
         # Fall back to extraction from description
         if not status:
@@ -216,11 +220,11 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
             log_tender_normalization(tender_id, "status", None, status)
         
         # Set dates
-        if hasattr(tender, 'publication_date') and tender.publication_date:
-            unified.publication_date = tender.publication_date
+        if 'publication_date' in tender and tender['publication_date']:
+            unified.publication_date = tender['publication_date']
             
-        if hasattr(tender, 'deadline_date') and tender.deadline_date:
-            unified.deadline_date = tender.deadline_date
+        if 'deadline_date' in tender and tender['deadline_date']:
+            unified.deadline_date = tender['deadline_date']
         else:
             # Try to extract from description
             deadline = extract_deadline(unified.description)
@@ -229,16 +233,16 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
                 log_tender_normalization(tender_id, "deadline", None, deadline.isoformat())
         
         # Normalize document links
-        if hasattr(tender, 'links') and tender.links:
-            unified.documents = normalize_document_links(tender.links)
+        if 'links' in tender and tender['links']:
+            unified.documents = normalize_document_links(tender['links'])
         
         # TED.eu specific fields - store in original_data
         original_data = {}
         
         # CPV codes
-        if hasattr(tender, 'cpv_codes') and tender.cpv_codes:
+        if 'cpv_codes' in tender and tender['cpv_codes']:
             cpv_codes = []
-            for code in tender.cpv_codes:
+            for code in tender['cpv_codes']:
                 valid, issues = validate_cpv_code(code)
                 if valid:
                     cpv_codes.append(code)
@@ -249,9 +253,9 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
                 original_data["cpv_codes"] = cpv_codes
         
         # NUTS codes
-        if hasattr(tender, 'nuts_codes') and tender.nuts_codes:
+        if 'nuts_codes' in tender and tender['nuts_codes']:
             nuts_codes = []
-            for code in tender.nuts_codes:
+            for code in tender['nuts_codes']:
                 valid, issues = validate_nuts_code(code)
                 if valid:
                     nuts_codes.append(code)
@@ -263,12 +267,12 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
         
         # Additional specific fields
         for field in ['notice_type', 'regulation', 'procedure_type', 'award_criteria']:
-            if hasattr(tender, field) and getattr(tender, field):
-                original_data[field] = getattr(tender, field)
+            if field in tender and tender[field]:
+                original_data[field] = tender[field]
                 
                 # Also set in the unified tender if field exists
                 if hasattr(unified, field):
-                    setattr(unified, field, getattr(tender, field))
+                    setattr(unified, field, tender[field])
         
         # Store original data
         if original_data:
@@ -285,13 +289,14 @@ def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
         return unified
         
     except Exception as e:
-        logger.error(f"Error normalizing TED.eu tender {getattr(tender, 'id', 'unknown')}: {str(e)}")
+        logger.error(f"Error normalizing TED.eu tender {tender.get('id', 'unknown')}: {str(e)}")
         # Return a minimal unified tender for error cases
         error_tender = UnifiedTender(
             id=str(uuid.uuid4()),
             source="tedeu",
-            source_id=getattr(tender, 'id', None) or str(getattr(tender, 'publication_number', 'unknown')),
-            title=getattr(tender, 'title', "Error in normalization"),
+            source_id=str(tender.get('id', None) or tender.get('publication_number', 'unknown')),
+            source_table="ted_eu",  # Add required source_table field
+            title=tender.get('title', "Error in normalization"),
             fallback_reason=f"Error: {str(e)}"
         )
         return error_tender 
