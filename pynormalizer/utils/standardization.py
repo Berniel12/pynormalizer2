@@ -5,10 +5,18 @@ import re
 import logging
 from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime
-import pycountry
 import difflib
 
 logger = logging.getLogger(__name__)
+
+# Try to import pycountry, but make it optional with a fallback
+PYCOUNTRY_AVAILABLE = False
+try:
+    import pycountry
+    PYCOUNTRY_AVAILABLE = True
+    logger.info("pycountry module loaded successfully")
+except ImportError:
+    logger.warning("pycountry module not available, using simplified country normalization")
 
 # Precompile regex patterns for performance
 WHITESPACE_PATTERN = re.compile(r'\s+')
@@ -161,6 +169,40 @@ COUNTRY_MAPPING = {
     'Unknown': 'Unknown'
 }
 
+# ISO Code Mappings (fallback for when pycountry is not available)
+ISO_CODE_MAPPING = {
+    'United States': {'alpha_2': 'US', 'alpha_3': 'USA'},
+    'United Kingdom': {'alpha_2': 'GB', 'alpha_3': 'GBR'},
+    'Canada': {'alpha_2': 'CA', 'alpha_3': 'CAN'},
+    'Australia': {'alpha_2': 'AU', 'alpha_3': 'AUS'},
+    'Germany': {'alpha_2': 'DE', 'alpha_3': 'DEU'},
+    'France': {'alpha_2': 'FR', 'alpha_3': 'FRA'},
+    'Italy': {'alpha_2': 'IT', 'alpha_3': 'ITA'},
+    'Spain': {'alpha_2': 'ES', 'alpha_3': 'ESP'},
+    'China': {'alpha_2': 'CN', 'alpha_3': 'CHN'},
+    'Japan': {'alpha_2': 'JP', 'alpha_3': 'JPN'},
+    'Brazil': {'alpha_2': 'BR', 'alpha_3': 'BRA'},
+    'India': {'alpha_2': 'IN', 'alpha_3': 'IND'},
+    'Russia': {'alpha_2': 'RU', 'alpha_3': 'RUS'},
+    'South Africa': {'alpha_2': 'ZA', 'alpha_3': 'ZAF'},
+    'Mexico': {'alpha_2': 'MX', 'alpha_3': 'MEX'},
+    'Argentina': {'alpha_2': 'AR', 'alpha_3': 'ARG'},
+    'Chile': {'alpha_2': 'CL', 'alpha_3': 'CHL'},
+    'Colombia': {'alpha_2': 'CO', 'alpha_3': 'COL'},
+    'Peru': {'alpha_2': 'PE', 'alpha_3': 'PER'},
+    'Nigeria': {'alpha_2': 'NG', 'alpha_3': 'NGA'},
+    'Kenya': {'alpha_2': 'KE', 'alpha_3': 'KEN'},
+    'Egypt': {'alpha_2': 'EG', 'alpha_3': 'EGY'},
+    'Morocco': {'alpha_2': 'MA', 'alpha_3': 'MAR'},
+    'Tanzania': {'alpha_2': 'TZ', 'alpha_3': 'TZA'},
+    'Ethiopia': {'alpha_2': 'ET', 'alpha_3': 'ETH'},
+    'Ghana': {'alpha_2': 'GH', 'alpha_3': 'GHA'},
+    'Ivory Coast': {'alpha_2': 'CI', 'alpha_3': 'CIV'},
+    'Senegal': {'alpha_2': 'SN', 'alpha_3': 'SEN'},
+    'Algeria': {'alpha_2': 'DZ', 'alpha_3': 'DZA'},
+    'Tunisia': {'alpha_2': 'TN', 'alpha_3': 'TUN'}
+}
+
 # Currency validation
 CURRENCY_CONFIG = {
     'major_currencies': ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'CNY', 'INR', 'BRL', 'ZAR', 'RUB'],
@@ -250,27 +292,30 @@ def standardize_title(title: str) -> Tuple[str, Dict[str, Any]]:
     for suffix in TITLE_CONFIG['remove_suffixes']:
         title = re.sub(suffix, '', title, flags=re.IGNORECASE)
     
-    # Capitalize first letter only if all uppercase or all lowercase
-    if title.isupper() or title.islower():
-        title = title.capitalize()
+    # Strip again after removing prefixes/suffixes
+    title = title.strip()
     
-    # Validate length
+    # Validate length constraints
     issues = []
-    valid = True
-    
     if len(title) < TITLE_CONFIG['min_length']:
-        issues.append(f"Title is too short ({len(title)} chars)")
-        valid = False
+        issues.append(f"Title length {len(title)} below minimum {TITLE_CONFIG['min_length']}")
     elif len(title) > TITLE_CONFIG['max_length']:
-        issues.append(f"Title is too long ({len(title)} chars)")
-        # Truncate to maximum length
-        title = title[:TITLE_CONFIG['max_length']] + "..."
+        issues.append(f"Title length {len(title)} exceeds maximum {TITLE_CONFIG['max_length']}")
+        # Truncate if too long
+        title = title[:TITLE_CONFIG['max_length']]
     
-    return title, {"valid": valid, "issues": issues}
+    # Capitalize first letter of each sentence
+    title = '. '.join(s.capitalize() for s in title.split('. '))
+    
+    # First letter should always be capitalized 
+    if title and len(title) > 0:
+        title = title[0].upper() + title[1:]
+    
+    return title, {"valid": len(issues) == 0, "issues": issues}
 
 def structure_description(description: str) -> Tuple[str, Dict[str, Any]]:
     """
-    Structure and standardize the tender description.
+    Structure and standardize a tender description.
     
     Args:
         description: Original description string
@@ -287,118 +332,126 @@ def structure_description(description: str) -> Tuple[str, Dict[str, Any]]:
     # Normalize whitespace
     description = re.sub(WHITESPACE_PATTERN, ' ', description).strip()
     
-    # Identify sections
-    sections = {}
-    for section_name in DESCRIPTION_CONFIG['sections']:
-        pattern = re.compile(
-            rf'(?:{section_name}|{section_name.upper()}):?\s*(.*?)(?=(?:{"|".join(DESCRIPTION_CONFIG["sections"])}):|\Z)',
-            re.DOTALL | re.IGNORECASE
-        )
-        match = pattern.search(description)
-        if match:
-            sections[section_name] = match.group(1).strip()
-    
-    # Validate
+    # Validate length constraints
     issues = []
-    valid = True
-    
     if len(description) < DESCRIPTION_CONFIG['min_length']:
-        issues.append(f"Description is too short ({len(description)} chars)")
-        valid = False
+        issues.append(f"Description length {len(description)} below minimum {DESCRIPTION_CONFIG['min_length']}")
     elif len(description) > DESCRIPTION_CONFIG['max_length']:
-        issues.append(f"Description is too long ({len(description)} chars)")
-        # Truncate but preserve important info
-        description = description[:DESCRIPTION_CONFIG['max_length']] + "..."
+        issues.append(f"Description length {len(description)} exceeds maximum {DESCRIPTION_CONFIG['max_length']}")
+        # Truncate if too long
+        description = description[:DESCRIPTION_CONFIG['max_length']]
     
-    # Check for required sections
-    missing_sections = [
-        section for section in DESCRIPTION_CONFIG['required_sections']
-        if section not in sections
-    ]
+    # Check for section headers
+    identified_sections = []
+    for section in DESCRIPTION_CONFIG['sections']:
+        pattern = re.compile(rf'\b{re.escape(section)}\b[:\s-]', re.IGNORECASE)
+        if pattern.search(description):
+            identified_sections.append(section)
+    
+    # Check for missing required sections
+    missing_sections = []
+    for required in DESCRIPTION_CONFIG['required_sections']:
+        if required not in identified_sections:
+            missing_sections.append(required)
     
     if missing_sections:
-        issues.append(f"Missing important sections: {', '.join(missing_sections)}")
+        issues.append(f"Missing required sections: {', '.join(missing_sections)}")
     
-    # Extract contact information if present
-    contact_info = extract_contact_info(description)
-    if contact_info:
-        sections['Contact Information'] = contact_info
-    
-    # If sections were found, structure the description
-    if sections:
-        # Format the structured description
-        structured_desc = description
-    else:
-        structured_desc = description
-    
-    return structured_desc, {"valid": valid, "issues": issues, "sections": list(sections.keys())}
+    return description, {
+        "valid": len(issues) == 0, 
+        "issues": issues,
+        "identified_sections": identified_sections,
+        "missing_sections": missing_sections
+    }
 
 def normalize_country(country: Optional[str]) -> Tuple[Optional[str], Optional[str], Optional[str], Dict[str, Any]]:
     """
     Normalize country name to standard English name with ISO codes.
+    Handles direct mappings and fuzzy searches.
     
     Args:
-        country: Country name in any language
+        country: Country name in any format or language
         
     Returns:
-        Tuple of (normalized_name, iso_code, iso_code_3, validation_info)
+        Tuple of (normalized_name, iso_code_2, iso_code_3, info_dict)
     """
     if not country:
-        return None, None, None, {"valid": False, "issues": ["Empty country"]}
+        return None, None, None, {"valid": False, "issues": ["Empty country value"]}
     
     # Normalize whitespace and capitalization
-    country = re.sub(WHITESPACE_PATTERN, ' ', country).strip()
+    country = re.sub(WHITESPACE_PATTERN, ' ', str(country)).strip()
     
-    # Try direct mapping first
+    # Direct mapping for known variations
     if country in COUNTRY_MAPPING:
-        english_name = COUNTRY_MAPPING[country]
+        normalized = COUNTRY_MAPPING[country]
+        if normalized == "Unknown":
+            return None, None, None, {"valid": False, "issues": ["Country mapped to Unknown"]}
     else:
-        # Check for case-insensitive match in the mapping
-        for source, target in COUNTRY_MAPPING.items():
-            if country.lower() == source.lower():
-                english_name = target
+        # Try case-insensitive mapping
+        country_lower = country.lower()
+        for known_country, mapped_country in COUNTRY_MAPPING.items():
+            if known_country.lower() == country_lower:
+                normalized = mapped_country
                 break
         else:
-            # No match found in mapping, use as is
-            english_name = country
+            # If not found in mapping, keep as is for now
+            normalized = country
     
-    # Special case for Unknown
-    if english_name.lower() == 'unknown':
-        return 'Unknown', None, None, {"valid": True, "issues": []}
+    # Get ISO codes using pycountry if available
+    iso_code_2 = None
+    iso_code_3 = None
+    issues = []
     
-    # Try to get ISO codes using pycountry
-    try:
-        # Exact match
-        country_obj = pycountry.countries.get(name=english_name)
-        if not country_obj:
-            # Try with fuzzy matching
-            matches = difflib.get_close_matches(english_name, [c.name for c in pycountry.countries], n=1, cutoff=0.8)
-            if matches:
-                country_obj = pycountry.countries.get(name=matches[0])
-            else:
-                # Try with alpha_2 code if it looks like a code
-                if len(english_name) == 2 and english_name.isalpha():
-                    country_obj = pycountry.countries.get(alpha_2=english_name.upper())
-                elif len(english_name) == 3 and english_name.isalpha():
-                    country_obj = pycountry.countries.get(alpha_3=english_name.upper())
-                else:
+    if PYCOUNTRY_AVAILABLE:
+        # Try exact match first
+        try:
+            country_obj = pycountry.countries.get(name=normalized)
+            if not country_obj:
+                # Try fuzzy search if exact match fails
+                try:
+                    matches = pycountry.countries.search_fuzzy(normalized)
+                    if matches:
+                        country_obj = matches[0]
+                    else:
+                        issues.append(f"No country match found for: {normalized}")
+                        country_obj = None
+                except (LookupError, AttributeError) as e:
+                    issues.append(f"Fuzzy search error: {str(e)}")
                     country_obj = None
-        
-        if country_obj:
-            return country_obj.name, country_obj.alpha_2, country_obj.alpha_3, {
-                "valid": True,
-                "issues": []
-            }
+                
+            if country_obj:
+                normalized = country_obj.name
+                iso_code_2 = country_obj.alpha_2
+                iso_code_3 = country_obj.alpha_3
+        except (LookupError, AttributeError) as e:
+            issues.append(f"pycountry lookup error: {str(e)}")
+    else:
+        # Fallback to ISO mapping dictionary if pycountry not available
+        if normalized in ISO_CODE_MAPPING:
+            iso_code_2 = ISO_CODE_MAPPING[normalized]['alpha_2']
+            iso_code_3 = ISO_CODE_MAPPING[normalized]['alpha_3']
         else:
-            return english_name, None, None, {
-                "valid": False,
-                "issues": [f"Could not find ISO code for: {english_name}"]
-            }
-    except (KeyError, AttributeError) as e:
-        return english_name, None, None, {
-            "valid": False,
-            "issues": [f"Error finding ISO code: {str(e)}"]
-        }
+            # Try fuzzy matching with difflib
+            matches = difflib.get_close_matches(normalized, ISO_CODE_MAPPING.keys(), n=1, cutoff=0.8)
+            if matches:
+                best_match = matches[0]
+                normalized = best_match
+                iso_code_2 = ISO_CODE_MAPPING[best_match]['alpha_2']
+                iso_code_3 = ISO_CODE_MAPPING[best_match]['alpha_3']
+            else:
+                issues.append(f"No country match found for: {normalized} (using fallback ISO mapping)")
+    
+    # Final validation
+    valid = bool(normalized and iso_code_2 and iso_code_3 and not issues)
+    
+    return normalized, iso_code_2, iso_code_3, {
+        "valid": valid,
+        "issues": issues,
+        "original": country,
+        "normalized": normalized,
+        "iso_code_2": iso_code_2,
+        "iso_code_3": iso_code_3
+    }
 
 def extract_contact_info(text: str) -> Optional[Dict[str, Any]]:
     """Extract contact information from text."""
