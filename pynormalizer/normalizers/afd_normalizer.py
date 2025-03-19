@@ -67,11 +67,9 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
     
     language = detect_language(language_sample.strip()) or "fr"  # Default to French for AFD
     
-    # Use the improved extract_status function
+    # Use the extract_status function with only the description text
     status = extract_status(
-        deadline=deadline_dt,
-        description=afd_obj.notice_content if afd_obj.notice_content != "NO CONTENT" else None,
-        publication_date=publication_dt
+        afd_obj.notice_content if afd_obj.notice_content != "NO CONTENT" else None
     )
     
     # Use the improved organization extraction
