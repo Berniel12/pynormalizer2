@@ -733,3 +733,38 @@ def extract_procurement_method(text):
         return 'selective'
     
     return None
+
+def parse_date_from_text(text):
+    """
+    Extract and parse a date from free-form text.
+    
+    Args:
+        text: Free-form text that might contain a date
+        
+    Returns:
+        datetime object or None if no date found
+    """
+    if not text or not isinstance(text, str):
+        return None
+        
+    # Common date patterns in text
+    date_patterns = [
+        r'\b(\d{4})[-/\.](\d{1,2})[-/\.](\d{1,2})\b',  # YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
+        r'\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{4})\b',  # DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY
+        r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* (\d{1,2}),? (\d{4})\b',  # Month DD, YYYY
+        r'\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* (\d{4})\b',  # DD Month YYYY
+        r'\b(\d{1,2})\s?(?:st|nd|rd|th)? of (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* (\d{4})\b'  # DDth of Month YYYY
+    ]
+    
+    for pattern in date_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                # Try to construct a date string and parse it
+                date_str = ' '.join(match).strip()
+                parsed_date = parse_date_string(date_str)
+                if parsed_date:
+                    return parsed_date
+    
+    # If no patterns matched
+    return None
