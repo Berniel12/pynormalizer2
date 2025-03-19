@@ -295,6 +295,32 @@ def extract_status(text=None, deadline=None, publication_date=None, description=
             status = 'complete'
         elif any(term in text_lower for term in ['cancelled', 'canceled', 'terminated']):
             status = 'cancelled'
+        
+        # Additional status patterns from the other implementation
+        status_patterns = {
+            r'\b(?:open|active|ongoing|current)\b': 'active',
+            r'\b(?:closed|completed|finished|past|archived)\b': 'complete',
+            r'\b(?:awarded|contract awarded|awarded contract)\b': 'awarded',
+            r'\b(?:cancelled|canceled|terminated|abandoned)\b': 'cancelled',
+            r'\b(?:draft|preparation|not published|upcoming)\b': 'draft',
+            r'\b(?:under evaluation|evaluating|evaluation stage)\b': 'under_evaluation'
+        }
+        
+        # Check for explicit status mentions
+        if STATUS_PATTERN:
+            status_match = STATUS_PATTERN.search(text_lower)
+            if status_match:
+                status_text = status_match.group(1).lower().strip()
+                for pattern, normalized in status_patterns.items():
+                    if re.search(pattern, status_text, re.IGNORECASE):
+                        status = normalized
+                        break
+        
+        # If no explicit status found, try to infer from the whole text
+        for pattern, normalized in status_patterns.items():
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                status = normalized
+                break
     
     # Check dates if available
     if deadline or publication_date:
@@ -805,46 +831,6 @@ def extract_country_from_text(text: str) -> Optional[str]:
             # If no mapping found, capitalize words
             return country.title()
     
-    return None
-
-def extract_status(text: str) -> Optional[str]:
-    """
-    Extract and normalize tender status.
-    
-    Args:
-        text: Text to extract from
-        
-    Returns:
-        Normalized status if found, None otherwise
-    """
-    if not text:
-        return None
-    
-    # Status patterns
-    statuses = {
-        r'\b(?:open|active|ongoing|current)\b': 'Active',
-        r'\b(?:closed|completed|finished|past|archived)\b': 'Closed',
-        r'\b(?:awarded|contract awarded|awarded contract)\b': 'Awarded',
-        r'\b(?:cancelled|canceled|terminated|abandoned)\b': 'Cancelled',
-        r'\b(?:draft|preparation|not published|upcoming)\b': 'Draft',
-        r'\b(?:under evaluation|evaluating|evaluation stage)\b': 'Under Evaluation'
-    }
-    
-    # Check the explicit status pattern first
-    status_match = STATUS_PATTERN.search(text)
-    if status_match:
-        status_text = status_match.group(1).lower().strip()
-        
-        for pattern, normalized in statuses.items():
-            if re.search(pattern, status_text, re.IGNORECASE):
-                return normalized
-    
-    # If no explicit status found, try to infer from the whole text
-    for pattern, normalized in statuses.items():
-        if re.search(pattern, text, re.IGNORECASE):
-            return normalized
-    
-    # Default to Active if we can't determine
     return None
 
 def extract_deadline(text: str) -> Optional[datetime]:
