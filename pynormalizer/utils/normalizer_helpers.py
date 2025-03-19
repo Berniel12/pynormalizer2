@@ -38,14 +38,14 @@ def normalize_document_links(links_data):
         # Try to extract URLs from text
         urls = url_pattern.findall(links_data)
         for url in urls:
-            normalized_links.append({
+                normalized_links.append({
                 'url': url,
                 'type': 'unknown',
                 'language': 'en',
                 'description': None
             })
         if not urls and links_data.startswith(('http://', 'https://', 'www.')):
-            normalized_links.append({
+                    normalized_links.append({
                 'url': links_data,
                 'type': 'unknown',
                 'language': 'en',
@@ -59,14 +59,14 @@ def normalize_document_links(links_data):
             # Try to extract URLs from text
             urls = url_pattern.findall(item)
             for url in urls:
-                normalized_links.append({
+                        normalized_links.append({
                     'url': url,
                     'type': 'unknown',
                     'language': 'en',
                     'description': None
                 })
             if not urls and item.startswith(('http://', 'https://', 'www.')):
-                normalized_links.append({
+                            normalized_links.append({
                     'url': item,
                     'type': 'unknown',
                     'language': 'en',
@@ -118,8 +118,8 @@ def normalize_document_links(links_data):
                     if key in item and item[key]:
                         description = item[key]
                         break
-                
-                normalized_links.append({
+                            
+                        normalized_links.append({
                     'url': url,
                     'type': doc_type,
                     'language': language,
@@ -129,7 +129,7 @@ def normalize_document_links(links_data):
                 # Try to extract URLs from text
                 urls = url_pattern.findall(item)
                 for url in urls:
-                    normalized_links.append({
+                normalized_links.append({
                         'url': url,
                         'type': 'unknown',
                         'language': 'en',
@@ -316,10 +316,10 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
     # Try each pattern
     for pattern, currency in patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            for match in matches:
+            if matches:
+                for match in matches:
                 # Handle cases where match might be a tuple or a string
-                if isinstance(match, tuple):
+                    if isinstance(match, tuple):
                     if len(match) > 0:
                         amount_str = match[0]
                     else:
@@ -346,7 +346,7 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
                     multiplier = 1000000000000
                     amount_str = re.sub(r'trillion|trill\.?|tt|t$', '', amount_str, flags=re.IGNORECASE).strip()
                 else:
-                    multiplier = 1
+                            multiplier = 1
                 
                 try:
                     amount = float(amount_str) * multiplier
@@ -374,10 +374,10 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
                     
                     # Handle million/billion/trillion suffixes
                     if re.search(r'million|mill\.?|mm|m$', amount_str, re.IGNORECASE):
-                        multiplier = 1000000
+                                multiplier = 1000000
                         amount_str = re.sub(r'million|mill\.?|mm|m$', '', amount_str, flags=re.IGNORECASE).strip()
                     elif re.search(r'billion|bill\.?|bb|b$', amount_str, re.IGNORECASE):
-                        multiplier = 1000000000
+                                multiplier = 1000000000
                         amount_str = re.sub(r'billion|bill\.?|bb|b$', '', amount_str, flags=re.IGNORECASE).strip()
                     elif re.search(r'trillion|trill\.?|tt|t$', amount_str, re.IGNORECASE):
                         multiplier = 1000000000000
@@ -392,7 +392,7 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
                         else:
                             # Default to USD if currency can't be determined
                             return amount, 'USD'
-                    except (ValueError, TypeError):
+                        except (ValueError, TypeError):
                         continue
     
     # If no match found with currency, try to at least extract a financial amount
@@ -439,7 +439,7 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
                     amount = float(amount_str) * multiplier
                     # Default to USD if no currency specified
                     return amount, 'USD'
-                except (ValueError, TypeError):
+            except (ValueError, TypeError):
                     continue
                 
     return None, None
@@ -628,90 +628,109 @@ def extract_location_info(text: str) -> Tuple[Optional[str], Optional[str]]:
     
     return country, city
 
-def extract_organization_and_buyer(text: str) -> Tuple[Optional[str], Optional[str]]:
-    """
-    Extract organization and buyer information from text.
-    
-    Args:
-        text: Text to extract organization and buyer information from
-        
-    Returns:
-        Tuple of (organization_name, buyer)
-    """
-    if not text:
-        return None, None
-    
-    organization_name = None
-    buyer = None
-    
-    # Enhanced false positive patterns
-    false_positive_patterns = [
-        r'\b(?:tender|bid|proposal|contract|procurement|deadline|submission|opening|closing)\b',
-        r'\b\d{4}-\d{4}\b',  # Year ranges
-        r'\bQ[1-4]\s\d{4}\b',  # Quarter references
-        r'\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b',  # Month abbreviations
-        r'\b\d{1,2}(?:st|nd|rd|th)\b',  # Date ordinals
-        r'\b(?:section|chapter|article|clause|paragraph)\b',
-        r'\b(?:reference|annex|appendix|attachment)\b',
-        r'\b(?:page|pg|p\.)\s*\d+\b',
-        r'\b(?:version|ver|rev)\s*\d+\b'
-    ]
-    
-    def is_valid_organization(org: str) -> bool:
-        """Enhanced validation for organization names"""
-        if not org or len(org) < 5:
-            return False
-        
-        # Check false positive patterns
-        if any(re.search(pattern, org, re.I) for pattern in false_positive_patterns):
-            return False
-        
-        # Require at least 2 meaningful words
-        words = re.findall(r'\b\w{3,}\b', org)
-        meaningful_words = [w for w in words if w.lower() not in {
-            'and', 'the', 'of', 'for', 'to', 'in', 'by', 'at', 'on', 'as'
-        }]
-        if len(meaningful_words) < 2:
-            return False
-        
-        # Check for organizational structure indicators
-        structure_indicators = {
-            'ministry', 'department', 'agency', 'authority', 'commission',
-            'corporation', 'institute', 'bank', 'association', 'council',
-            'office', 'bureau', 'organization', 'centre', 'center',
-            'committee', 'board', 'company', 'society', 'foundation',
-            'university', 'college', 'group', 'consortium', 'fund', 'trust',
-            'administration', 'directorate', 'division', 'unit'
-        }
-        if not any(keyword.lower() in org.lower() for keyword in structure_indicators):
-            # Check for legal suffixes as fallback
-            legal_suffixes = {'inc', 'ltd', 'llc', 'corp', 'gmbh', 'plc', 'sa', 'co', 'nv'}
-            if not any(suffix in org.lower().split()[-1] for suffix in legal_suffixes):
-                return False
-        
-        return True
-    
-    # Rest of the function remains with existing patterns but using enhanced validation
-    # ... (existing pattern matching logic)
-    
-    return organization_name, buyer
-
 def extract_organization(text: str) -> Optional[str]:
     """
-    Extract organization name from text.
+    Extract organization name from text using improved heuristics.
     
     Args:
-        text: Text to extract from
+        text: Text to extract organization from
         
     Returns:
-        Organization name or None if not found
+        Extracted organization name or None
     """
-    if not text or not isinstance(text, str):
+    if not text:
         return None
+        
+    # Common organization indicators
+    org_indicators = [
+        "by", "from", "for", "at", "with",
+        "organization", "organisation", "agency", "authority", "ministry",
+        "department", "commission", "bureau", "office", "institute",
+        "corporation", "company", "ltd", "limited", "inc", "incorporated",
+        "council", "administration", "board", "committee"
+    ]
     
-    # Use the new enhanced function and return just the organization
-    organization_name, _ = extract_organization_and_buyer(text)
-    return organization_name
+    # Try to find organization name after common indicators
+    text_lower = text.lower()
+    for indicator in org_indicators:
+        idx = text_lower.find(f" {indicator} ")
+        if idx >= 0:
+            # Look for organization name in the next 100 characters
+            potential_org = text[idx:idx+100].strip()
+            # Split on common delimiters
+            for delim in [". ", ", ", " - ", "\n", " for ", " to "]:
+                if delim in potential_org:
+                    potential_org = potential_org.split(delim)[0].strip()
+            if len(potential_org) > 3 and len(potential_org) < 100:
+                return potential_org
+    
+    # Try to find organization patterns
+    import re
+    
+    # Pattern for organization-like strings
+    org_patterns = [
+        r"(?:Ministry of|Department of|Office of|Agency for|Authority of)\s+[A-Z][A-Za-z\s,]+",
+        r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,5}\s+(?:Corporation|Authority|Agency|Commission|Department|Ministry|Office)",
+        r"(?:The\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,5}\s+(?:Ltd\.?|Limited|Inc\.?|Corporation|LLC)",
+        r"(?:National|Federal|State|Regional|Local)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}"
+    ]
+    
+    for pattern in org_patterns:
+        matches = re.findall(pattern, text)
+        if matches:
+            # Return the longest match as it's likely the most complete
+            return max(matches, key=len)
+    
+    return None
+
+def extract_organization_and_buyer(text: str, title: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extract both organization and buyer information from text.
+    
+    Args:
+        text: Main text to extract from
+        title: Optional title text to also check
+        
+    Returns:
+        Tuple of (organization_name, buyer_name)
+    """
+    organization = None
+    buyer = None
+    
+    # Try to extract from title first if available
+    if title:
+        organization = extract_organization(title)
+        
+    # If not found in title, try main text
+    if not organization:
+        organization = extract_organization(text)
+    
+    # Look for buyer-specific patterns
+    buyer_patterns = [
+        r"(?:buyer|purchasing entity|contracting authority|procuring entity):\s*([A-Z][A-Za-z\s,]+(?:Ltd\.?|Limited|Inc\.?|Corporation|LLC)?)",
+        r"(?:on behalf of|for)\s+([A-Z][A-Za-z\s,]+(?:Ltd\.?|Limited|Inc\.?|Corporation|LLC)?)",
+        r"(?:client|end-user):\s*([A-Z][A-Za-z\s,]+(?:Ltd\.?|Limited|Inc\.?|Corporation|LLC)?)"
+    ]
+    
+    import re
+    for pattern in buyer_patterns:
+        if text:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                buyer = matches[0].strip()
+                break
+                
+        if title and not buyer:
+            matches = re.findall(pattern, title, re.IGNORECASE)
+            if matches:
+                buyer = matches[0].strip()
+                break
+    
+    # If organization is still missing but we found a buyer, use it as organization
+    if not organization and buyer:
+        organization = buyer
+        
+    return organization, buyer
 
 def ensure_country(country_value=None, text=None, organization=None, email=None, language=None):
     """
@@ -1060,8 +1079,8 @@ def clean_price(price_value):
         Cleaned price as float or None if invalid
     """
     if price_value is None:
-        return None
-        
+    return None
+
     if isinstance(price_value, (int, float)):
         return float(price_value)
         
@@ -1114,7 +1133,7 @@ def extract_procurement_method(text):
     """
     if not text or not isinstance(text, str):
         return None
-        
+    
     text = text.lower()
     
     # Check for open/competitive procurement
@@ -1131,7 +1150,7 @@ def extract_procurement_method(text):
     if any(term in text for term in ['selective tender', 'invitation to tender', 'pre-qualified', 
                                     'shortlist', 'selected bidders', 'invitation only']):
         return 'selective'
-        
+    
     return None
 
 
@@ -1247,7 +1266,7 @@ def extract_status(text=None, deadline=None, publication_date=None, description=
                 if status_from_text in ['complete', 'cancelled']:
                     return status_from_text
                 return 'active'
-            else:
+        else:
                 # Deadline has passed, so tender is likely complete unless explicitly cancelled
                 if status_from_text == 'cancelled':
                     return 'cancelled'
@@ -1278,8 +1297,8 @@ def parse_date_string(date_str):
         datetime object or None if parsing fails
     """
     if not date_str or not isinstance(date_str, str):
-        return None
-        
+    return None
+
     # Clean the string
     date_str = date_str.strip()
     
@@ -1432,3 +1451,271 @@ def standardize_status(status_text):
         
     # If we can't determine the status, return the original text
     return status_text
+
+def normalize_title(title: str) -> str:
+    """
+    Normalize tender title by removing common issues and standardizing format.
+    
+    Args:
+        title: Raw title string
+        
+    Returns:
+        Normalized title string
+    """
+    if not title:
+        return None
+        
+    # Remove multiple spaces
+    title = ' '.join(title.split())
+    
+    # Remove common prefixes
+    prefixes_to_remove = [
+        r'^(?:Notice|Tender|RFP|RFQ|ITB|EOI|Procurement|Contract)\s*[-:]\s*',
+        r'^\d{4}\s*[-:]\s*',
+        r'^\d{4}/\d{2,4}\s*[-:]\s*'
+    ]
+    
+    for prefix in prefixes_to_remove:
+        title = re.sub(prefix, '', title, flags=re.IGNORECASE)
+    
+    # Remove reference numbers at the start
+    title = re.sub(r'^[A-Z0-9-/]+\s*[-:]\s*', '', title)
+    
+    # Remove dates at the end
+    title = re.sub(r'\s*\(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}\)\s*$', '', title)
+    
+    # Capitalize first letter of each word except articles and prepositions
+    skip_words = {'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 
+                 'to', 'by', 'from', 'in', 'into', 'of', 'with'}
+    words = title.split()
+    for i, word in enumerate(words):
+        if i == 0 or word.lower() not in skip_words:
+            words[i] = word.capitalize()
+        else:
+            words[i] = word.lower()
+    
+    return ' '.join(words)
+
+def normalize_description(description: str) -> str:
+    """
+    Normalize tender description by cleaning and standardizing format.
+    
+    Args:
+        description: Raw description string
+        
+    Returns:
+        Normalized description string
+    """
+    if not description:
+        return None
+        
+    # Remove multiple spaces and normalize newlines
+    description = ' '.join(description.split())
+    
+    # Remove common HTML artifacts
+    description = re.sub(r'<[^>]+>', ' ', description)
+    description = re.sub(r'&[a-z]+;', ' ', description)
+    
+    # Remove multiple punctuation
+    description = re.sub(r'[.!?]+', '.', description)
+    description = re.sub(r'[-]+', '-', description)
+    
+    # Ensure proper spacing after punctuation
+    description = re.sub(r'([.!?])\s*([A-Z])', r'\1 \2', description)
+    
+    # Remove URLs (they should be in document_links)
+    description = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', description)
+    
+    return description.strip()
+
+def standardize_status(status: str) -> str:
+    """
+    Standardize tender status to a common format.
+    
+    Args:
+        status: Raw status string
+        
+    Returns:
+        Standardized status string
+    """
+    if not status:
+        return None
+        
+    status = status.lower().strip()
+    
+    # Define status mappings
+    status_mapping = {
+        # Active variations
+        'active': 'active',
+        'open': 'active',
+        'ongoing': 'active',
+        'in progress': 'active',
+        'published': 'active',
+        
+        # Complete variations
+        'complete': 'complete',
+        'completed': 'complete',
+        'closed': 'complete',
+        'awarded': 'complete',
+        'finished': 'complete',
+        
+        # Cancelled variations
+        'cancelled': 'cancelled',
+        'canceled': 'cancelled',
+        'terminated': 'cancelled',
+        'withdrawn': 'cancelled',
+        
+        # Planned variations
+        'planned': 'planned',
+        'upcoming': 'planned',
+        'draft': 'planned',
+        'preparation': 'planned',
+        
+        # Expression of Interest variations
+        'expression of interest': 'active',
+        'eoi': 'active',
+        'request for eoi': 'active',
+        
+        # Request variations
+        'request for proposal': 'active',
+        'request for quotation': 'active',
+        'invitation to bid': 'active',
+        'rfp': 'active',
+        'rfq': 'active',
+        'itb': 'active'
+    }
+    
+    # Try direct mapping
+    if status in status_mapping:
+        return status_mapping[status]
+    
+    # Try partial matching
+    for key, value in status_mapping.items():
+        if key in status:
+            return value
+    
+    # Default to active if no match found
+    return 'active'
+
+def standardize_procurement_method(method: str) -> str:
+    """
+    Standardize procurement method to a common format.
+    
+    Args:
+        method: Raw procurement method string
+        
+    Returns:
+        Standardized procurement method string
+    """
+    if not method:
+        return None
+        
+    method = method.lower().strip()
+    
+    # Define method mappings
+    method_mapping = {
+        # Open variations
+        'open': 'Open Procedure',
+        'open procedure': 'Open Procedure',
+        'open tender': 'Open Procedure',
+        'open competition': 'Open Procedure',
+        'open bidding': 'Open Procedure',
+        
+        # Restricted variations
+        'restricted': 'Restricted Procedure',
+        'restricted procedure': 'Restricted Procedure',
+        'selective': 'Restricted Procedure',
+        'limited': 'Restricted Procedure',
+        
+        # Negotiated variations
+        'negotiated': 'Negotiated Procedure',
+        'neg-w-call': 'Negotiated Procedure with Call',
+        'neg-wo-call': 'Negotiated Procedure without Call',
+        
+        # Competitive dialogue variations
+        'competitive dialogue': 'Competitive Dialogue',
+        'comp-dial': 'Competitive Dialogue',
+        'dialogue': 'Competitive Dialogue',
+        
+        # Request variations
+        'rfp': 'Request for Proposal',
+        'request for proposal': 'Request for Proposal',
+        'rfq': 'Request for Quotation',
+        'request for quotation': 'Request for Quotation',
+        'itb': 'Invitation to Bid',
+        'invitation to bid': 'Invitation to Bid',
+        'eoi': 'Expression of Interest',
+        'expression of interest': 'Expression of Interest',
+        
+        # Quality-based variations
+        'qcbs': 'Quality and Cost-Based Selection',
+        'quality and cost-based selection': 'Quality and Cost-Based Selection',
+        'quality-based selection': 'Quality-Based Selection',
+        
+        # Other variations
+        'direct': 'Direct Procurement',
+        'single source': 'Direct Procurement',
+        'shopping': 'Shopping Procedure'
+    }
+    
+    # Try direct mapping
+    if method in method_mapping:
+        return method_mapping[method]
+    
+    # Try partial matching
+    for key, value in method_mapping.items():
+        if key in method:
+            return value
+    
+    # If no match found, capitalize words
+    return ' '.join(word.capitalize() for word in method.split())
+
+def normalize_value(value: float, currency: str = None) -> Tuple[float, str]:
+    """
+    Normalize tender value and currency.
+    
+    Args:
+        value: Estimated value
+        currency: Currency code
+        
+    Returns:
+        Tuple of (normalized_value, normalized_currency)
+    """
+    if not value:
+        return None, currency
+        
+    # Define suspicious value thresholds
+    MIN_VALUE = 100  # Minimum reasonable tender value
+    MAX_VALUE = 1000000000000  # Maximum reasonable tender value (1 trillion)
+    
+    # Check if value is within reasonable range
+    if value < MIN_VALUE or value > MAX_VALUE:
+        return None, currency
+    
+    # Normalize currency code
+    if currency:
+        currency = currency.upper().strip()
+        
+        # Define currency mappings for non-standard codes
+        currency_mapping = {
+            'EURO': 'EUR',
+            'EUROS': 'EUR',
+            'US$': 'USD',
+            'USD$': 'USD',
+            'DOLLAR': 'USD',
+            'DOLLARS': 'USD',
+            'GBP£': 'GBP',
+            'UKP': 'GBP',
+            'RMB': 'CNY',
+            'YUAN': 'CNY',
+            'YEN': 'JPY',
+            '¥': 'JPY'
+        }
+        
+        currency = currency_mapping.get(currency, currency)
+        
+        # Validate currency code (must be 3 letters)
+        if not re.match(r'^[A-Z]{3}$', currency):
+            currency = None
+    
+    return value, currency

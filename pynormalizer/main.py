@@ -4,6 +4,7 @@ import os
 import json
 from datetime import datetime
 from typing import Dict, Any, List, Optional
+import traceback
 
 import psycopg2
 
@@ -315,35 +316,87 @@ def normalize_all_tenders(db_config: Dict[str, Any],
     total_start_time = time.time()
     
     for table_name in tables:
-        if table_name not in SOURCE_NORMALIZERS:
-            logger.warning(f"No normalizer found for table: {table_name}")
-            continue
+        logger.info(f"Processing table: {table_name}")
+        start_time = time.time()
         
         try:
-            processed = normalize_table(conn, table_name, batch_size, limit_per_table, progress_callback, skip_normalized)
-            results[table_name] = processed
+            # Get the appropriate normalizer function
+            normalizer = SOURCE_NORMALIZERS.get(table_name)
+            if not normalizer:
+                logger.warning(f"No normalizer found for table {table_name}, skipping")
+                continue
+            
+            # Fetch unnormalized rows
+            if skip_normalized:
+                logger.info(f"Fetching only unnormalized records from {table_name}")
+            logger.info(f"Fetching unnormalized rows from {table_name}")
+            
+            rows = fetch_unnormalized_rows(conn, table_name, skip_normalized=skip_normalized, limit=limit_per_table)
+            
+            if not rows:
+                logger.info(f"No rows to process in {table_name}")
+                results[table_name] = 0
+                continue
+                
+            total_rows = len(rows)
+            processed = 0
+            successful = 0
+            
+            # Process in batches
+            for i in range(0, total_rows, batch_size):
+                batch = rows[i:i + batch_size]
+                
+                for row in batch:
+                    try:
+                        # Normalize the tender
+                        normalized = normalizer(row)
+                        
+                        # Upsert to unified_tenders table
+                        upsert_unified_tender(conn, normalized)
+                        
+                        successful += 1
+                        
+                    except Exception as e:
+                        logger.error(f"Error normalizing row {row.get('id', 'unknown')} from {table_name}: {e}")
+                        logger.debug(traceback.format_exc())
+                        continue
+                        
+                    finally:
+                        processed += 1
+                        
+                # Log progress after each batch
+                if processed > 0:
+                    success_rate = (successful / processed) * 100
+                    elapsed = time.time() - start_time
+                    rate = processed / elapsed if elapsed > 0 else 0
+                    
+                    logger.info(f"Processed {processed}/{total_rows} records from {table_name} ({success_rate:.1f}%) in {elapsed:.2f}s")
+                    logger.info(f"Processing rate: {rate:.2f} records/second")
+                    
+                    if progress_callback:
+                        progress_callback(processed, total_rows, table_name)
+            
+            # Store results for this table
+            results[table_name] = successful
+            
+            # Log final stats for this table
+            elapsed = time.time() - start_time
+            if processed > 0:
+                success_rate = (successful / processed) * 100
+                logger.info(f"Completed processing {table_name}: {successful}/{processed} rows processed successfully ({success_rate:.1f}%).")
+                logger.info(f"Total time: {elapsed:.2f}s, Average rate: {processed/elapsed:.2f} records/second")
+            
         except Exception as e:
-            logger.exception(f"Error processing table {table_name}: {e}")
+            logger.error(f"Error processing table {table_name}: {e}")
+            logger.debug(traceback.format_exc())
             results[table_name] = 0
+            continue
     
-    # Log summary
-    total_time = time.time() - total_start_time
+    # Log overall completion
+    total_elapsed = time.time() - total_start_time
     total_processed = sum(results.values())
-    
-    logger.info(f"Normalization complete. Processed {total_processed} tenders " +
-                f"from {len(results)} tables in {total_time:.1f} seconds.")
-    
-    # Log translation statistics
-    try:
-        translation_stats = get_translation_stats()
-        logger.info(f"Translation statistics: {json.dumps(translation_stats, indent=2)}")
-    except Exception as e:
-        logger.warning(f"Could not retrieve translation statistics: {e}")
-    
-    # Close the connection if it's a PostgreSQL connection
-    # Supabase client doesn't need/have a close method
-    if hasattr(conn, 'close'):
-        conn.close()
+    logger.info(f"Completed normalizing all tables in {total_elapsed:.2f}s")
+    logger.info(f"Total records processed: {total_processed}")
     
     return results
 
