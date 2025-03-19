@@ -1,280 +1,297 @@
-from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple
+"""
+Normalizer for TED.eu tenders.
+"""
 import json
-import re
+import logging
+from datetime import datetime
+from typing import Dict, Any, Optional, List
 import uuid
 
-from pynormalizer.models.source_models import TEDEuTender
+from pynormalizer.models.source_models import TEDTender
 from pynormalizer.models.unified_model import UnifiedTender
 from pynormalizer.utils.translation import (
-    translate_to_english, detect_language, apply_translations
+    translate_to_english,
+    detect_language,
+    apply_translations
 )
 from pynormalizer.utils.normalizer_helpers import (
-    normalize_document_links, 
-    extract_financial_info, 
+    normalize_document_links,
+    extract_financial_info,
     extract_location_info,
-    extract_procurement_method,
     extract_organization,
+    extract_procurement_method,
     extract_status,
-    extract_organization_and_buyer,
+    extract_deadline,
+    normalize_title,
+    normalize_description,
     ensure_country,
-    extract_country_from_text
+    clean_price,
+    log_tender_normalization
+)
+from pynormalizer.utils.standardization import (
+    validate_cpv_code,
+    validate_nuts_code,
+    validate_currency_value,
+    calculate_data_quality_score
 )
 
-def normalize_tedeu(row: Dict[str, Any]) -> UnifiedTender:
+logger = logging.getLogger(__name__)
+
+def extract_tedeu_country(tender: TEDTender) -> Optional[str]:
+    """Extract country from TED.eu tender data."""
+    # Try org country first
+    if hasattr(tender, 'organisation_country') and tender.organisation_country:
+        return tender.organisation_country
+    
+    # Try NUTS code
+    if hasattr(tender, 'nuts_code') and tender.nuts_code:
+        # Extract country code from NUTS code (first two chars)
+        return tender.nuts_code[:2]
+    
+    # Try from original address or name
+    if hasattr(tender, 'organisation_address') and tender.organisation_address:
+        # Extract from address
+        _, country = extract_location_info(tender.organisation_address)
+        if country:
+            return country
+    
+    # Try from summary
+    if hasattr(tender, 'summary') and tender.summary:
+        # Extract from summary
+        country, _ = extract_location_info(tender.summary)
+        if country:
+            return country
+    
+    return None
+
+def normalize_tedeu(tender: TEDTender) -> UnifiedTender:
     """
-    Normalize a TED.eu (Tenders Electronic Daily) tender record.
+    Normalize TED.eu tender to unified format.
     
     Args:
-        row: Dictionary containing TED.eu tender data
+        tender: TEDTender object containing source data
         
     Returns:
-        Normalized UnifiedTender instance
+        UnifiedTender object with normalized data
     """
-    # Validate with Pydantic
     try:
-        tedeu_obj = TEDEuTender(**row)
+        # Generate unique ID for the tender
+        tender_id = str(uuid.uuid4())
+        
+        # Initialize unified tender
+        unified = UnifiedTender(
+            id=tender_id,
+            source="tedeu",
+            source_id=tender.id or str(tender.publication_number),
+            source_url=getattr(tender, 'url', None)
+        )
+        
+        # Use summary as description
+        description = getattr(tender, 'summary', '')
+        
+        # Normalize title
+        unified.title = normalize_title(tender.title)
+        log_tender_normalization(tender_id, "title", tender.title, unified.title)
+        
+        # Normalize description
+        unified.description = normalize_description(description)
+        log_tender_normalization(tender_id, "description", description, unified.description)
+        
+        # Detect language
+        language = getattr(tender, 'language', None) or detect_language(tender.title)
+        unified.language = language or 'en'
+        
+        if language and language != 'en':
+            logger.info(f"Detected non-English language: {language}")
+            # Apply translations for key fields
+            translations = {}
+            
+            # Title translation
+            if unified.title:
+                title_english = translate_to_english(unified.title, language)
+                unified.title_english = title_english
+                translations["title"] = title_english
+                log_tender_normalization(tender_id, "title_translation", unified.title, unified.title_english)
+            
+            # Description translation
+            if unified.description:
+                desc_english = translate_to_english(unified.description, language)
+                unified.description_english = desc_english
+                translations["description"] = desc_english
+                log_tender_normalization(tender_id, "description_translation", unified.description, unified.description_english)
+                
+            # Store translations for later reference
+            unified.translations = json.dumps(translations)
+        else:
+            # For English content, copy the fields directly
+            unified.title_english = unified.title
+            unified.description_english = unified.description
+        
+        # Extract and normalize country
+        country = extract_tedeu_country(tender)
+        country_name, country_code, country_code_3 = ensure_country(country)
+        unified.country = country_name
+        # Don't add these to unified_tenders as they aren't in the schema yet
+        # unified.country_code = country_code
+        # unified.country_code_3 = country_code_3
+        log_tender_normalization(tender_id, "country", country, unified.country)
+        
+        # Extract additional location info if needed
+        if not country_name or country_name == "Unknown":
+            extracted_country, city = extract_location_info(unified.description)
+            if extracted_country:
+                unified.country = extracted_country
+                log_tender_normalization(tender_id, "extracted_country", None, unified.country)
+            if city:
+                unified.city = city
+                log_tender_normalization(tender_id, "city", None, unified.city)
+        
+        # Extract financial information
+        amount, currency = None, None
+        
+        # Try value_magnitude first
+        if hasattr(tender, 'value_magnitude') and tender.value_magnitude:
+            amount = clean_price(tender.value_magnitude)
+            currency = getattr(tender, 'currency', None)
+        
+        # Fall back to extraction from description
+        if not amount or not currency:
+            extracted_amount, extracted_currency = extract_financial_info(unified.description)
+            amount = amount or extracted_amount
+            currency = currency or extracted_currency
+            
+        if amount and currency:
+            unified.estimated_value = amount
+            unified.currency = currency
+            log_tender_normalization(tender_id, "financial_info", None, f"{amount} {currency}")
+        
+        # Extract procurement method
+        method = None
+        
+        # Try procedure_type first
+        if hasattr(tender, 'procedure_type') and tender.procedure_type:
+            method = tender.procedure_type
+        
+        # Fall back to extraction from description
+        if not method:
+            method = extract_procurement_method(unified.description)
+            
+        if method:
+            unified.procurement_method = method
+            log_tender_normalization(tender_id, "procurement_method", None, method)
+        
+        # Extract organization information
+        org_name = None
+        
+        # Try organisation_name first
+        if hasattr(tender, 'organisation_name') and tender.organisation_name:
+            org_name = tender.organisation_name
+        
+        # Fall back to extraction from description
+        if not org_name:
+            org_name = extract_organization(unified.description)
+            
+        if org_name:
+            unified.organization_name = org_name
+            log_tender_normalization(tender_id, "organization", None, org_name)
+            
+            # Also set in English if language is not English
+            if language and language != 'en':
+                org_english = translate_to_english(org_name, language)
+                unified.organization_name_english = org_english
+        
+        # Extract and normalize status
+        status = None
+        
+        # Try notice_status first
+        if hasattr(tender, 'notice_status') and tender.notice_status:
+            status = tender.notice_status
+        
+        # Fall back to extraction from description
+        if not status:
+            status = extract_status(unified.description)
+            
+        if status:
+            unified.status = status
+            log_tender_normalization(tender_id, "status", None, status)
+        
+        # Set dates
+        if hasattr(tender, 'publication_date') and tender.publication_date:
+            unified.publication_date = tender.publication_date
+            
+        if hasattr(tender, 'deadline_date') and tender.deadline_date:
+            unified.deadline_date = tender.deadline_date
+        else:
+            # Try to extract from description
+            deadline = extract_deadline(unified.description)
+            if deadline:
+                unified.deadline_date = deadline
+                log_tender_normalization(tender_id, "deadline", None, deadline.isoformat())
+        
+        # Normalize document links
+        if hasattr(tender, 'links') and tender.links:
+            unified.documents = normalize_document_links(tender.links)
+        
+        # TED.eu specific fields - store in original_data
+        original_data = {}
+        
+        # CPV codes
+        if hasattr(tender, 'cpv_codes') and tender.cpv_codes:
+            cpv_codes = []
+            for code in tender.cpv_codes:
+                valid, issues = validate_cpv_code(code)
+                if valid:
+                    cpv_codes.append(code)
+                else:
+                    logger.warning(f"Invalid CPV code {code}: {issues}")
+            
+            if cpv_codes:
+                original_data["cpv_codes"] = cpv_codes
+        
+        # NUTS codes
+        if hasattr(tender, 'nuts_codes') and tender.nuts_codes:
+            nuts_codes = []
+            for code in tender.nuts_codes:
+                valid, issues = validate_nuts_code(code)
+                if valid:
+                    nuts_codes.append(code)
+                else:
+                    logger.warning(f"Invalid NUTS code {code}: {issues}")
+            
+            if nuts_codes:
+                original_data["nuts_codes"] = nuts_codes
+        
+        # Additional specific fields
+        for field in ['notice_type', 'regulation', 'procedure_type', 'award_criteria']:
+            if hasattr(tender, field) and getattr(tender, field):
+                original_data[field] = getattr(tender, field)
+                
+                # Also set in the unified tender if field exists
+                if hasattr(unified, field):
+                    setattr(unified, field, getattr(tender, field))
+        
+        # Store original data
+        if original_data:
+            unified.original_data = json.dumps(original_data)
+        
+        # Calculate data quality score
+        quality_scores = calculate_data_quality_score(unified.dict())
+        # Not storing in data_quality as it's not in the schema yet
+        
+        # Add normalized timestamp
+        unified.normalized_at = datetime.utcnow()
+        unified.normalized_method = "pynormalizer"
+        
+        return unified
+        
     except Exception as e:
-        raise ValueError(f"Failed to validate TED.eu tender: {e}")
-
-    # Extract and normalize title and description
-    raw_title = tedeu_obj.title if hasattr(tedeu_obj, 'title') and tedeu_obj.title else None
-    raw_description = tedeu_obj.summary if hasattr(tedeu_obj, 'summary') and tedeu_obj.summary else None
-    
-    title = normalize_title(raw_title)
-    description = normalize_description(raw_description)
-    
-    # Detect language with improved accuracy using multiple fields
-    language_sample = ""
-    if title:
-        language_sample += title + " "
-    if description:
-        language_sample += description[:500] + " "
-    if hasattr(tedeu_obj, 'organisation_name') and tedeu_obj.organisation_name:
-        language_sample += tedeu_obj.organisation_name + " "
-    if hasattr(tedeu_obj, 'buyer_name') and tedeu_obj.buyer_name:
-        language_sample += tedeu_obj.buyer_name + " "
-    
-    language = detect_language(language_sample.strip())
-    if not language and hasattr(tedeu_obj, 'language') and tedeu_obj.language:
-        language = tedeu_obj.language.lower()[:2]
-    if not language:
-        language = 'en'  # Default to English if detection fails
-    
-    # Translate with improved chunking and retry logic
-    title_english = None
-    description_english = None
-    
-    if title and language != 'en':
-        title_english, _ = translate_to_english(title, language, max_retries=3)
-        # Normalize translated title
-        if title_english:
-            title_english = normalize_title(title_english)
-    else:
-        title_english = title
-        
-    if description and language != 'en':
-        # Split long descriptions into smaller chunks for better translation
-        chunks = [description[i:i+500] for i in range(0, len(description), 500)]
-        translated_chunks = []
-        for chunk in chunks:
-            trans_chunk, _ = translate_to_english(chunk, language, max_retries=3)
-            if trans_chunk:
-                translated_chunks.append(trans_chunk)
-        description_english = " ".join(translated_chunks) if translated_chunks else None
-        # Normalize translated description
-        if description_english:
-            description_english = normalize_description(description_english)
-    else:
-        description_english = description
-
-    # Extract and normalize estimated value and currency
-    estimated_value = None
-    currency = None
-    
-    # Try multiple sources for value extraction
-    if hasattr(tedeu_obj, 'value_magnitude') and tedeu_obj.value_magnitude:
-        try:
-            estimated_value = float(tedeu_obj.value_magnitude)
-            if hasattr(tedeu_obj, 'currency') and tedeu_obj.currency:
-                currency = tedeu_obj.currency
-        except (ValueError, TypeError):
-            pass
-    
-    # Try to extract from description if not found
-    if not estimated_value and description:
-        estimated_value, extracted_currency = extract_financial_info(description)
-        if not currency and extracted_currency:
-            currency = extracted_currency
-    
-    # Try to extract from title if still not found
-    if not estimated_value and title:
-        estimated_value, extracted_currency = extract_financial_info(title)
-        if not currency and extracted_currency:
-            currency = extracted_currency
-            
-    # Normalize value and currency
-    estimated_value, currency = normalize_value(estimated_value, currency)
-    
-    # Extract organization name and buyer with improved logic
-    organization_name = None
-    buyer = None
-    
-    if hasattr(tedeu_obj, 'organisation_name') and tedeu_obj.organisation_name:
-        organization_name = tedeu_obj.organisation_name
-    
-    if hasattr(tedeu_obj, 'buyer_name') and tedeu_obj.buyer_name:
-        buyer = tedeu_obj.buyer_name
-    
-    # If organization is missing, try to extract from text
-    if not organization_name:
-        organization_name, extracted_buyer = extract_organization_and_buyer(description, title)
-        if not buyer:
-            buyer = extracted_buyer
-    
-    # Translate organization and buyer names if needed
-    organization_name_english = None
-    buyer_english = None
-    
-    if organization_name and language != 'en':
-        organization_name_english, _ = translate_to_english(organization_name, language, max_retries=3)
-    else:
-        organization_name_english = organization_name
-        
-    if buyer and language != 'en':
-        buyer_english, _ = translate_to_english(buyer, language, max_retries=3)
-    else:
-        buyer_english = buyer
-
-    # Extract country with enhanced fallback mechanisms
-    country = None
-    if hasattr(tedeu_obj, 'country') and tedeu_obj.country:
-        country = tedeu_obj.country
-    elif hasattr(tedeu_obj, 'country_code') and tedeu_obj.country_code:
-        country = tedeu_obj.country_code
-    elif hasattr(tedeu_obj, 'nuts_code') and tedeu_obj.nuts_code:
-        # Extract country from NUTS code (first 2 characters)
-        country = tedeu_obj.nuts_code[:2] if len(tedeu_obj.nuts_code) >= 2 else None
-    
-    # Try to extract country from address or organization data if still missing
-    if not country:
-        if hasattr(tedeu_obj, 'address') and tedeu_obj.address:
-            country = extract_country_from_text(tedeu_obj.address)
-        elif hasattr(tedeu_obj, 'organisation_country') and tedeu_obj.organisation_country:
-            country = tedeu_obj.organisation_country
-    
-    # Ensure country is populated using fallback mechanisms
-    country = ensure_country(
-        country_value=country,
-        text=description,
-        organization=organization_name,
-        email=tedeu_obj.contact_email if hasattr(tedeu_obj, 'contact_email') and tedeu_obj.contact_email else None,
-        language=language
-    )
-
-    # Extract document links with improved validation
-    document_links = []
-    if hasattr(tedeu_obj, 'links') and tedeu_obj.links:
-        document_links = normalize_document_links(tedeu_obj.links)
-    
-    # Add contact_url to document_links if available and valid
-    if hasattr(tedeu_obj, 'contact_url') and tedeu_obj.contact_url:
-        if tedeu_obj.contact_url.startswith(('http://', 'https://')):
-            url_already_included = False
-            if document_links:
-                for link in document_links:
-                    if isinstance(link, dict) and link.get('url') == tedeu_obj.contact_url:
-                        url_already_included = True
-                        break
-            
-            if not url_already_included:
-                document_links.append({
-                    "url": tedeu_obj.contact_url,
-                    "type": "contact",
-                    "language": language,
-                    "description": "Contact URL"
-                })
-    
-    # Extract and standardize procurement method
-    procurement_method = None
-    if hasattr(tedeu_obj, 'procedure_type') and tedeu_obj.procedure_type:
-        procurement_method = standardize_procurement_method(tedeu_obj.procedure_type)
-    
-    # Convert date objects to datetime
-    publication_dt = None
-    if hasattr(tedeu_obj, 'publication_date') and tedeu_obj.publication_date:
-        if isinstance(tedeu_obj.publication_date, datetime):
-            publication_dt = tedeu_obj.publication_date
-        else:
-            publication_dt = datetime.combine(tedeu_obj.publication_date, datetime.min.time())
-    
-    deadline_dt = None
-    if hasattr(tedeu_obj, 'deadline_date') and tedeu_obj.deadline_date:
-        if isinstance(tedeu_obj.deadline_date, datetime):
-            deadline_dt = tedeu_obj.deadline_date
-        else:
-            deadline_dt = datetime.combine(tedeu_obj.deadline_date, datetime.min.time())
-    
-    # Extract and standardize status
-    raw_status = None
-    if hasattr(tedeu_obj, 'notice_status') and tedeu_obj.notice_status:
-        raw_status = tedeu_obj.notice_status
-    
-    # Use the improved extract_status function and standardize
-    status = extract_status(
-        text=raw_status,
-        deadline=deadline_dt,
-        publication_date=publication_dt,
-        description=description
-    )
-    status = standardize_status(status)
-    
-    # Extract sector information
-    sector = None
-    if description:
-        sectors = extract_sector_info(description)
-        if sectors:
-            sector = sectors[0]  # Use the first identified sector
-    
-    # Create the UnifiedTender object
-    normalized_tender = UnifiedTender(
-        id=str(uuid.uuid4()),
-        title=title,
-        description=description,
-        tender_type=None,
-        status=status,
-        publication_date=publication_dt,
-        deadline_date=deadline_dt,
-        country=country,
-        city=None,  # Not reliably available in TED EU data
-        organization_name=organization_name,
-        organization_id=None,
-        buyer=buyer,
-        project_name=None,
-        project_id=None,
-        project_number=None,
-        sector=sector,
-        estimated_value=estimated_value,
-        currency=currency,
-        contact_name=tedeu_obj.contact_name if hasattr(tedeu_obj, 'contact_name') and tedeu_obj.contact_name else None,
-        contact_email=tedeu_obj.contact_email if hasattr(tedeu_obj, 'contact_email') and tedeu_obj.contact_email else None,
-        contact_phone=tedeu_obj.contact_phone if hasattr(tedeu_obj, 'contact_phone') and tedeu_obj.contact_phone else None,
-        contact_address=tedeu_obj.contact_address if hasattr(tedeu_obj, 'contact_address') and tedeu_obj.contact_address else None,
-        url=tedeu_obj.url if hasattr(tedeu_obj, 'url') and tedeu_obj.url else None,
-        document_links=document_links,
-        language=language,
-        notice_id=tedeu_obj.notice_id if hasattr(tedeu_obj, 'notice_id') and tedeu_obj.notice_id else None,
-        reference_number=tedeu_obj.reference_number if hasattr(tedeu_obj, 'reference_number') and tedeu_obj.reference_number else None,
-        procurement_method=procurement_method,
-        original_data=row,  # Store the original data for reference
-        source_table="tedeu",
-        source_id=str(tedeu_obj.id) if hasattr(tedeu_obj, 'id') and tedeu_obj.id is not None else None,
-        normalized_by="pynormalizer",
-        title_english=title_english,
-        description_english=description_english,
-        organization_name_english=organization_name_english,
-        buyer_english=buyer_english,
-        project_name_english=None
-    )
-    
-    return normalized_tender 
+        logger.error(f"Error normalizing TED.eu tender {getattr(tender, 'id', 'unknown')}: {str(e)}")
+        # Return a minimal unified tender for error cases
+        error_tender = UnifiedTender(
+            id=str(uuid.uuid4()),
+            source="tedeu",
+            source_id=getattr(tender, 'id', None) or str(getattr(tender, 'publication_number', 'unknown')),
+            title=getattr(tender, 'title', "Error in normalization"),
+            fallback_reason=f"Error: {str(e)}"
+        )
+        return error_tender 
