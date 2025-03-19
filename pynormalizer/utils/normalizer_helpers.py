@@ -653,3 +653,83 @@ def extract_location_info(text: str) -> Tuple[Optional[str], Optional[str]]:
                 break
     
     return country, city
+
+def extract_organization(text: str) -> Optional[str]:
+    """
+    Extract organization name from text using improved heuristics.
+    
+    Args:
+        text: Text to extract organization from
+        
+    Returns:
+        Extracted organization name or None if not found
+    """
+    if not text:
+        return None
+    
+    # Common organization indicators
+    org_indicators = [
+        "by", "from", "for", "at", "with",
+        "organization", "organisation", "agency", "authority", "ministry",
+        "department", "commission", "bureau", "office", "institute"
+    ]
+    
+    # Try to find organization name after common indicators
+    text_lower = text.lower()
+    for indicator in org_indicators:
+        idx = text_lower.find(f" {indicator} ")
+        if idx >= 0:
+            # Look for organization name in the next 100 characters
+            potential_org = text[idx:idx+100].strip()
+            # Split on common delimiters
+            for delim in [". ", ", ", " - ", "\n", " for ", " to "]:
+                if delim in potential_org:
+                    potential_org = potential_org.split(delim)[0].strip()
+            if len(potential_org) > 3 and len(potential_org) < 100:
+                return potential_org
+    
+    # Pattern for organization-like strings
+    org_patterns = [
+        r"(?:Ministry of|Department of|Office of|Agency for|Authority of)\s+[A-Z][A-Za-z\s,]+",
+        r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,5}\s+(?:Corporation|Authority|Agency|Commission|Department|Ministry|Office)"
+    ]
+    
+    for pattern in org_patterns:
+        matches = re.findall(pattern, text)
+        if matches:
+            # Return the longest match as it's likely the most complete
+            return max(matches, key=len)
+    
+    return None
+
+def extract_procurement_method(text):
+    """
+    Extract procurement method information from text.
+    
+    Args:
+        text: Text to extract procurement method from
+        
+    Returns:
+        Normalized procurement method (open, limited, selective) or None if not found
+    """
+    if not text or not isinstance(text, str):
+        return None
+    
+    text = text.lower()
+    
+    # Check for open/competitive procurement
+    if any(term in text for term in ['open tender', 'open bidding', 'open procedure', 'competitive tender', 
+                                     'competitive bidding', 'public tender', 'public procurement']):
+        return 'open'
+        
+    # Check for limited/direct procurement
+    if any(term in text for term in ['limited tender', 'direct award', 'sole source', 'single source', 
+                                     'negotiated procedure', 'restricted procedure', 'direct procurement']):
+        return 'limited'
+        
+    # Check for selective procurement
+    if any(term in text for term in ['selective tender', 'invitation to tender', 'pre-qualified', 
+                                     'shortlist', 'selected bidders', 'invitation only']):
+        return 'selective'
+    
+    return None
