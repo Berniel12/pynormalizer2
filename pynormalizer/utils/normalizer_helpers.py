@@ -28,6 +28,61 @@ from .standardization import (
 # Initialize logger
 logger = logging.getLogger(__name__)
 
+# Common countries for fallback
+COMMON_COUNTRIES = [
+    "United States", "China", "India", "Brazil", "Russia", "Germany", "United Kingdom", 
+    "France", "Japan", "Italy", "Canada", "Australia", "Spain", "Mexico", "South Korea",
+    "Indonesia", "Netherlands", "Saudi Arabia", "Turkey", "Switzerland", "South Africa"
+]
+
+# Mapping of TLDs to countries
+COUNTRY_TLD_MAPPING = {
+    "us": "United States",
+    "uk": "United Kingdom",
+    "fr": "France",
+    "de": "Germany",
+    "cn": "China",
+    "jp": "Japan",
+    "ca": "Canada",
+    "au": "Australia",
+    "in": "India",
+    "br": "Brazil",
+    "ru": "Russia",
+    "za": "South Africa",
+    "mx": "Mexico",
+    "es": "Spain",
+    "it": "Italy",
+    "nl": "Netherlands",
+    "ch": "Switzerland",
+    "se": "Sweden",
+    "no": "Norway",
+    "dk": "Denmark",
+    "fi": "Finland"
+}
+
+# Mapping of languages to common countries
+LANGUAGE_COUNTRY_MAPPING = {
+    "en": "United States",
+    "fr": "France",
+    "de": "Germany",
+    "es": "Spain",
+    "it": "Italy",
+    "pt": "Portugal", 
+    "ru": "Russia",
+    "zh": "China",
+    "ja": "Japan",
+    "ar": "Saudi Arabia",
+    "hi": "India",
+    "ko": "South Korea",
+    "nl": "Netherlands",
+    "sv": "Sweden",
+    "no": "Norway",
+    "da": "Denmark",
+    "fi": "Finland",
+    "el": "Greece",
+    "tr": "Turkey"
+}
+
 # Precompile regex patterns
 PRICE_PATTERN = re.compile(r'(?:[\$€£])\s*([0-9,]+(?:\.[0-9]+)?)|([0-9,]+(?:\.[0-9]+)?)\s*(?:USD|EUR|GBP)')
 LOCATION_PATTERN = re.compile(r'(?:in|at|from)\s+([A-Za-z\s,]+)')
@@ -132,21 +187,60 @@ def format_for_logging(data: Any) -> str:
             return str(data)[:500]
     return str(data)[:500]  # Default truncated string representation
 
-def ensure_country(country: Optional[str]) -> Tuple[str, Optional[str], Optional[str]]:
+def ensure_country(country_value=None, text=None, organization=None, email=None, language=None):
     """
     Ensure a valid country name and get associated ISO codes.
     
     Args:
-        country: Country name in any format
+        country_value: Country name in any format
+        text: Text to extract country from if country_value is None
+        organization: Organization name that might contain country info
+        email: Email that might contain country info in domain
+        language: Language code that might give a clue about country
         
     Returns:
         Tuple of (normalized_name, iso_code, iso_code_3)
     """
-    if not country:
+    if not country_value:
         logger.warning("Empty country value provided")
-        return "Unknown", None, None
+        
+        # Try to extract from text
+        if text:
+            extracted_country, _ = extract_location_info(text)
+            if extracted_country:
+                country_value = extracted_country
+                logger.info(f"Extracted country '{country_value}' from text")
+        
+        # Try to extract from organization name
+        if not country_value and organization:
+            # Check for common country patterns in organization names
+            org_lower = organization.lower()
+            for country_name in COMMON_COUNTRIES:
+                if country_name.lower() in org_lower:
+                    country_value = country_name
+                    logger.info(f"Extracted country '{country_value}' from organization name")
+                    break
+        
+        # Try to extract from email domain
+        if not country_value and email and '@' in email:
+            domain = email.split('@')[-1]
+            tld = domain.split('.')[-1].lower()
+            
+            # Check if TLD is a country code
+            if tld in COUNTRY_TLD_MAPPING:
+                country_value = COUNTRY_TLD_MAPPING[tld]
+                logger.info(f"Extracted country '{country_value}' from email TLD: {tld}")
+        
+        # Use language as a hint for country
+        if not country_value and language:
+            if language in LANGUAGE_COUNTRY_MAPPING:
+                country_value = LANGUAGE_COUNTRY_MAPPING[language]
+                logger.info(f"Using country '{country_value}' based on language: {language}")
+        
+        if not country_value:
+            return "Unknown", None, None
     
-    normalized_name, iso_code, iso_code_3, info = normalize_country(country)
+    normalized_name, iso_code, iso_code_3, info = normalize_country(country_value)
     
     if not info["valid"]:
         logger.warning(f"Country validation issues: {info['issues']}")
