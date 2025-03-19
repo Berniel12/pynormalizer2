@@ -19,8 +19,20 @@ logger.info(f"Working Directory: {os.getcwd()}")
 logger.info(f"Directory Contents: {os.listdir('.')}")
 logger.info(f"Pynormalizer Directory: {os.path.exists('pynormalizer')}")
 
+# Check pynormalizer structure for debugging
+if os.path.exists('pynormalizer'):
+    logger.info(f"Pynormalizer contents: {os.listdir('pynormalizer')}")
+    if os.path.exists('pynormalizer/normalizers'):
+        logger.info(f"Normalizers contents: {os.listdir('pynormalizer/normalizers')}")
+    if os.path.exists('pynormalizer/models'):
+        logger.info(f"Models contents: {os.listdir('pynormalizer/models')}")
+
+# Ensure pynormalizer is in the Python path if not already
+sys.path.insert(0, os.getcwd())
+
 # Try multiple import strategies to increase reliability
 normalize_all_tenders = None
+normalize_tedeu = None
 
 # Strategy 1: Import through the package structure (recommended way)
 try:
@@ -31,6 +43,18 @@ try:
     from pynormalizer import normalize_all_tenders
     logger.info("✅ Successfully imported normalize_all_tenders from package")
     
+    # Explicitly try to import normalize_tedeu
+    try:
+        from pynormalizer import normalize_tedeu
+        logger.info("✅ Successfully imported normalize_tedeu from package")
+    except ImportError as e:
+        logger.warning(f"Failed to import normalize_tedeu from package: {e}")
+        try:
+            from pynormalizer.normalizers.tedeu_normalizer import normalize_tedeu
+            logger.info("✅ Successfully imported normalize_tedeu from normalizers.tedeu_normalizer")
+        except ImportError as e:
+            logger.error(f"Failed to import normalize_tedeu from any location: {e}")
+    
     from pynormalizer.utils.translation import setup_translation_models, get_supported_languages
     logger.info("✅ Successfully imported translation modules")
 except ImportError as e:
@@ -40,17 +64,39 @@ except ImportError as e:
     try:
         from pynormalizer.main import normalize_all_tenders
         logger.info("✅ Successfully imported normalize_all_tenders from main module")
+        
+        # Try to import normalize_tedeu from normalizers
+        try:
+            from pynormalizer.normalizers.tedeu_normalizer import normalize_tedeu
+            logger.info("✅ Successfully imported normalize_tedeu from normalizers.tedeu_normalizer")
+        except ImportError as e:
+            logger.error(f"Failed to import normalize_tedeu from normalizers: {e}")
     except ImportError as e:
         logger.error(f"Main module import failed: {e}")
         
         # Strategy 3: Direct import with module loading
         try:
             import importlib.util
-            spec = importlib.util.spec_from_file_location("main", "pynormalizer/main.py")
-            main = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(main)
+            
+            # Load main module for normalize_all_tenders
+            main_spec = importlib.util.spec_from_file_location("main", "pynormalizer/main.py")
+            main = importlib.util.module_from_spec(main_spec)
+            main_spec.loader.exec_module(main)
             normalize_all_tenders = main.normalize_all_tenders
             logger.info("✅ Successfully imported normalize_all_tenders using importlib")
+            
+            # Load tedeu_normalizer module for normalize_tedeu
+            try:
+                tedeu_spec = importlib.util.spec_from_file_location(
+                    "tedeu_normalizer", 
+                    "pynormalizer/normalizers/tedeu_normalizer.py"
+                )
+                tedeu_module = importlib.util.module_from_spec(tedeu_spec)
+                tedeu_spec.loader.exec_module(tedeu_module)
+                normalize_tedeu = tedeu_module.normalize_tedeu
+                logger.info("✅ Successfully imported normalize_tedeu using importlib")
+            except Exception as e:
+                logger.error(f"Failed to import normalize_tedeu using importlib: {e}")
         except Exception as e:
             logger.error(f"All import strategies failed: {e}")
             logger.error(f"Module info - pynormalizer exists: {os.path.exists('pynormalizer')}")
@@ -62,14 +108,23 @@ except ImportError as e:
                 if os.path.exists('pynormalizer/__init__.py'):
                     with open('pynormalizer/__init__.py', 'r') as f:
                         logger.error(f"__init__.py contents: {f.read()}")
+                if os.path.exists('pynormalizer/normalizers/tedeu_normalizer.py'):
+                    with open('pynormalizer/normalizers/tedeu_normalizer.py', 'r') as f:
+                        logger.error(f"First 20 lines of tedeu_normalizer.py: {f.readlines()[:20]}")
             raise
 
-# Verify that we successfully imported the function
+# Verify that we successfully imported the functions
 if normalize_all_tenders is None:
     logger.error("Failed to import normalize_all_tenders using any method")
     raise ImportError("normalize_all_tenders could not be imported")
 else:
     logger.info(f"✅ normalize_all_tenders successfully imported: {normalize_all_tenders.__module__}")
+
+# Verify normalize_tedeu separately since it's specifically causing issues
+if normalize_tedeu is None:
+    logger.warning("⚠️ normalize_tedeu could not be imported, some functionality may be limited")
+else:
+    logger.info(f"✅ normalize_tedeu successfully imported: {normalize_tedeu.__module__}")
 
 # Configure logging
 logging.basicConfig(
