@@ -8,14 +8,12 @@ from typing import Any, Dict, Optional, Tuple, List, Union
 from datetime import datetime, date, timezone
 import traceback
 
-from .normalizer_standards import (
+from .standardization import (
     standardize_title,
     structure_description,
     normalize_country,
     validate_translation_quality,
-    calculate_data_quality_score
-)
-from .standardization import (
+    calculate_data_quality_score,
     validate_cpv_code,
     validate_nuts_code,
     validate_currency_value,
