@@ -102,7 +102,7 @@ def fetch_unnormalized_rows(conn, table_name: str, skip_normalized: bool = True,
     Fetch rows from a source table that haven't been normalized yet.
     
     Args:
-        conn: Database connection
+        conn: Database connection or Supabase client
         table_name: Name of the source table
         skip_normalized: Whether to skip already normalized records
         limit: Maximum number of rows to fetch
@@ -113,6 +113,60 @@ def fetch_unnormalized_rows(conn, table_name: str, skip_normalized: bool = True,
     logger = logging.getLogger(__name__)
     
     try:
+        # Check if using Supabase
+        if SUPABASE_AVAILABLE and isinstance(conn, Client):
+            if skip_normalized:
+                # First get IDs of already normalized records for this source table
+                normalized_response = conn.table("unified_tenders") \
+                    .select("source_id") \
+                    .eq("source_table", table_name) \
+                    .not_.is_("normalized_at", "null") \
+                    .execute()
+                
+                if hasattr(normalized_response, 'data'):
+                    normalized_ids = [str(row["source_id"]) for row in normalized_response.data]
+                else:
+                    normalized_ids = [str(row["source_id"]) for row in normalized_response]
+                
+                logger.info(f"Found {len(normalized_ids)} already normalized records for {table_name}")
+                
+                if normalized_ids:
+                    # Fetch unnormalized records using not.in_
+                    query = conn.table(table_name).select("*")
+                    if limit:
+                        query = query.limit(limit)
+                    
+                    # Split into chunks of 100 for the .not_.in_ filter
+                    # as Supabase has limits on array size in filters
+                    chunk_size = 100
+                    all_results = []
+                    
+                    for i in range(0, len(normalized_ids), chunk_size):
+                        chunk = normalized_ids[i:i + chunk_size]
+                        chunk_response = query.not_.in_("id", chunk).execute()
+                        if hasattr(chunk_response, 'data'):
+                            all_results.extend(chunk_response.data)
+                        else:
+                            all_results.extend(chunk_response)
+                    
+                    logger.info(f"Fetched {len(all_results)} unnormalized records from {table_name}")
+                    return all_results
+            
+            # If no normalized records found or skip_normalized is False, fetch all records
+            query = conn.table(table_name).select("*")
+            if limit:
+                query = query.limit(limit)
+            
+            response = query.execute()
+            if hasattr(response, 'data'):
+                result = response.data
+            else:
+                result = response
+            
+            logger.info(f"Fetched {len(result)} records from {table_name}")
+            return result
+        
+        # Otherwise use direct PostgreSQL connection
         # First get IDs of already normalized records for this source table
         normalized_ids = []
         if skip_normalized:
@@ -139,12 +193,12 @@ def fetch_unnormalized_rows(conn, table_name: str, skip_normalized: bool = True,
                     cur.execute(query, (tuple(normalized_ids),))
                     rows = cur.fetchall()
                     
-                # Convert to list of dicts
-                columns = [desc[0] for desc in cur.description]
-                result = [dict(zip(columns, row)) for row in rows]
-                
-                logger.info(f"Fetched {len(result)} unnormalized records from {table_name}")
-                return result
+                    # Convert to list of dicts
+                    columns = [desc[0] for desc in cur.description]
+                    result = [dict(zip(columns, row)) for row in rows]
+                    
+                    logger.info(f"Fetched {len(result)} unnormalized records from {table_name}")
+                    return result
         
         # If no normalized records found or skip_normalized is False, fetch all records
         query = f"""
