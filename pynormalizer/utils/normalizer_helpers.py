@@ -768,3 +768,56 @@ def parse_date_from_text(text):
     
     # If no patterns matched
     return None
+
+def extract_country_from_text(text: str) -> Optional[str]:
+    """
+    Extract country information from text.
+    
+    Args:
+        text: Text to extract country from
+        
+    Returns:
+        Country name or None if not found
+    """
+    if not text or not isinstance(text, str):
+        return None
+    
+    # Common country names to look for
+    countries = [
+        "Afghanistan", "Bangladesh", "Belgium", "Brazil", "Cambodia", 
+        "Canada", "China", "Colombia", "Egypt", "France", "Germany", 
+        "Ghana", "India", "Indonesia", "Italy", "Japan", "Kenya", 
+        "Kyrgyz Republic", "Malaysia", "Mexico", "Myanmar", "Nepal", 
+        "Netherlands", "Nigeria", "Pakistan", "Philippines", "Poland", 
+        "Russia", "Rwanda", "Saudi Arabia", "Senegal", "Serbia", 
+        "South Africa", "Spain", "Sri Lanka", "Sweden", "Tanzania", 
+        "Thailand", "Turkey", "Uganda", "Ukraine", "United Kingdom", 
+        "United States", "Uzbekistan", "Vietnam", "Yemen", "Zambia", 
+        "Zimbabwe"
+    ]
+    
+    # Check for country mentions
+    text_lower = text.lower()
+    for country in countries:
+        if country.lower() in text_lower:
+            return country
+    
+    # Try with country code patterns
+    country_codes = {
+        "USA": "United States",
+        "UK": "United Kingdom",
+        "UAE": "United Arab Emirates",
+        "KGZ": "Kyrgyz Republic",
+        "UZB": "Uzbekistan",
+        "KAZ": "Kazakhstan",
+        "MNG": "Mongolia",
+        "PNG": "Papua New Guinea",
+        "PHL": "Philippines",
+        "IDN": "Indonesia"
+    }
+    
+    for code, country in country_codes.items():
+        if code in text.upper():
+            return country
+    
+    return None
