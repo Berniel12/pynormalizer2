@@ -533,3 +533,123 @@ def determine_normalized_method(row, default=None):
     
     # Fallback to the provided default or a generic term
     return default or 'Competitive Bidding'
+
+def clean_date(date_value):
+    """
+    Clean and normalize a date value to ISO format (YYYY-MM-DD).
+    
+    Args:
+        date_value: The date value to clean (can be string, datetime, date, or None)
+        
+    Returns:
+        Cleaned date as string in ISO format or None if invalid
+    """
+    if date_value is None:
+        return None
+        
+    # If already a date or datetime object, format it
+    if isinstance(date_value, (datetime, date)):
+        return date_value.strftime('%Y-%m-%d')
+    
+    if not isinstance(date_value, str):
+        try:
+            # Try to convert to string
+            date_value = str(date_value)
+        except (ValueError, TypeError):
+            return None
+    
+    # Clean string representation
+    date_str = date_value.strip()
+    
+    # Common date formats to try
+    date_formats = [
+        '%Y-%m-%d',       # 2023-01-30
+        '%d/%m/%Y',       # 30/01/2023
+        '%m/%d/%Y',       # 01/30/2023
+        '%d-%m-%Y',       # 30-01-2023
+        '%m-%d-%Y',       # 01-30-2023
+        '%d.%m.%Y',       # 30.01.2023
+        '%m.%d.%Y',       # 01.30.2023
+        '%Y/%m/%d',       # 2023/01/30
+        '%B %d, %Y',      # January 30, 2023
+        '%d %B %Y',       # 30 January 2023
+        '%d %b %Y',       # 30 Jan 2023
+        '%b %d, %Y'       # Jan 30, 2023
+    ]
+    
+    for fmt in date_formats:
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            return dt.strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    
+    # Special handling for Unix timestamps
+    if date_str.isdigit() and len(date_str) >= 10:
+        try:
+            # Try as Unix timestamp (seconds since epoch)
+            dt = datetime.fromtimestamp(int(date_str[:10]))
+            return dt.strftime('%Y-%m-%d')
+        except (ValueError, OverflowError):
+            pass
+    
+    # If all parsing attempts fail
+    return None
+
+def extract_location_info(text: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extract country and city information from text.
+    
+    Args:
+        text: Text to extract from
+        
+    Returns:
+        Tuple of (country, city)
+    """
+    if not text or not isinstance(text, str):
+        return None, None
+    
+    # Country patterns mapped to common city names
+    country_city_patterns = {
+        'Afghanistan': ['Kabul', 'Herat', 'Mazar-i-Sharif'],
+        'Bangladesh': ['Dhaka', 'Chittagong', 'Khulna'],
+        'China': ['Beijing', 'Shanghai', 'Guangzhou'],
+        'India': ['New Delhi', 'Mumbai', 'Bangalore'],
+        'Indonesia': ['Jakarta', 'Surabaya', 'Bandung'],
+        'Japan': ['Tokyo', 'Yokohama', 'Osaka'],
+        'Kenya': ['Nairobi', 'Mombasa', 'Kisumu'],
+        'Malaysia': ['Kuala Lumpur', 'George Town', 'Ipoh'],
+        'Pakistan': ['Islamabad', 'Karachi', 'Lahore'],
+        'Philippines': ['Manila', 'Quezon City', 'Davao City'],
+        'United Kingdom': ['London', 'Birmingham', 'Manchester'],
+        'United States': ['Washington', 'New York', 'Los Angeles'],
+        'Vietnam': ['Hanoi', 'Ho Chi Minh City', 'Hai Phong']
+    }
+    
+    # Check for country mentions
+    country = None
+    for country_name in country_city_patterns.keys():
+        if country_name.lower() in text.lower():
+            country = country_name
+            break
+    
+    # Check for city mentions
+    city = None
+    
+    # First try cities from the found country if available
+    if country:
+        cities = country_city_patterns.get(country, [])
+        for city_name in cities:
+            if city_name.lower() in text.lower():
+                city = city_name
+                break
+    
+    # If no city found, try all cities
+    if not city:
+        all_cities = [city for cities in country_city_patterns.values() for city in cities]
+        for city_name in all_cities:
+            if city_name.lower() in text.lower():
+                city = city_name
+                break
+    
+    return country, city
