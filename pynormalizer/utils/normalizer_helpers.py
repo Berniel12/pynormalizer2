@@ -13,67 +13,68 @@ import traceback
 # Initialize logger
 logger = logging.getLogger(__name__)
 
+
 def normalize_document_links(links_data):
     """
     Normalize document links to a standardized format.
-    
+
     Args:
         links_data: Document links data in various formats
-        
+
     Returns:
         List of normalized document link objects
     """
     normalized_links = []
-    
+
     if not links_data:
         return normalized_links
-    
+
     # Define pattern to identify URLs
     url_pattern = re.compile(
         r'(https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9()@:%_\+.~#?&//=]*)'
     )
-    
+
     # Handle string (single URL)
     if isinstance(links_data, str):
         # Try to extract URLs from text
         urls = url_pattern.findall(links_data)
         for url in urls:
-                normalized_links.append({
+            normalized_links.append({
                 'url': url,
                 'type': 'unknown',
                 'language': 'en',
                 'description': None
             })
         if not urls and links_data.startswith(('http://', 'https://', 'www.')):
-                    normalized_links.append({
+            normalized_links.append({
                 'url': links_data,
                 'type': 'unknown',
                 'language': 'en',
                 'description': None
             })
         return normalized_links
-    
+
     # Handle list of strings
     if isinstance(links_data, list) and all(isinstance(item, str) for item in links_data):
         for item in links_data:
             # Try to extract URLs from text
             urls = url_pattern.findall(item)
             for url in urls:
-                        normalized_links.append({
+                normalized_links.append({
                     'url': url,
                     'type': 'unknown',
                     'language': 'en',
                     'description': None
                 })
             if not urls and item.startswith(('http://', 'https://', 'www.')):
-                            normalized_links.append({
+                normalized_links.append({
                     'url': item,
                     'type': 'unknown',
                     'language': 'en',
                     'description': None
                 })
         return normalized_links
-    
+
     # Handle list of dicts with various structures
     if isinstance(links_data, list):
         for item in links_data:
@@ -90,35 +91,35 @@ def normalize_document_links(links_data):
                             elif item[key].startswith(('http://', 'https://', 'www.')):
                                 url = item[key]
                             break
-                
+
                 if not url:
                     continue
-                
+
                 # Skip invalid URLs
                 if not url.startswith(('http://', 'https://', 'www.')):
                     continue
-                
+
                 # Extract type
                 doc_type = 'unknown'
                 for key in ['type', 'document_type', 'doc_type', 'fileType', 'format']:
                     if key in item and item[key]:
                         doc_type = item[key]
                         break
-                
+
                 # Extract language
                 language = 'en'  # Default to English
                 for key in ['language', 'lang', 'locale']:
                     if key in item and item[key]:
                         language = item[key]
                         break
-                
+
                 # Extract description
                 description = None
                 for key in ['description', 'desc', 'title', 'name', 'text', 'label']:
                     if key in item and item[key]:
                         description = item[key]
                         break
-                            
+
                         normalized_links.append({
                     'url': url,
                     'type': doc_type,
@@ -129,20 +130,20 @@ def normalize_document_links(links_data):
                 # Try to extract URLs from text
                 urls = url_pattern.findall(item)
                 for url in urls:
-                normalized_links.append({
+                    normalized_links.append({
                         'url': url,
                         'type': 'unknown',
                         'language': 'en',
                         'description': None
                     })
                 if not urls and item.startswith(('http://', 'https://', 'www.')):
-                        normalized_links.append({
+                    normalized_links.append({
                         'url': item,
                         'type': 'unknown',
                         'language': 'en',
                         'description': None
                     })
-    
+
     # Handle dict with 'items' key (common pattern)
     elif isinstance(links_data, dict) and 'items' in links_data:
         try:
@@ -152,7 +153,7 @@ def normalize_document_links(links_data):
         except Exception:
             # In case of any error, return what we have so far
             pass
-    
+
     # Handle dict with URLs as values
     elif isinstance(links_data, dict):
         # Try to extract direct links
@@ -161,7 +162,7 @@ def normalize_document_links(links_data):
                 # Try to extract URLs from text
                 urls = url_pattern.findall(value)
                 for url in urls:
-                        normalized_links.append({
+                    normalized_links.append({
                         'url': url,
                         'type': 'unknown',
                         'language': 'en',
@@ -193,31 +194,32 @@ def normalize_document_links(links_data):
                         'description': value.get('description', None)
                     }
                     normalized_links.append(doc)
-    
+
     # Remove duplicates by URL
     seen_urls = set()
     unique_links = []
-    
+
     for link in normalized_links:
         if link['url'] not in seen_urls:
             seen_urls.add(link['url'])
             unique_links.append(link)
-    
+
     return unique_links
+
 
 def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
     """
     Extract financial information (amount and currency) from text.
-    
+
     Args:
         text: Text to extract financial information from
-        
+
     Returns:
         Tuple of (amount as float, currency code)
     """
     if not text:
         return None, None
-        
+
     # Define currency symbols and their corresponding codes
     currency_symbols = {
         '$': 'USD',
@@ -252,59 +254,63 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
         'Ft': 'HUF',
         'lei': 'RON'
     }
-    
+
     # Define currency codes that might appear in text (for cases without symbols)
     currency_codes = [
-        'USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD', 
-        'INR', 'RUB', 'CNY', 'BRL', 'MXN', 'ZAR', 'SGD', 'HKD', 
-        'KRW', 'TRY', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 
-        'RON', 'BGN', 'HRK', 'ISK', 'ILS', 'SAR', 'AED', 'THB', 
-        'MYR', 'IDR', 'PHP', 'TWD', 'KES', 'NGN', 'EGP', 'PKR', 
+        'USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD',
+        'INR', 'RUB', 'CNY', 'BRL', 'MXN', 'ZAR', 'SGD', 'HKD',
+        'KRW', 'TRY', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF',
+        'RON', 'BGN', 'HRK', 'ISK', 'ILS', 'SAR', 'AED', 'THB',
+        'MYR', 'IDR', 'PHP', 'TWD', 'KES', 'NGN', 'EGP', 'PKR',
         'BDT', 'VND', 'UAH', 'COP', 'ARS', 'PEN', 'CLP', 'CRC',
         'RWF', 'UGX', 'TZS', 'ETB', 'MAD', 'DZD', 'TND', 'GHS',
         'XOF', 'XAF', 'XPF'
     ]
-    
+
     # Patterns for financial information
     patterns = []
-    
+
     # Pattern with currency symbol before amount: $1,000,000.00 or $1M or $1.5 million
     for symbol, code in currency_symbols.items():
         # Escape special regex characters in symbol
         escaped_symbol = re.escape(symbol)
-        
+
         # Match symbol followed by amount with commas/decimals
         patterns.append(
-            (rf'{escaped_symbol}\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?', code)
+            (rf'{escaped_symbol}\s*(\d{1,
+    3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?',
+     code)
         )
-        
+
         # Match symbol followed by amount with M/B/T suffix
         patterns.append(
             (rf'{escaped_symbol}\s*(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)', code)
         )
-    
+
     # Pattern with currency code after amount: 1,000,000.00 USD or 1M USD or 1.5 million USD
     for code in currency_codes:
         # Match amount followed by currency code (with or without space)
         patterns.append(
-            (rf'(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?\s*{code}', code)
+            (rf'(\d{1, 3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?\s*{code}', code)
         )
-        
+
         # Match amount with M/B/T suffix followed by currency code
         patterns.append(
-            (rf'(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)\s*{code}', code)
+            (
+    rf'(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)\s*{code}',
+     code)
         )
-    
+
     # Special patterns for formats like "EUR 10 million" or "USD 500,000"
     for code in currency_codes:
         patterns.append(
-            (rf'{code}\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?', code)
+            (rf'{code}\s*(\d{1, 3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?', code)
         )
-        
+
         patterns.append(
             (rf'{code}\s*(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)', code)
         )
-    
+
     # Additional patterns for common phrases
     special_phrases = [
         (r'(?:estimated|approximate|approx\.?|est\.?|about|total|contract)\s+(?:cost|value|amount|budget|price)\s+(?:of|is|:)?\s*(?:approximately|approx\.?|about|around)?\s*([A-Z]{3})?(?:\s*)(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?(?:\s*)([A-Z]{3})?'),
@@ -312,48 +318,60 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
         (r'(?:budget|contract|project|procurement)\s+(?:cost|value|amount|worth|sum)\s*(?:of|is|:)?\s*(?:approximately|approx\.?|about|around)?\s*([A-Z]{3})?(?:\s*)(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:million|m|billion|b|trillion|t)?(?:\s*)([A-Z]{3})?'),
         (r'(?:budget|contract|project|procurement)\s+(?:cost|value|amount|worth|sum)\s*(?:of|is|:)?\s*(?:approximately|approx\.?|about|around)?\s*([A-Z]{3})?(?:\s*)(\d+(?:\.\d+)?)\s*(?:M|Mio|Mill|Million|B|Bio|Bill|Billion|T|Trill|Trillion)(?:\s*)([A-Z]{3})?')
     ]
-    
+
     # Try each pattern
     for pattern, currency in patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
-            if matches:
-                for match in matches:
+        if matches:
+            for match in matches:
                 # Handle cases where match might be a tuple or a string
-                    if isinstance(match, tuple):
+                if isinstance(match, tuple):
                     if len(match) > 0:
                         amount_str = match[0]
                     else:
                         continue
                 else:
                     amount_str = match
-                
+
                 # Ensure amount_str is a string
                 if not isinstance(amount_str, str):
                     continue
-                
+
                 # Strip and clean the amount string
                 amount_str = amount_str.strip()
                 amount_str = amount_str.replace(',', '')
-                
+
                 # Handle million/billion/trillion suffixes
                 if re.search(r'million|mill\.?|mm|m$', amount_str, re.IGNORECASE):
                     multiplier = 1000000
-                    amount_str = re.sub(r'million|mill\.?|mm|m$', '', amount_str, flags=re.IGNORECASE).strip()
+                    amount_str = re.sub(
+    r'million|mill\.?|mm|m$',
+    '',
+    amount_str,
+     flags=re.IGNORECASE).strip()
                 elif re.search(r'billion|bill\.?|bb|b$', amount_str, re.IGNORECASE):
                     multiplier = 1000000000
-                    amount_str = re.sub(r'billion|bill\.?|bb|b$', '', amount_str, flags=re.IGNORECASE).strip()
+                    amount_str = re.sub(
+    r'billion|bill\.?|bb|b$',
+    '',
+    amount_str,
+     flags=re.IGNORECASE).strip()
                 elif re.search(r'trillion|trill\.?|tt|t$', amount_str, re.IGNORECASE):
                     multiplier = 1000000000000
-                    amount_str = re.sub(r'trillion|trill\.?|tt|t$', '', amount_str, flags=re.IGNORECASE).strip()
+                    amount_str = re.sub(
+    r'trillion|trill\.?|tt|t$',
+    '',
+    amount_str,
+     flags=re.IGNORECASE).strip()
                 else:
-                            multiplier = 1
-                
+                    multiplier = 1
+
                 try:
                     amount = float(amount_str) * multiplier
                     return amount, currency
                 except (ValueError, TypeError):
                     continue
-    
+
     # Try special phrases
     for pattern in special_phrases:
         matches = re.findall(pattern, text, re.IGNORECASE)
@@ -363,15 +381,15 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
                     pre_currency = match[0].strip() if match[0] else None
                     amount_str = match[1].strip() if match[1] else None
                     post_currency = match[2].strip() if match[2] else None
-                    
+
                     currency = pre_currency or post_currency
-                    
+
                     if not amount_str:
                         continue
-                        
+
                     # Clean the amount string
                     amount_str = amount_str.replace(',', '')
-                    
+
                     # Handle million/billion/trillion suffixes
                     if re.search(r'million|mill\.?|mm|m$', amount_str, re.IGNORECASE):
                                 multiplier = 1000000
@@ -392,7 +410,7 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
                         else:
                             # Default to USD if currency can't be determined
                             return amount, 'USD'
-                        except (ValueError, TypeError):
+                    except (ValueError, TypeError):
                         continue
     
     # If no match found with currency, try to at least extract a financial amount
@@ -640,7 +658,7 @@ def extract_organization(text: str) -> Optional[str]:
     """
     if not text:
         return None
-        
+    
     # Common organization indicators
     org_indicators = [
         "by", "from", "for", "at", "with",
@@ -1079,7 +1097,7 @@ def clean_price(price_value):
         Cleaned price as float or None if invalid
     """
     if price_value is None:
-    return None
+        return None
 
     if isinstance(price_value, (int, float)):
         return float(price_value)
@@ -1418,8 +1436,8 @@ def standardize_status(status_text):
         Standardized status value (active, complete, cancelled, etc.)
     """
     if not status_text:
-        return None
-        
+    return None
+
     if not isinstance(status_text, str):
         status_text = str(status_text)
         
@@ -1508,7 +1526,7 @@ def normalize_description(description: str) -> str:
     """
     if not description:
         return None
-        
+
     # Remove multiple spaces and normalize newlines
     description = ' '.join(description.split())
     
