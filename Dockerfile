@@ -23,7 +23,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt && \
     # Ensure critical packages are installed with specific versions
     pip install --no-cache-dir \
-    supabase>=1.0.0 \
+    python-supabase>=1.0.0 \
     deep-translator>=1.11.3 \
     langdetect>=1.0.9 \
     unidecode>=1.3.6
@@ -36,7 +36,7 @@ RUN chmod +x apify_entry.py apify_normalize.py fix_country_normalization.py run_
 
 # Health check to verify Python and dependencies
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import supabase; import deep_translator; import langdetect; import unidecode; print('Dependencies OK')" || exit 1
+    CMD python -c "from supabase import create_client; import deep_translator; import langdetect; import unidecode; print('Dependencies OK')" || exit 1
 
 # Set our entry script as entrypoint
 ENTRYPOINT ["python", "apify_entry.py"]
