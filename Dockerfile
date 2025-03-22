@@ -19,9 +19,8 @@ RUN apt-get update && \
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt ./
 
-# Install Python dependencies
+# Install Python dependencies - note the correct package names
 RUN pip install --no-cache-dir -r requirements.txt && \
-    # Ensure critical packages are installed with specific versions
     pip install --no-cache-dir \
     supabase>=1.0.0 \
     deep-translator>=1.11.3 \

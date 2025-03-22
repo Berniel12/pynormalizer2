@@ -19,6 +19,24 @@ logger.info(f"Working Directory: {os.getcwd()}")
 logger.info(f"Directory Contents: {os.listdir('.')}")
 logger.info(f"Pynormalizer Directory: {os.path.exists('pynormalizer')}")
 
+# Check if Supabase environment variables are set
+supabase_url = os.environ.get("SUPABASE_URL")
+supabase_key = os.environ.get("SUPABASE_KEY")
+if not supabase_url or not supabase_key:
+    logger.error("❌ SUPABASE_URL or SUPABASE_KEY environment variables are not set!")
+    logger.error("Please set these environment variables in the Apify console.")
+    logger.error("Current environment variables:")
+    for key in os.environ:
+        if key.startswith("SUPABASE") or key.startswith("APIFY"):
+            # Hide the actual key value for security
+            if key == "SUPABASE_KEY":
+                value = "****" if os.environ[key] else "NOT SET"
+            else:
+                value = os.environ[key] or "NOT SET"
+            logger.error(f"  {key}: {value}")
+else:
+    logger.info("✅ SUPABASE_URL and SUPABASE_KEY environment variables are set")
+
 # Check pynormalizer structure for debugging
 if os.path.exists('pynormalizer'):
     logger.info(f"Pynormalizer contents: {os.listdir('pynormalizer')}")
