@@ -7,6 +7,9 @@ import re
 from typing import Any, Dict, Optional, Tuple, List, Union
 from datetime import datetime, date, timezone
 import traceback
+from decimal import Decimal
+import pytz
+from dateutil import parser as date_parser
 
 from .standardization import (
     standardize_title,
@@ -27,6 +30,39 @@ from .standardization import (
 
 # Initialize logger
 logger = logging.getLogger(__name__)
+
+# Export all helper functions
+__all__ = [
+    'normalize_document_links',
+    'extract_financial_info',
+    'determine_currency',
+    'format_for_logging',
+    'ensure_country',
+    'log_tender_normalization',
+    'clean_price',
+    'extract_status',
+    'parse_date_string',
+    'extract_sector_info',
+    'standardize_status',
+    'normalize_title',
+    'normalize_description',
+    'standardize_procurement_method',
+    'normalize_value',
+    'extract_organization_and_buyer',
+    'log_before_after',
+    'determine_normalized_method',
+    'clean_date',
+    'extract_location_info',
+    'extract_organization',
+    'extract_procurement_method',
+    'parse_date_from_text',
+    'extract_country_from_text',
+    'extract_deadline',
+    'determine_status',
+    'extract_organization_info',
+    'safe_get_value',
+    'log_normalization_error'
+]
 
 # Common countries for fallback
 COMMON_COUNTRIES = [
@@ -89,6 +125,71 @@ LOCATION_PATTERN = re.compile(r'(?:in|at|from)\s+([A-Za-z\s,]+)')
 DEADLINE_PATTERN = re.compile(r'(?:deadline|closing date|submission date|due date|due by)[\s:]+(\d{1,2}[\s./\-]\d{1,2}[\s./\-]\d{2,4}|\d{1,2}[\s./\-][A-Za-z]{3,9}[\s./\-]\d{2,4})')
 STATUS_PATTERN = re.compile(r'(?:status|state)[\s:]+([A-Za-z\s]+)', re.IGNORECASE)
 
+# Shared regex patterns for financial information
+AMOUNT_PATTERNS = {
+    'standard': [
+        r'(?:USD|US\$|\$|EUR|€|GBP|£)\s*([\d,]+(?:\.\d{2})?)',
+        r'([\d,]+(?:\.\d{2})?)\s*(?:USD|US\$|\$|EUR|€|GBP|£)',
+    ],
+    'with_scale': [
+        r'(?:USD|US\$|\$|EUR|€|GBP|£)?\s*([\d,]+(?:\.\d{2})?)\s*(?:million|billion|M|B)',
+        r'([\d,]+(?:\.\d{2})?)\s*(?:million|billion|M|B)\s*(?:USD|US\$|\$|EUR|€|GBP|£)?'
+    ],
+    'range': [
+        r'(?:between|from)?\s*(?:USD|US\$|\$|EUR|€|GBP|£)\s*([\d,]+(?:\.\d{2})?)\s*(?:to|-)\s*(?:USD|US\$|\$|EUR|€|GBP|£)?\s*([\d,]+(?:\.\d{2})?)',
+    ]
+}
+
+# Shared procurement method patterns
+PROCUREMENT_PATTERNS = {
+    'open': [
+        r'(?i)(?:open|international)\s+(?:tender|competition|bidding)',
+        r'(?i)request\s+for\s+(?:proposal|tender|bid)',
+        r'(?i)invitation\s+to\s+bid'
+    ],
+    'restricted': [
+        r'(?i)restricted\s+(?:tender|bidding)',
+        r'(?i)limited\s+competition',
+        r'(?i)pre[-\s]qualified\s+(?:suppliers|bidders)'
+    ],
+    'direct': [
+        r'(?i)direct\s+(?:procurement|contracting|award)',
+        r'(?i)single\s+source',
+        r'(?i)sole\s+source'
+    ],
+    'framework': [
+        r'(?i)framework\s+agreement',
+        r'(?i)long[-\s]term\s+agreement',
+        r'(?i)master\s+agreement'
+    ]
+}
+
+# Status determination patterns
+STATUS_PATTERNS = {
+    'active': [
+        r'(?i)active',
+        r'(?i)open',
+        r'(?i)published',
+        r'(?i)current'
+    ],
+    'closed': [
+        r'(?i)closed',
+        r'(?i)completed',
+        r'(?i)awarded',
+        r'(?i)expired'
+    ],
+    'cancelled': [
+        r'(?i)cancel(?:l)?ed',
+        r'(?i)withdrawn',
+        r'(?i)terminated'
+    ],
+    'draft': [
+        r'(?i)draft',
+        r'(?i)pending',
+        r'(?i)upcoming'
+    ]
+}
+
 def normalize_document_links(links_data):
     """Normalize document links to a standardized format."""
     if not links_data:
@@ -137,37 +238,81 @@ def normalize_document_links(links_data):
     
     return unique_links
 
-def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
-    """Extract financial information from text."""
-    if not text:
-        return None, None
+def extract_financial_info(text: str, currency_hint: Optional[str] = None) -> Tuple[Optional[Decimal], Optional[Decimal], Optional[str]]:
+    """
+    Extract financial information from text with improved pattern matching.
     
-    # Try currency pattern
-    matches = CURRENCY_PATTERN.findall(text)
-    if matches:
-        for match in matches:
-            if match[0] and match[1]:  # Currency code then amount
-                currency, amount_str = match[0], match[1]
-                amount = clean_price(amount_str)
-                if amount:
-                    return amount, currency
-            elif match[2] and match[3]:  # Amount then currency code
-                amount_str, currency = match[2], match[3]
-                amount = clean_price(amount_str)
-                if amount:
-                    return amount, currency
-    
-    # Try special currency symbols
-    match = re.search(r'([$€£])\s*([\d,]+(?:\.\d+)?)', text)
-    if match:
-        currency_map = {'$': 'USD', '€': 'EUR', '£': 'GBP'}
-        amount = clean_price(match.group(2))
-        currency = currency_map.get(match.group(1))
+    Args:
+        text: Text to extract financial information from
+        currency_hint: Optional hint about the expected currency
         
-        if amount and currency:
-            return amount, currency
+    Returns:
+        Tuple of (min_value, max_value, currency)
+    """
+    if not text:
+        return None, None, None
+
+    # Try range patterns first
+    for pattern in AMOUNT_PATTERNS['range']:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            try:
+                min_amount = Decimal(match.group(1).replace(',', ''))
+                max_amount = Decimal(match.group(2).replace(',', ''))
+                currency = determine_currency(match.group(0), currency_hint)
+                return min_amount, max_amount, currency
+            except (ValueError, decimal.InvalidOperation):
+                continue
+
+    # Try standard and scale patterns
+    amounts = []
+    detected_currency = None
     
-    return None, None
+    for pattern_type in ['standard', 'with_scale']:
+        for pattern in AMOUNT_PATTERNS[pattern_type]:
+            for match in re.finditer(pattern, text, re.IGNORECASE):
+                try:
+                    amount_str = match.group(1).replace(',', '')
+                    amount = Decimal(amount_str)
+                    
+                    # Handle scale
+                    if pattern_type == 'with_scale':
+                        scale_text = match.group(0).lower()
+                        if 'billion' in scale_text or 'B' in scale_text:
+                            amount *= 1000000000
+                        elif 'million' in scale_text or 'M' in scale_text:
+                            amount *= 1000000
+                    
+                    amounts.append(amount)
+                    
+                    # Determine currency if not already found
+                    if not detected_currency:
+                        detected_currency = determine_currency(match.group(0), currency_hint)
+                        
+                except (ValueError, decimal.InvalidOperation):
+                    continue
+
+    if not amounts:
+        return None, None, None
+
+    return min(amounts), max(amounts), detected_currency or currency_hint or 'USD'
+
+def determine_currency(text: str, hint: Optional[str] = None) -> str:
+    """
+    Determine currency from text with fallback to hint.
+    """
+    text = text.upper()
+    if '€' in text or 'EUR' in text:
+        return 'EUR'
+    elif '£' in text or 'GBP' in text:
+        return 'GBP'
+    elif '¥' in text or 'JPY' in text:
+        return 'JPY'
+    elif 'CHF' in text:
+        return 'CHF'
+    elif '$' in text or 'USD' in text:
+        return 'USD'
+    return hint or 'USD'
 
 def format_for_logging(data: Any) -> str:
     """Format data for logging, handling special types."""
@@ -499,7 +644,7 @@ def normalize_value(value: float, currency: str = None) -> Tuple[float, str]:
                 currency = standard_code
                 break
     
-    return value, currency
+                            return value, currency
 
 def extract_organization_and_buyer(text: str, title: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
     """Extract organization and buyer information from text."""
@@ -757,7 +902,7 @@ def extract_procurement_method(text: str) -> Optional[str]:
     
     normalized = None
     for pattern, method in methods.items():
-        if re.search(pattern, text, re.IGNORECASE):
+            if re.search(pattern, text, re.IGNORECASE):
             normalized = method
             logger.info(f"Matched procurement method: {method} from: {pattern}")
             break
@@ -871,3 +1016,155 @@ def extract_deadline(text: str) -> Optional[datetime]:
                 continue
     
     return None
+
+def determine_status(status_text: Optional[str], publication_date: Optional[datetime] = None, 
+                    deadline_date: Optional[datetime] = None) -> str:
+    """
+    Determine tender status based on text and dates.
+    """
+    if not status_text and not publication_date and not deadline_date:
+        return 'unknown'
+
+    # Check explicit status first
+    if status_text:
+        status_text = status_text.lower()
+        for status, patterns in STATUS_PATTERNS.items():
+            if any(re.search(pattern, status_text) for pattern in patterns):
+                return status
+
+    # Determine from dates if no explicit status match
+    now = datetime.now(pytz.UTC)
+    
+    if deadline_date and deadline_date < now:
+        return 'closed'
+    elif publication_date:
+        if publication_date > now:
+            return 'draft'
+        elif deadline_date and publication_date <= now <= deadline_date:
+            return 'active'
+            
+    return 'unknown'
+
+def normalize_document_links(links: List[Dict[str, Any]], base_url: Optional[str] = None) -> List[Dict[str, str]]:
+    """
+    Normalize document links with consistent structure.
+    """
+    normalized_links = []
+    seen_urls = set()
+    
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+            
+        url = link.get('url') or link.get('href')
+        if not url:
+            continue
+            
+        # Add base URL if relative
+        if base_url and not url.startswith(('http://', 'https://')):
+            url = f"{base_url.rstrip('/')}/{url.lstrip('/')}"
+            
+        # Skip if already processed
+        if url in seen_urls:
+            continue
+            
+        seen_urls.add(url)
+        
+        normalized_links.append({
+            'url': url,
+            'type': link.get('type', 'attachment'),
+            'language': link.get('language', 'en'),
+            'description': link.get('description') or link.get('title', 'Document')
+        })
+        
+    return normalized_links
+
+def extract_organization_info(text: str, contact_info: Optional[Dict] = None, 
+                           org_field: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extract organization name and buyer information.
+    """
+    organization_name = None
+    buyer = None
+    
+    # Try explicit organization field first
+    if org_field:
+        organization_name = org_field
+        
+    # Try contact info
+    elif contact_info:
+        if isinstance(contact_info, dict):
+            organization_name = (
+                contact_info.get('organization') or
+                contact_info.get('org') or
+                contact_info.get('company') or
+                contact_info.get('department')
+            )
+            
+    # Try extracting from text
+    if not organization_name and text:
+        org_patterns = [
+            r'(?:by|from|for)\s+([A-Za-z0-9\s\(\)&,\.\-]+?)(?:\s+in|\s+for|\s+at|$)',
+            r'([A-Za-z0-9\s\(\)&,\.\-]+?)\s+(?:is seeking|requests|invites)',
+            r'(?:organization|department|agency|ministry):\s*([A-Za-z0-9\s\(\)&,\.\-]+?)(?:\s|$)'
+        ]
+        
+        for pattern in org_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                potential_org = match.group(1).strip()
+                if len(potential_org) > 3 and potential_org.lower() not in ['the', 'and', 'for', 'of']:
+                    organization_name = potential_org
+                    break
+                    
+    # Use organization name as buyer if not set
+    if organization_name and not buyer:
+        buyer = organization_name
+        
+    return organization_name, buyer
+
+def extract_location_info(text: str, country_hint: Optional[str] = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Extract location information (country, state/region, city).
+    """
+    country = country_hint
+    state = None
+    city = None
+    
+    # Common city/state patterns
+    city_state_pattern = r'(?:in|at|near|from)\s+([A-Za-z\s]+?)(?:,\s*([A-Za-z\s]+))(?:\s|$)'
+    
+    match = re.search(city_state_pattern, text, re.IGNORECASE)
+    if match:
+        city = match.group(1).strip()
+        state = match.group(2).strip()
+        
+    return country, state, city
+
+def safe_get_value(data: Dict[str, Any], key: str, default: Any = None) -> Any:
+    """
+    Safely get value from dictionary with dot notation support.
+    """
+    try:
+        current = data
+        for part in key.split('.'):
+            if isinstance(current, dict):
+                current = current.get(part, default)
+            else:
+                return default
+        return current
+    except Exception:
+        return default
+
+def log_normalization_error(source: str, tender_id: str, error: Exception, context: Optional[Dict] = None) -> None:
+    """
+    Log normalization error with context.
+    """
+    error_info = {
+        'source': source,
+        'tender_id': tender_id,
+        'error_type': type(error).__name__,
+        'error_message': str(error),
+        'context': context or {}
+    }
+    logger.error(f"Normalization error: {error_info}")
