@@ -7,15 +7,37 @@ import json
 from datetime import datetime
 import uuid
 import logging
+import traceback
+import sys
 
-# Try to import supabase
-try:
-    from supabase import create_client, Client
-    SUPABASE_AVAILABLE = True
-except ImportError:
-    SUPABASE_AVAILABLE = False
-
+# Configure logger
 logger = logging.getLogger(__name__)
+
+# Try to import supabase with better error handling
+SUPABASE_AVAILABLE = False
+SUPABASE_ERROR = None
+try:
+    # First try the standard import
+    try:
+        from supabase import create_client, Client
+        SUPABASE_AVAILABLE = True
+        logger.info("✅ Successfully imported supabase using standard import")
+    except ImportError as e:
+        # If standard import fails, try alternatives
+        try:
+            sys.path.append(os.path.join(os.getcwd(), 'site-packages'))
+            from supabase import create_client, Client
+            SUPABASE_AVAILABLE = True
+            logger.info("✅ Successfully imported supabase from site-packages")
+        except ImportError as e2:
+            SUPABASE_ERROR = f"Standard import error: {e}, Alternative import error: {e2}"
+            logger.error(f"❌ Failed to import supabase: {SUPABASE_ERROR}")
+            logger.error(f"Python path: {sys.path}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+except Exception as e:
+    SUPABASE_ERROR = str(e)
+    logger.error(f"❌ Unexpected error importing supabase: {e}")
+    logger.error(f"Traceback: {traceback.format_exc()}")
 
 class DateTimeEncoder(json.JSONEncoder):
     """Custom JSON encoder for datetime objects"""
@@ -32,8 +54,10 @@ def get_supabase_client() -> Optional["Client"]:
         Supabase client or None if not available
     """
     if not SUPABASE_AVAILABLE:
+        error_details = f": {SUPABASE_ERROR}" if SUPABASE_ERROR else ""
         raise ImportError(
-            "Supabase client not available. Please install with: pip install supabase"
+            f"Supabase client not available{error_details}. "
+            "Please install with: pip install supabase"
         )
     
     # Get environment variables
@@ -46,8 +70,14 @@ def get_supabase_client() -> Optional["Client"]:
             "SUPABASE_URL and SUPABASE_KEY"
         )
     
-    # Create client
-    return create_client(supabase_url, supabase_key)
+    try:
+        # Create client
+        return create_client(supabase_url, supabase_key)
+    except Exception as e:
+        logger.error(f"❌ Failed to create Supabase client: {e}")
+        logger.error(f"Supabase URL: {supabase_url[:10]}...")  # Show only part of the URL for security
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise
 
 def get_connection(db_config: Dict[str, Any]):
     """

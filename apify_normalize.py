@@ -54,8 +54,22 @@ normalize_tedeu = None
 
 # Strategy 1: Import through the package structure (recommended way)
 try:
-    from pynormalizer.utils.db import get_supabase_client
-    logger.info("✅ Successfully imported get_supabase_client")
+    # First, check if supabase module is available
+    try:
+        import supabase
+        logger.info(f"✅ Supabase module is available: {supabase.__version__ if hasattr(supabase, '__version__') else 'version unknown'}")
+    except ImportError as e:
+        logger.error(f"❌ Failed to import supabase module: {e}")
+        logger.error(f"Installed packages: {[p for p in sys.modules.keys() if not p.startswith('_')]}")
+    
+    # Now try to import our client function
+    try:
+        from pynormalizer.utils.db import get_supabase_client
+        logger.info("✅ Successfully imported get_supabase_client")
+    except ImportError as e:
+        logger.error(f"❌ Failed to import get_supabase_client: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
     
     # Try importing directly from pynormalizer package
     from pynormalizer import normalize_all_tenders
