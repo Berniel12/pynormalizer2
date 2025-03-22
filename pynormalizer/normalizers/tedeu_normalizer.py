@@ -6,6 +6,8 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 import uuid
+import re
+import traceback
 
 from pynormalizer.models.source_models import TEDEuTender as TEDTender
 from pynormalizer.models.unified_model import UnifiedTender
@@ -37,6 +39,38 @@ from pynormalizer.utils.standardization import (
 
 logger = logging.getLogger(__name__)
 
+# Mapping of EU country codes from NUTS to country names
+NUTS_COUNTRY_MAPPING = {
+    'AT': 'Austria',
+    'BE': 'Belgium',
+    'BG': 'Bulgaria',
+    'CY': 'Cyprus',
+    'CZ': 'Czech Republic',
+    'DE': 'Germany',
+    'DK': 'Denmark',
+    'EE': 'Estonia',
+    'ES': 'Spain',
+    'FI': 'Finland',
+    'FR': 'France',
+    'GR': 'Greece',
+    'HR': 'Croatia',
+    'HU': 'Hungary',
+    'IE': 'Ireland',
+    'IT': 'Italy',
+    'LT': 'Lithuania',
+    'LU': 'Luxembourg',
+    'LV': 'Latvia',
+    'MT': 'Malta',
+    'NL': 'Netherlands',
+    'PL': 'Poland',
+    'PT': 'Portugal',
+    'RO': 'Romania',
+    'SE': 'Sweden',
+    'SI': 'Slovenia',
+    'SK': 'Slovakia',
+    'UK': 'United Kingdom'
+}
+
 def extract_tedeu_country(tender: Dict[str, Any]) -> Optional[str]:
     """Extract country from TED.eu tender data."""
     # Try org country first
@@ -46,12 +80,25 @@ def extract_tedeu_country(tender: Dict[str, Any]) -> Optional[str]:
     # Try NUTS code
     if 'nuts_code' in tender and tender['nuts_code']:
         # Extract country code from NUTS code (first two chars)
-        return tender['nuts_code'][:2]
+        country_code = tender['nuts_code'][:2]
+        # Get country name from mapping
+        if country_code in NUTS_COUNTRY_MAPPING:
+            return NUTS_COUNTRY_MAPPING[country_code]
+        return country_code
+    
+    # Try NUTS codes array
+    if 'nuts_codes' in tender and tender['nuts_codes'] and len(tender['nuts_codes']) > 0:
+        # Extract country code from first NUTS code
+        country_code = tender['nuts_codes'][0][:2]
+        # Get country name from mapping
+        if country_code in NUTS_COUNTRY_MAPPING:
+            return NUTS_COUNTRY_MAPPING[country_code]
+        return country_code
     
     # Try from original address or name
     if 'organisation_address' in tender and tender['organisation_address']:
         # Extract from address
-        _, country = extract_location_info(tender['organisation_address'])
+        country, _ = extract_location_info(tender['organisation_address'])
         if country:
             return country
     
@@ -90,7 +137,7 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             source_table="ted_eu"  # Add source_table which is a required field
         )
         
-        # Use summary as description
+        # Get summary as description (TED.eu uses summary, not description)
         description = tender.get('summary', '')
         
         # Get title, defaulting to empty string if not present
@@ -98,11 +145,11 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         
         # Normalize title
         unified.title = normalize_title(title)
-        log_tender_normalization(tender_id, "title", title, unified.title)
+        log_tender_normalization("tedeu", source_id, {"field": "title", "before": title, "after": unified.title})
         
         # Normalize description
         unified.description = normalize_description(description)
-        log_tender_normalization(tender_id, "description", description, unified.description)
+        log_tender_normalization("tedeu", source_id, {"field": "description", "before": description, "after": unified.description})
         
         # Detect language
         language = tender.get('language') or detect_language(title)
@@ -118,14 +165,14 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
                 title_english = translate_to_english(unified.title, language)
                 unified.title_english = title_english
                 translations["title"] = title_english
-                log_tender_normalization(tender_id, "title_translation", unified.title, unified.title_english)
+                log_tender_normalization("tedeu", source_id, {"field": "title_translation", "before": unified.title, "after": unified.title_english})
             
             # Description translation
             if unified.description:
                 desc_english = translate_to_english(unified.description, language)
                 unified.description_english = desc_english
                 translations["description"] = desc_english
-                log_tender_normalization(tender_id, "description_translation", unified.description, unified.description_english)
+                log_tender_normalization("tedeu", source_id, {"field": "description_translation", "before": unified.description, "after": unified.description_english})
                 
             # Store translations for later reference
             unified.translations = json.dumps(translations)
@@ -136,21 +183,26 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         
         # Extract and normalize country
         country = extract_tedeu_country(tender)
-        country_name, country_code, country_code_3 = ensure_country(country)
+        country_name, country_code, country_code_3 = ensure_country(country_value=country)
         unified.country = country_name
-        log_tender_normalization(tender_id, "country", country, unified.country)
+        if country_code:
+            unified.country_code = country_code
+        if country_code_3:
+            unified.country_code_3 = country_code_3
+            
+        log_tender_normalization("tedeu", source_id, {"field": "country", "before": country, "after": unified.country})
         
         # Extract additional location info if needed
         if not country_name or country_name == "Unknown":
             extracted_country, city = extract_location_info(unified.description)
             if extracted_country:
                 unified.country = extracted_country
-                log_tender_normalization(tender_id, "extracted_country", None, unified.country)
+                log_tender_normalization("tedeu", source_id, {"field": "extracted_country", "before": None, "after": unified.country})
             if city:
                 unified.city = city
-                log_tender_normalization(tender_id, "city", None, unified.city)
+                log_tender_normalization("tedeu", source_id, {"field": "city", "before": None, "after": unified.city})
         
-        # Extract financial information
+        # Extract financial information with multiple approaches
         amount, currency = None, None
         
         # Try value_magnitude first
@@ -158,16 +210,31 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             amount = clean_price(tender['value_magnitude'])
             currency = tender.get('currency')
         
-        # Fall back to extraction from description
+        # Try searching for currency patterns in the summary
         if not amount or not currency:
-            extracted_amount, extracted_currency = extract_financial_info(unified.description)
-            amount = amount or extracted_amount
-            currency = currency or extracted_currency
+            # Look for financial info in multiple fields
+            possible_text_fields = [
+                tender.get('summary', ''),
+                tender.get('title', ''),
+                tender.get('description', ''),
+                tender.get('contract_title', '')
+            ]
+            
+            # Try each field for financial info
+            for text_field in possible_text_fields:
+                if not text_field:
+                    continue
+                    
+                extracted_amount, extracted_currency = extract_financial_info(text_field)
+                if extracted_amount and extracted_currency:
+                    amount = amount or extracted_amount
+                    currency = currency or extracted_currency
+                    break
             
         if amount and currency:
             unified.estimated_value = amount
             unified.currency = currency
-            log_tender_normalization(tender_id, "financial_info", None, f"{amount} {currency}")
+            log_tender_normalization("tedeu", source_id, {"field": "financial_info", "before": None, "after": f"{amount} {currency}"})
         
         # Extract procurement method
         method = None
@@ -182,22 +249,46 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             
         if method:
             unified.procurement_method = method
-            log_tender_normalization(tender_id, "procurement_method", None, method)
+            log_tender_normalization("tedeu", source_id, {"field": "procurement_method", "before": None, "after": method})
         
-        # Extract organization information
+        # Enhanced organization name extraction
         org_name = None
         
-        # Try organisation_name first
-        if 'organisation_name' in tender and tender['organisation_name']:
-            org_name = tender['organisation_name']
+        # Try multiple organization fields in priority order
+        org_fields = [
+            'organisation_name',
+            'contracting_authority_name',
+            'buyer_name',
+            'authority_name',
+            'awarding_authority_name'
+        ]
         
-        # Fall back to extraction from description
+        for field in org_fields:
+            if field in tender and tender[field]:
+                org_name = tender[field]
+                logger.info(f"Found organization name in field '{field}': {org_name}")
+                break
+        
+        # Fall back to extraction from text fields
         if not org_name:
-            org_name = extract_organization(unified.description)
+            text_fields = [
+                tender.get('summary', ''),
+                tender.get('title', '')
+            ]
+            
+            for text in text_fields:
+                if not text:
+                    continue
+                
+                extracted_org = extract_organization(text)
+                if extracted_org:
+                    org_name = extracted_org
+                    logger.info(f"Extracted organization name: {org_name}")
+                    break
             
         if org_name:
             unified.organization_name = org_name
-            log_tender_normalization(tender_id, "organization", None, org_name)
+            log_tender_normalization("tedeu", source_id, {"field": "organization", "before": None, "after": org_name})
             
             # Also set in English if language is not English
             if language and language != 'en':
@@ -213,11 +304,11 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         
         # Fall back to extraction from description
         if not status:
-            status = extract_status(unified.description)
+            status = extract_status(text=unified.description)
             
         if status:
             unified.status = status
-            log_tender_normalization(tender_id, "status", None, status)
+            log_tender_normalization("tedeu", source_id, {"field": "status", "before": None, "after": status})
         
         # Set dates
         if 'publication_date' in tender and tender['publication_date']:
@@ -230,7 +321,7 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             deadline = extract_deadline(unified.description)
             if deadline:
                 unified.deadline_date = deadline
-                log_tender_normalization(tender_id, "deadline", None, deadline.isoformat())
+                log_tender_normalization("tedeu", source_id, {"field": "deadline", "before": None, "after": deadline.isoformat()})
         
         # Normalize document links
         if 'links' in tender and tender['links']:
@@ -252,13 +343,25 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             if cpv_codes:
                 original_data["cpv_codes"] = cpv_codes
         
-        # NUTS codes
+        # NUTS codes - enhanced processing
         if 'nuts_codes' in tender and tender['nuts_codes']:
             nuts_codes = []
             for code in tender['nuts_codes']:
                 valid, issues = validate_nuts_code(code)
                 if valid:
                     nuts_codes.append(code)
+                    
+                    # Extract country if not already set
+                    if (not unified.country or unified.country == "Unknown") and len(code) >= 2:
+                        country_code = code[:2]
+                        if country_code in NUTS_COUNTRY_MAPPING:
+                            unified.country = NUTS_COUNTRY_MAPPING[country_code]
+                            unified.country_code = country_code
+                            log_tender_normalization("tedeu", source_id, {
+                                "field": "country_from_nuts", 
+                                "before": None, 
+                                "after": unified.country
+                            })
                 else:
                     logger.warning(f"Invalid NUTS code {code}: {issues}")
             
@@ -270,7 +373,7 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             if field in tender and tender[field]:
                 original_data[field] = tender[field]
                 
-                # Also set in the unified tender if field exists
+                # Set in the unified tender if field exists with proper attribute check
                 if hasattr(unified, field):
                     setattr(unified, field, tender[field])
         
@@ -290,6 +393,7 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         
     except Exception as e:
         logger.error(f"Error normalizing TED.eu tender {tender.get('id', 'unknown')}: {str(e)}")
+        logger.error(f"Stack trace: {traceback.format_exc()}")
         # Return a minimal unified tender for error cases
         error_tender = UnifiedTender(
             id=str(uuid.uuid4()),
