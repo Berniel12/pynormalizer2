@@ -1,312 +1,432 @@
+"""
+UNGM tender normalizer with enhanced validation and error handling.
+"""
 import json
-from datetime import datetime
-from typing import Dict, Any, List
 import re
+import logging
+from datetime import datetime
+from typing import Dict, Any, List, Optional, Tuple
+from decimal import Decimal
 
 from pynormalizer.models.source_models import UNGMTender
 from pynormalizer.models.unified_model import UnifiedTender
 from pynormalizer.utils.translation import translate_to_english, detect_language
+from pynormalizer.utils.normalizer_helpers import (
+    normalize_document_links,
+    extract_financial_info,
+    extract_location_info,
+    extract_organization_and_buyer,
+    extract_procurement_method,
+    extract_status,
+    parse_date_string,
+    ensure_country,
+    clean_price,
+    log_tender_normalization,
+    log_before_after
+)
+from pynormalizer.utils.validation import (
+    validate_field,
+    calculate_tender_quality,
+    normalize_text,
+    detect_encoding_issues,
+    validate_schema
+)
+from .base_normalizer import BaseNormalizer
 
-def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
+logger = logging.getLogger(__name__)
+
+# Constants for procurement methods in UN context
+PROCUREMENT_METHOD_PATTERNS = {
+    'open': [
+        r'(?i)(?:open|international)\s+(?:tender|competition|bidding)',
+        r'(?i)request\s+for\s+proposal',
+        r'(?i)invitation\s+to\s+bid'
+    ],
+    'restricted': [
+        r'(?i)restricted\s+(?:tender|bidding)',
+        r'(?i)limited\s+competition',
+        r'(?i)pre[-\s]qualified\s+suppliers'
+    ],
+    'direct': [
+        r'(?i)direct\s+(?:procurement|contracting)',
+        r'(?i)single\s+source',
+        r'(?i)sole\s+source'
+    ],
+    'framework': [
+        r'(?i)framework\s+agreement',
+        r'(?i)long[-\s]term\s+agreement',
+        r'(?i)lta'
+    ]
+}
+
+# Status mapping for UNGM
+STATUS_MAPPING = {
+    'active': ['active', 'open', 'published', 'current'],
+    'closed': ['closed', 'completed', 'awarded', 'expired'],
+    'cancelled': ['canceled', 'cancelled', 'withdrawn'],
+    'draft': ['draft', 'pending', 'upcoming']
+}
+
+def extract_financial_info_ungm(text: str, currency_hint: Optional[str] = None) -> Tuple[Optional[Decimal], Optional[str]]:
     """
-    Normalize a UNGM (United Nations Global Marketplace) tender record.
+    Extract financial information from UNGM tender text.
     
     Args:
-        row: Dictionary containing UNGM tender data
+        text: Text to extract financial information from
+        currency_hint: Optional hint about the expected currency
         
     Returns:
-        Normalized UnifiedTender instance
+        Tuple of (amount, currency)
     """
-    # Handle JSON fields that might be lists or strings
-    for field in ['links', 'unspscs', 'revisions', 'documents', 'contacts', 'sustainability', 'countries']:
-        if field in row and isinstance(row[field], list):
-            # Convert list to a dictionary with an 'items' key
-            row[field] = {'items': row[field]}
-        elif field in row and isinstance(row[field], str):
-            try:
-                if row[field].strip():
-                    data = json.loads(row[field])
-                    if isinstance(data, list):
-                        row[field] = {'items': data}
-                    else:
-                        row[field] = data
-                else:
-                    row[field] = None
-            except (json.JSONDecodeError, ValueError):
-                row[field] = None
+    if not text:
+        return None, None
+        
+    # UN typically uses USD, but also look for other currencies
+    amount_patterns = [
+        # Match currency symbols/codes followed by amount
+        r'(?:USD|US\$|\$|EUR|€|GBP|£)\s*([\d,]+(?:\.\d{2})?)',
+        # Match amount followed by currency
+        r'([\d,]+(?:\.\d{2})?)\s*(?:USD|US\$|\$|EUR|€|GBP|£)',
+        # Match amount with million/billion
+        r'(?:USD|US\$|\$|EUR|€|GBP|£)?\s*([\d,]+(?:\.\d{2})?)\s*(?:million|billion|M|B)'
+    ]
     
-    # Validate with Pydantic
-    try:
-        ungm_obj = UNGMTender(**row)
-    except Exception as e:
-        raise ValueError(f"Failed to validate UNGM tender: {e}")
-
-    # Parse date strings
-    publication_dt = None
-    if ungm_obj.published_on:
-        try:
-            # Try different date formats
-            date_formats = [
-                "%Y-%m-%d",
-                "%Y-%m-%dT%H:%M:%S",
-                "%Y-%m-%dT%H:%M:%S.%fZ",
-                "%d %b %Y",  # e.g., "15 Jan 2023"
-                "%d-%b-%Y",  # e.g., "15-Jan-2023"
-            ]
+    for pattern in amount_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            amount_str = match.group(1).replace(',', '')
+            amount = Decimal(amount_str)
             
-            for fmt in date_formats:
-                try:
-                    publication_dt = datetime.strptime(ungm_obj.published_on, fmt)
-                    break
-                except ValueError:
-                    continue
-        except Exception:
-            # If all parsing attempts fail, leave as None
-            pass
-    
-    deadline_dt = None
-    if ungm_obj.deadline_on:
-        try:
-            for fmt in date_formats:
-                try:
-                    deadline_dt = datetime.strptime(ungm_obj.deadline_on, fmt)
-                    break
-                except ValueError:
-                    continue
-        except Exception:
-            # If all parsing attempts fail, leave as None
-            pass
-
-    # Extract contact information
-    contact_name = None
-    contact_email = None
-    contact_phone = None
-    
-    if ungm_obj.contacts and isinstance(ungm_obj.contacts, dict):
-        # Try to find primary contact
-        primary_contact = None
-        if 'primary' in ungm_obj.contacts:
-            primary_contact = ungm_obj.contacts['primary']
-        elif isinstance(ungm_obj.contacts.get('contacts'), list) and ungm_obj.contacts['contacts']:
-            primary_contact = ungm_obj.contacts['contacts'][0]
+            # Handle million/billion
+            if 'billion' in match.group().lower() or 'B' in match.group():
+                amount *= 1000000000
+            elif 'million' in match.group().lower() or 'M' in match.group():
+                amount *= 1000000
+                
+            # Determine currency
+            currency = currency_hint or 'USD'  # Default to USD for UN tenders
+            if '€' in match.group() or 'EUR' in match.group().upper():
+                currency = 'EUR'
+            elif '£' in match.group() or 'GBP' in match.group().upper():
+                currency = 'GBP'
+                
+            return amount, currency
             
-        if primary_contact and isinstance(primary_contact, dict):
-            contact_name = primary_contact.get('name')
-            contact_email = primary_contact.get('email')
-            contact_phone = primary_contact.get('phone')
+    return None, None
 
-    # Extract countries
-    country = None
-    if ungm_obj.beneficiary_countries:
-        # It might be a comma-separated string
-        if isinstance(ungm_obj.beneficiary_countries, str):
-            countries = ungm_obj.beneficiary_countries.split(',')
-            country = countries[0].strip()  # Take the first one
-        # Or it might be a list
-        elif isinstance(ungm_obj.beneficiary_countries, list) and ungm_obj.beneficiary_countries:
-            country = ungm_obj.beneficiary_countries[0]
+def normalize_document_links_ungm(ungm_obj: UNGMTender) -> List[Dict[str, str]]:
+    """
+    Enhanced document link normalization for UNGM tenders.
     
-    # If no country yet, try country from beneficiary_countries
-    if not country and ungm_obj.beneficiary_countries:
-        # It might be a comma-separated string
-        if isinstance(ungm_obj.beneficiary_countries, str):
-            countries = ungm_obj.beneficiary_countries.split(',')
-            country = countries[0].strip()  # Take the first one
-        # Or it might be a list
-        elif isinstance(ungm_obj.beneficiary_countries, list) and ungm_obj.beneficiary_countries:
-            country = ungm_obj.beneficiary_countries[0]
-    
-    # If we couldn't extract from beneficiary_countries, try countries field
-    if not country and ungm_obj.countries:
-        if isinstance(ungm_obj.countries, dict) and 'countries' in ungm_obj.countries:
-            countries_list = ungm_obj.countries['countries']
-            if isinstance(countries_list, list) and countries_list:
-                if isinstance(countries_list[0], dict) and 'name' in countries_list[0]:
-                    country = countries_list[0]['name']
-                else:
-                    country = str(countries_list[0])
-
-    # Get document links
+    Args:
+        ungm_obj: UNGM tender object
+        
+    Returns:
+        List of normalized document links
+    """
     document_links = []
-    if ungm_obj.documents and isinstance(ungm_obj.documents, dict) and 'documents' in ungm_obj.documents:
-        documents = ungm_obj.documents['documents']
-        if isinstance(documents, list):
-            for doc in documents:
-                if isinstance(doc, dict) and 'url' in doc:
-                    document_links.append({
-                        'url': doc['url'],
-                        'type': doc.get('type', 'unknown'),
-                        'language': doc.get('language', 'en'),
-                        'description': doc.get('description', doc.get('title', None))
-                    })
-
-    # Get URL - improved extraction and fallback mechanisms
-    url = None
+    
+    # Process main documents
+    if ungm_obj.documents and isinstance(ungm_obj.documents, dict):
+        if 'documents' in ungm_obj.documents:
+            docs = ungm_obj.documents['documents']
+            if isinstance(docs, list):
+                for doc in docs:
+                    if isinstance(doc, dict) and 'url' in doc:
+                        doc_info = {
+                            'url': doc['url'],
+                            'type': doc.get('type', 'attachment'),
+                            'language': doc.get('language', 'en'),
+                            'description': doc.get('description') or doc.get('title', 'Document')
+                        }
+                        document_links.append(doc_info)
+    
+    # Process links field
     if ungm_obj.links and isinstance(ungm_obj.links, dict):
-        # Try several potential fields where URLs might be stored
+        # Check various URL fields
         url_fields = ['self', 'notice', 'tender', 'details', 'href', 'url']
         for field in url_fields:
             if field in ungm_obj.links and ungm_obj.links[field]:
                 url = ungm_obj.links[field]
-                break
+                if url and not any(d['url'] == url for d in document_links):
+                    document_links.append({
+                        'url': url,
+                        'type': 'main_notice',
+                        'language': 'en',
+                        'description': 'Main tender notice'
+                    })
+                    break
         
-        # If URL is still not found but there's an 'items' list, check the items
-        if not url and 'items' in ungm_obj.links and isinstance(ungm_obj.links['items'], list):
+        # Check items list
+        if 'items' in ungm_obj.links and isinstance(ungm_obj.links['items'], list):
             for item in ungm_obj.links['items']:
-                if isinstance(item, dict) and 'href' in item:
-                    url = item['href']
-                    break
-                elif isinstance(item, dict) and 'url' in item:
-                    url = item['url']
-                    break
-                elif isinstance(item, str) and (item.startswith('http://') or item.startswith('https://')):
-                    url = item
-                    break
+                if isinstance(item, dict):
+                    url = item.get('href') or item.get('url')
+                    if url and not any(d['url'] == url for d in document_links):
+                        document_links.append({
+                            'url': url,
+                            'type': item.get('type', 'related'),
+                            'language': item.get('language', 'en'),
+                            'description': item.get('description', 'Related document')
+                        })
     
-    # If still no URL found and we have a reference number, try to construct a generic UNGM URL
-    if not url and ungm_obj.reference:
-        url = f"https://www.ungm.org/Public/Notice/{ungm_obj.reference}"
-    
-    # If we have a URL, add it to document_links if not already included
-    if url:
-        url_already_included = False
-        for link in document_links:
-            if isinstance(link, dict) and link.get('url') == url:
-                url_already_included = True
-                break
-        
-        if not url_already_included:
+    # Add generic UNGM URL if we have a reference number
+    if ungm_obj.reference:
+        generic_url = f"https://www.ungm.org/Public/Notice/{ungm_obj.reference}"
+        if not any(d['url'] == generic_url for d in document_links):
             document_links.append({
-                'url': url,
-                'type': 'main',
+                'url': generic_url,
+                'type': 'source',
                 'language': 'en',
-                'description': 'Main tender notice'
+                'description': 'Source tender notice'
             })
     
-    # Detect language from title and description combined
-    lang_sample = ""
-    if ungm_obj.title:
-        lang_sample += ungm_obj.title + " "
-    if ungm_obj.description:
-        # Add first 200 characters from description for better language detection
-        lang_sample += ungm_obj.description[:200]
-    
-    language = detect_language(lang_sample.strip()) or 'en'
+    return document_links
 
-    # Get organization name
-    organization_name = None
-    buyer = None
+class UNGMNormalizer(BaseNormalizer):
+    """
+    Enhanced UNGM tender normalizer implementing the base normalizer interface.
+    """
     
-    # Try to get from contacts
-    if ungm_obj.contacts and isinstance(ungm_obj.contacts, dict):
-        if 'title' in ungm_obj.contacts and ungm_obj.contacts['title']:
-            organization_name = ungm_obj.contacts['title']
-        elif 'contact_details' in ungm_obj.contacts and isinstance(ungm_obj.contacts['contact_details'], dict):
-            if 'Organization' in ungm_obj.contacts['contact_details']:
-                organization_name = ungm_obj.contacts['contact_details']['Organization']
-    
-    # Try to parse organization name from title/description if still not found
-    if not organization_name and ungm_obj.title:
-        # Look for patterns like "Organization: XYZ" or "by XYZ" in title
-        org_patterns = [
-            r'(?:by|from|for)\s+([A-Za-z0-9\s\(\)&,\.\-]+?)(?:\s+in|\s+for|\s+at|$)',
-            r'([A-Za-z0-9\s\(\)&,\.\-]+?)\s+(?:is seeking|requests|invites)'
+    def __init__(self):
+        super().__init__('ungm')
+
+    def _validate_input(self, data: Dict[str, Any]) -> bool:
+        """
+        Validate UNGM tender data with enhanced error checking.
+        """
+        if not isinstance(data, dict):
+            self.logger.error("Input data must be a dictionary")
+            return False
+            
+        required_fields = ['id', 'title']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            self.logger.error(f"Missing required fields: {', '.join(missing_fields)}")
+            return False
+            
+        # Validate field types
+        field_types = {
+            'id': (int, str),
+            'title': str,
+            'description': str,
+            'status': str,
+            'published_on': (str, datetime),
+            'deadline_on': (str, datetime)
+        }
+        
+        for field, expected_types in field_types.items():
+            value = data.get(field)
+            if value is not None:
+                if not isinstance(value, expected_types):
+                    self.logger.error(
+                        f"Invalid type for field '{field}': expected {expected_types}, got {type(value)}"
+                    )
+                    return False
+        
+        return True
+
+    def _extract_required_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract required fields from UNGM tender data with enhanced validation.
+        """
+        try:
+            # Pre-process JSON fields
+            processed_data = self._preprocess_json_fields(data)
+            
+            # Log original values
+            for field in ['title', 'description', 'status']:
+                log_before_after(field, data.get(field), processed_data.get(field))
+            
+            # Validate with Pydantic
+            try:
+                ungm_obj = UNGMTender(**processed_data)
+            except Exception as e:
+                self.logger.error(f"Failed to validate UNGM tender: {e}")
+                raise ValueError(f"Failed to validate UNGM tender: {e}")
+            
+            # Extract and normalize text fields
+            title = self._normalize_text_field('title', ungm_obj.title)
+            description = self._normalize_text_field('description', ungm_obj.description)
+            
+            # Extract and validate dates
+            publication_date = self._extract_date('publication_date', ungm_obj.published_on)
+            deadline_date = self._extract_date('deadline_date', ungm_obj.deadline_on)
+            
+            # Process contact information
+            contact_info = self._process_contact_info(ungm_obj.contacts)
+            
+            # Process document links
+            document_links = self._process_document_links(ungm_obj.documents)
+            
+            # Extract countries
+            countries = self._extract_countries(ungm_obj)
+            
+            return {
+                'title': title,
+                'source_id': str(ungm_obj.id),
+                'description': description,
+                'status': ungm_obj.status,
+                'publication_date': publication_date,
+                'deadline_date': deadline_date,
+                'reference_number': ungm_obj.reference,
+                'contact_info': contact_info,
+                'documents': document_links,
+                'links': ungm_obj.links,
+                'countries': countries
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting required fields: {str(e)}", exc_info=True)
+            raise
+
+    def _preprocess_json_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Pre-process JSON fields in UNGM data with enhanced error handling.
+        """
+        processed = data.copy()
+        
+        json_fields = [
+            'links', 'unspscs', 'revisions', 'documents', 
+            'contacts', 'sustainability', 'countries'
         ]
         
-        for pattern in org_patterns:
-            match = re.search(pattern, ungm_obj.title)
-            if match:
-                potential_org = match.group(1).strip()
-                if len(potential_org) > 3 and potential_org.lower() not in ['the', 'and', 'for', 'of']:
-                    organization_name = potential_org
-                    break
-    
-    # Parse organization name that includes country information
-    if organization_name:
-        # Check if organization name has country prefix like "COUNTRY - Organization Name"
-        country_org_match = re.match(r'^([A-Z]{2,})\s*-\s*(.+)$', organization_name)
-        if country_org_match:
-            country_code = country_org_match.group(1).strip()
-            org_name = country_org_match.group(2).strip()
-            
-            # Only separate if first part looks like a country code
-            if len(country_code) <= 3 or country_code in ['UNDP', 'UNEP', 'UNHCR', 'UNICEF', 'WHO', 'FAO']:
-                # It's likely an organization abbreviation, not a country
-                pass
-            else:
-                # It's a country name, so update the country field if not set
-                if not country:
-                    country = country_code
-                organization_name = org_name
+        for field in json_fields:
+            try:
+                value = processed.get(field)
+                if value is None:
+                    continue
+                    
+                if isinstance(value, str):
+                    if value.strip():
+                        try:
+                            parsed = json.loads(value)
+                            if isinstance(parsed, list):
+                                processed[field] = {'items': parsed}
+                            else:
+                                processed[field] = parsed
+                        except json.JSONDecodeError as e:
+                            self.logger.warning(f"Failed to parse JSON for field '{field}': {str(e)}")
+                            processed[field] = None
+                    else:
+                        processed[field] = None
+                elif isinstance(value, list):
+                    processed[field] = {'items': value}
+                    
+            except Exception as e:
+                self.logger.error(f"Error processing field '{field}': {str(e)}")
+                processed[field] = None
                 
-    # Use the organization name as buyer if it's not set
-    if organization_name and not buyer:
-        buyer = organization_name
+        return processed
 
-    # Construct the UnifiedTender
-    unified = UnifiedTender(
-        # Required fields
-        title=ungm_obj.title,
-        source_table="ungm",
-        source_id=str(ungm_obj.id),
+    def _process_contact_info(self, contacts: Any) -> Dict[str, Any]:
+        """
+        Process contact information with validation.
+        """
+        if not contacts:
+            return {}
+            
+        try:
+            if isinstance(contacts, str):
+                try:
+                    contacts = json.loads(contacts)
+                except json.JSONDecodeError:
+                    return {}
+                    
+            if isinstance(contacts, dict):
+                # Normalize contact fields
+                normalized = {}
+                for key, value in contacts.items():
+                    if value:
+                        normalized[key] = normalize_text(str(value))
+                return normalized
+                
+            if isinstance(contacts, list):
+                # Take first contact if list
+                if contacts and isinstance(contacts[0], dict):
+                    return self._process_contact_info(contacts[0])
+                    
+            return {}
+            
+        except Exception as e:
+            self.logger.warning(f"Error processing contact info: {str(e)}")
+            return {}
+
+    def _extract_countries(self, ungm_obj: UNGMTender) -> List[str]:
+        """
+        Extract and validate country information.
+        """
+        countries = set()
         
-        # Additional fields
-        description=ungm_obj.description,
-        status=ungm_obj.status,
-        publication_date=publication_dt,
-        deadline_date=deadline_dt,
-        country=country,
-        reference_number=ungm_obj.reference,
-        contact_name=contact_name,
-        contact_email=contact_email,
-        contact_phone=contact_phone,
-        url=url,
-        document_links=document_links,
-        language=language,
-        original_data=row,
-        normalized_method="offline-dictionary",
-    )
+        try:
+            # Check beneficiary countries
+            if ungm_obj.beneficiary_countries:
+                if isinstance(ungm_obj.beneficiary_countries, list):
+                    for country in ungm_obj.beneficiary_countries:
+                        if isinstance(country, str):
+                            normalized = normalize_text(country)
+                            if normalized:
+                                countries.add(normalized)
+                                
+            # Check countries field
+            if ungm_obj.countries:
+                if isinstance(ungm_obj.countries, list):
+                    for country in ungm_obj.countries:
+                        if isinstance(country, str):
+                            normalized = normalize_text(country)
+                            if normalized:
+                                countries.add(normalized)
+                elif isinstance(ungm_obj.countries, dict):
+                    for country in ungm_obj.countries.get('items', []):
+                        if isinstance(country, str):
+                            normalized = normalize_text(country)
+                            if normalized:
+                                countries.add(normalized)
+                                
+        except Exception as e:
+            self.logger.warning(f"Error extracting countries: {str(e)}")
+            
+        return list(countries)
 
-    # Translate non-English fields if needed
-    language = unified.language or "en"
-    
-    try:
-        # Translate title if needed
-        if unified.title and language != "en":
-            unified.title_english, _ = translate_to_english(unified.title, language)
-            # Verify translation quality - if translation is too short compared to original,
-            # try translating larger chunks of the title
-            if unified.title_english and len(unified.title_english) < len(unified.title) * 0.5:
-                # Try translating again with more context
-                title_chunks = [unified.title[i:i+500] for i in range(0, len(unified.title), 500)]
-                translated_chunks = []
-                for chunk in title_chunks:
-                    trans, _ = translate_to_english(chunk, language)
-                    translated_chunks.append(trans)
-                unified.title_english = " ".join(translated_chunks)
-    except Exception as e:
-        # Log the error and continue with untranslated text
-        print(f"Error translating title: {e}")
-        if not unified.title_english:
-            unified.title_english = unified.title
-    
-    try:
-        # Translate description if needed
-        if unified.description and language != "en":
-            # For longer descriptions, split into manageable chunks for translation
-            if len(unified.description) > 1000:
-                desc_chunks = [unified.description[i:i+1000] for i in range(0, len(unified.description), 1000)]
-                translated_chunks = []
-                for chunk in desc_chunks:
-                    trans, _ = translate_to_english(chunk, language)
-                    translated_chunks.append(trans)
-                unified.description_english = " ".join(translated_chunks)
-            else:
-                unified.description_english, _ = translate_to_english(unified.description, language)
-    except Exception as e:
-        # Log the error and continue with untranslated text
-        print(f"Error translating description: {e}")
-        if not unified.description_english:
-            unified.description_english = unified.description
+    def _post_process(self, tender: UnifiedTender) -> UnifiedTender:
+        """
+        Perform UNGM-specific post-processing with enhanced validation.
+        """
+        try:
+            # Handle translations if needed
+            if tender.language and tender.language != 'en':
+                try:
+                    if tender.title:
+                        original_title = tender.title
+                        tender.title_english, quality = translate_to_english(tender.title, tender.language)
+                        log_before_after('title_translation', original_title, tender.title_english)
+                        
+                    if tender.description:
+                        original_desc = tender.description
+                        tender.description_english, quality = translate_to_english(tender.description, tender.language)
+                        log_before_after('description_translation', original_desc, tender.description_english)
+                        
+                    if tender.organization_name:
+                        original_org = tender.organization_name
+                        tender.organization_name_english, quality = translate_to_english(tender.organization_name, tender.language)
+                        log_before_after('organization_translation', original_org, tender.organization_name_english)
+                        
+                except Exception as e:
+                    self.logger.warning(f"Translation error: {str(e)}")
+            
+            # Calculate quality score
+            tender.quality_score = calculate_tender_quality(tender.dict())
+            
+            return tender
+            
+        except Exception as e:
+            self.logger.error(f"Error in post-processing: {str(e)}")
+            return tender
 
-    return unified 
+def normalize_ungm(row: Dict[str, Any]) -> UnifiedTender:
+    """
+    Legacy wrapper function for backward compatibility.
+    """
+    normalizer = UNGMNormalizer()
+    return normalizer.normalize(row) 
