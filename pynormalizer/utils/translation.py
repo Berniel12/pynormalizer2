@@ -7,6 +7,8 @@ import time
 from typing import Dict, Optional, Any, Tuple
 import json
 import re
+from deep_translator import GoogleTranslator
+from langdetect import detect, LangDetectException
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -23,7 +25,6 @@ TRANSLATION_STATS = {
 
 # Set up deep-translator imports with robust error handling
 TRANSLATOR_AVAILABLE = False
-GoogleTranslator = None
 
 # Common words in different languages to help with detection
 LANGUAGE_MARKERS = {
@@ -74,23 +75,42 @@ def detect_language_heuristic(text: str) -> Optional[str]:
 
 def detect_language(text: str) -> Optional[str]:
     """
-    Detect the language of a text.
-    This function is maintained for backward compatibility.
+    Detect the language of a text string.
+    Returns None if detection fails.
+    """
+    if not text or len(text.strip()) < 10:
+        return None
+        
+    try:
+        return detect(text)
+    except LangDetectException as e:
+        logger.warning(f"Language detection failed: {e}")
+        return None
+
+def detect_language_with_fallback(text: str, default_language: str = 'en') -> str:
+    """
+    Detect language with fallback to default if detection fails.
     
     Args:
-        text: Text to detect language for
+        text: Text to detect language from
+        default_language: Language code to return if detection fails
         
     Returns:
-        ISO language code or None if detection fails
+        Detected language code or default_language if detection fails
     """
-    return detect_language_heuristic(text)
+    if not text or len(text.strip()) < 10:
+        return default_language
+        
+    try:
+        detected = detect_language(text)
+        return detected if detected else default_language
+    except Exception as e:
+        logger.warning(f"Language detection failed: {e}")
+        return default_language
 
 try:
     # Try to import deep_translator
-    from deep_translator import GoogleTranslator as dt_GoogleTranslator
-    
-    # Set up the translator
-    GoogleTranslator = dt_GoogleTranslator
+    GoogleTranslator = GoogleTranslator
     TRANSLATOR_AVAILABLE = True
     logger.info("Successfully imported deep-translator")
     
@@ -267,127 +287,41 @@ def is_english_text(text: str) -> bool:
     # Default behavior - if no strong signals, assume English
     return True
 
-def translate_to_english(text: Optional[str], src_lang: Optional[str] = "auto") -> Tuple[Optional[str], Optional[str]]:
+def translate_to_english(text: str, source_lang: Optional[str] = None) -> Tuple[Optional[str], float]:
     """
-    Translate text to English.
+    Translate text to English with quality score.
     
     Args:
         text: Text to translate
-        src_lang: Source language code (ISO 639-1) or "auto" for auto-detection
+        source_lang: Source language code (if known)
         
     Returns:
-        Tuple of (translated_text, method_used)
+        Tuple of (translated_text, quality_score)
+        quality_score ranges from 0.0 to 1.0
     """
-    global TRANSLATION_STATS
-    
     if not text:
-        return None, None
+        return None, 0.0
         
-    # Update stats
-    TRANSLATION_STATS["total_requests"] += 1
-    
-    # Early return if text is already English or very short
-    if is_english_text(text) or len(text) < 5:
-        TRANSLATION_STATS["already_english"] += 1
-        return text, "already-english"
-        
-    # Try to detect the language if not provided
-    if src_lang == "auto":
-        src_lang = detect_language(text) or "en"
-    
-    if src_lang == "en":
-        TRANSLATION_STATS["already_english"] += 1
-        return text, "already-english"
-    
-    # Track language stats
-    if src_lang in TRANSLATION_STATS["languages"]:
-        TRANSLATION_STATS["languages"][src_lang] += 1
-    else:
-        TRANSLATION_STATS["languages"][src_lang] = 1
-    
-    # If text is very long, split into chunks for better translation
-    if len(text) > 1000:
-        # Split into chunks of ~1000 characters, trying to break at sentence boundaries
-        chunks = []
-        sentence_endings = ['. ', '! ', '? ', '.\n', '!\n', '?\n']
-        current_chunk = ""
-        
-        # Split by sentences
-        sentences = []
-        current_sentence = ""
-        for char in text:
-            current_sentence += char
-            if char in '.!?' and len(current_sentence) > 1:
-                sentences.append(current_sentence)
-                current_sentence = ""
-        if current_sentence:
-            sentences.append(current_sentence)
-        
-        # Group sentences into chunks
-        for sentence in sentences:
-            if len(current_chunk) + len(sentence) < 1000:
-                current_chunk += sentence
-            else:
-                chunks.append(current_chunk)
-                current_chunk = sentence
-        if current_chunk:
-            chunks.append(current_chunk)
-        
-        # If no chunks were created (no sentence boundaries found),
-        # fall back to simple character chunking
-        if not chunks:
-            chunks = [text[i:i+1000] for i in range(0, len(text), 1000)]
-        
-        # Translate each chunk
-        translated_chunks = []
-        for chunk in chunks:
-            try:
-                if TRANSLATOR_AVAILABLE:
-                    translator = GoogleTranslator(source=src_lang, target='en')
-                    translated = translator.translate(chunk)
-                    translated_chunks.append(translated)
-                else:
-                    # Fallback to dictionary-based word replacement when no translator available
-                    # This is a simplistic approach and won't handle grammar
-                    translated_chunks.append(chunk)  # Just use original chunk as fallback
-                    
-            except Exception as e:
-                logger.warning(f"Translation failed for chunk: {e}")
-                # If translation fails, append the original chunk
-                translated_chunks.append(chunk)
-        
-        translated_text = " ".join(translated_chunks)
-        TRANSLATION_STATS["success"] += 1
-        return translated_text, "chunked-translation"
-    
-    # Use deep-translator if available
     try:
-        if TRANSLATOR_AVAILABLE:
-            translator = GoogleTranslator(source=src_lang, target='en')
-            translated = translator.translate(text)
-            TRANSLATION_STATS["success"] += 1
-            return translated, "deep-translator"
-        else:
-            # When no translator is available, try fixing encoding issues first
-            fixed_text = fix_character_encoding(text)
-            if fixed_text != text:
-                TRANSLATION_STATS["encoding_fixed"] += 1
-                return fixed_text, "encoding-fixed"
-                
-            # Fallback to returning the original text
-            TRANSLATION_STATS["failed"] += 1
-            return text, "no-translation"
-    except Exception as e:
-        logger.warning(f"Translation failed: {e}")
-        TRANSLATION_STATS["failed"] += 1
-        
-        # Try fixing encoding issues as a last resort
-        fixed_text = fix_character_encoding(text)
-        if fixed_text != text:
-            TRANSLATION_STATS["encoding_fixed"] += 1
-            return fixed_text, "encoding-fixed"
+        # Detect language if not provided
+        if not source_lang:
+            source_lang = detect_language_with_fallback(text)
             
-        return text, "translation-error"
+        # Skip translation if already English
+        if source_lang == 'en':
+            return text, 1.0
+            
+        translator = GoogleTranslator(source=source_lang, target='en')
+        translated = translator.translate(text)
+        
+        # Calculate quality score based on success
+        quality = 1.0 if translated and translated != text else 0.0
+        
+        return translated, quality
+        
+    except Exception as e:
+        logger.error(f"Translation error: {str(e)}")
+        return None, 0.0
 
 def get_supported_languages() -> Dict[str, str]:
     """
@@ -398,9 +332,14 @@ def get_supported_languages() -> Dict[str, str]:
     """
     return SUPPORTED_LANGS
 
-def get_translation_stats() -> Dict[str, Any]:
-    """Get statistics about translations performed."""
-    return TRANSLATION_STATS
+def get_translation_stats() -> dict:
+    """Get statistics about translation usage and performance."""
+    # TODO: Implement translation statistics tracking
+    return {
+        "translations_performed": 0,
+        "average_quality": 0.0,
+        "errors": 0
+    }
 
 def apply_translations(unified_tender: Any, source_language: Optional[str] = None) -> Any:
     """
@@ -492,4 +431,12 @@ def setup_translation_models():
     return result
 
 # Automatically test the translation setup when the module is imported
-test_translation_setup() 
+test_translation_setup()
+
+__all__ = [
+    'detect_language',
+    'detect_language_with_fallback',
+    'translate_to_english',
+    'setup_translation_models',
+    'get_translation_stats'
+] 
