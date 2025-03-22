@@ -62,7 +62,7 @@ try:
         logger.error(f"❌ Failed to import supabase module: {e}")
         logger.error(f"Installed packages: {[p for p in sys.modules.keys() if not p.startswith('_')]}")
     
-    # Now try to import our client function
+    # Now try to import our client function directly from the db module
     try:
         from pynormalizer.utils.db import get_supabase_client
         logger.info("✅ Successfully imported get_supabase_client")
@@ -87,6 +87,7 @@ try:
         except ImportError as e:
             logger.error(f"Failed to import normalize_tedeu from any location: {e}")
     
+    # Import translation functions directly from the translation module
     from pynormalizer.utils.translation import setup_translation_models, get_supported_languages
     logger.info("✅ Successfully imported translation modules")
 except ImportError as e:
