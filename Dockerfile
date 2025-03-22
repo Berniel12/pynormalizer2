@@ -23,7 +23,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt && \
     # Ensure critical packages are installed with specific versions
     pip install --no-cache-dir \
-    supabase-py>=1.0.0 \
+    supabase>=1.0.0 \
     deep-translator>=1.11.3 \
     langdetect>=1.0.9 \
     unidecode>=1.3.6
