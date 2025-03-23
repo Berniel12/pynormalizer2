@@ -192,23 +192,61 @@ def translate_to_english(text, source_language=None):
         'SWE': 'sv',  # Swedish
         'POL': 'pl',  # Polish
         'ITA': 'it',  # Italian
+        'DEU': 'de',  # German
+        'NLD': 'nl',  # Dutch
+        'SPA': 'es',  # Spanish
+        'POR': 'pt',  # Portuguese
+        'RUS': 'ru',  # Russian
+        'ARA': 'ar',  # Arabic
+        'ZHO': 'zh-CN',  # Chinese
+        'JPN': 'ja',  # Japanese
+        'HIN': 'hi',  # Hindi
+        'KOR': 'ko',  # Korean
+        'TUR': 'tr',  # Turkish
+        'VIE': 'vi',  # Vietnamese
+        'THA': 'th',  # Thai
+        'ELL': 'el',  # Greek
+        'HUN': 'hu',  # Hungarian
+        'CES': 'cs',  # Czech
+        'DAN': 'da',  # Danish
+        'NOR': 'no',  # Norwegian
+        'BUL': 'bg',  # Bulgarian
+        'HRV': 'hr',  # Croatian
+        'UKR': 'uk',  # Ukrainian
+        'CAT': 'ca'   # Catalan
     }
     
     # If source language is provided, map it to supported code
-    if source_language and source_language in language_mapping:
-        source_language = language_mapping[source_language]
+    mapped_source = 'auto'  # Default to auto detection
+    if source_language:
+        if source_language in language_mapping:
+            mapped_source = language_mapping[source_language]
+        else:
+            logger.warning(f"Unmapped language code: {source_language}, using auto detection")
     
     # If English or already in English, return as is
-    if source_language == 'en' or source_language == 'ENG':
+    if mapped_source == 'en' or source_language == 'ENG':
         return text, 1.0
     
     try:
-        # Try using Google Translate
-        translator = GoogleTranslator(source=source_language, target='en')
+        # Try using Google Translate with the mapped source language
+        translator = GoogleTranslator(source=mapped_source, target='en')
         translated = translator.translate(text)
         return translated, 0.8
     except Exception as e:
-        logger.error(f"Translation error: {source_language} --> {str(e)}")
+        error_message = str(e)
+        # If it's a language support error, try with auto-detection
+        if "No support for the provided language" in error_message:
+            try:
+                logger.warning(f"Language {mapped_source} not supported, falling back to auto-detection")
+                translator = GoogleTranslator(source='auto', target='en')
+                translated = translator.translate(text)
+                return translated, 0.6  # Lower confidence since we used auto-detection
+            except Exception as inner_e:
+                logger.error(f"Auto-detection translation failed: {str(inner_e)}")
+        else:
+            logger.error(f"Translation error: {source_language} ({mapped_source}) --> {error_message}")
+        
         # Return original text as fallback for unsupported languages
         return text, 0.0
 
