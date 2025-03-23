@@ -61,7 +61,8 @@ __all__ = [
     'determine_status',
     'extract_organization_info',
     'safe_get_value',
-    'log_normalization_error'
+    'log_normalization_error',
+    'validate_extracted_data'
 ]
 
 # Common countries for fallback
@@ -1157,14 +1158,64 @@ def safe_get_value(data: Dict[str, Any], key: str, default: Any = None) -> Any:
         return default
 
 def log_normalization_error(source: str, tender_id: str, error: Exception, context: Optional[Dict] = None) -> None:
-    """
-    Log normalization error with context.
-    """
-    error_info = {
+    """Log errors that occur during normalization with structured context."""
+    error_data = {
         'source': source,
         'tender_id': tender_id,
-        'error_type': type(error).__name__,
-        'error_message': str(error),
-        'context': context or {}
+        'error': str(error),
+        'traceback': traceback.format_exc(),
+        'context': context or {},
+        'timestamp': datetime.now().isoformat()
     }
-    logger.error(f"Normalization error: {error_info}")
+    logger.error(f"Normalization error: {error} (source={source}, id={tender_id})")
+    logger.debug(f"Error details: {json.dumps(error_data, default=str)}")
+
+def validate_extracted_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Validate the extracted data for completeness and quality.
+    
+    Args:
+        data: Dictionary containing normalized data
+        
+    Returns:
+        Dictionary with validation results including:
+        - is_valid: Boolean indicating if the data meets minimum requirements
+        - issues: List of identified issues or missing fields
+        - quality_score: Numerical score of data quality (0-100)
+    """
+    issues = []
+    required_fields = ['title', 'description', 'publication_date', 'deadline_date', 'status']
+    
+    # Check for missing required fields
+    for field in required_fields:
+        if field not in data or not data[field]:
+            issues.append(f"Missing required field: {field}")
+    
+    # Check financial information
+    if 'estimated_value' in data and data['estimated_value']:
+        if 'amount' not in data['estimated_value'] or not data['estimated_value']['amount']:
+            issues.append("Missing amount in estimated value")
+        if 'currency' not in data['estimated_value'] or not data['estimated_value']['currency']:
+            issues.append("Missing currency in estimated value")
+    else:
+        issues.append("Missing estimated value information")
+    
+    # Check buyer information
+    if 'buyer' not in data or not data['buyer']:
+        issues.append("Missing buyer information")
+    elif 'name' not in data['buyer'] or not data['buyer']['name']:
+        issues.append("Missing buyer name")
+    
+    # Calculate quality score (0-100)
+    total_fields = len(data.keys())
+    filled_fields = sum(1 for k, v in data.items() if v is not None and v != "")
+    quality_score = min(100, int((filled_fields / max(1, total_fields)) * 100))
+    
+    # Adjust score based on issues
+    quality_score = max(0, quality_score - (5 * len(issues)))
+    
+    return {
+        'is_valid': len(issues) == 0,
+        'issues': issues,
+        'quality_score': quality_score
+    }
