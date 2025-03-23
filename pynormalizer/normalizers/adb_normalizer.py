@@ -154,11 +154,14 @@ def extract_enhanced_financial_info(tender: ADBTender) -> Tuple[Optional[float],
     
     for field in fields_to_check:
         # Try to extract amount and currency
-        extracted_amount, extracted_currency = extract_financial_info(str(field))
+        # extract_financial_info returns (min_amount, max_amount, currency)
+        extracted_tuple = extract_financial_info(str(field))
         
-        if extracted_amount and extracted_currency:
-            amount = extracted_amount
-            currency = extracted_currency
+        # Check if a non-None tuple was returned
+        if extracted_tuple and extracted_tuple[0] and extracted_tuple[2]:
+            # Use the minimum amount if available
+            amount = extracted_tuple[0]
+            currency = extracted_tuple[2]
             break
     
     # Clean and validate the amount
