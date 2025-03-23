@@ -98,5 +98,31 @@ def normalize_tender(source: str, data: Dict[str, Any]) -> Optional[Dict[str, An
         logger.error(f"No normalizer available for source: {source}")
         return None
 
+# Import normalizer functions for backward compatibility
+try:
+    from .tedeu_normalizer import normalize_tedeu
+    from .ungm_normalizer import normalize_ungm
+    from .samgov_normalizer import normalize_samgov
+    from .wb_normalizer import normalize_wb
+    from .adb_normalizer import normalize_adb
+    from .afd_normalizer import normalize_afd
+    from .afdb_normalizer import normalize_afdb
+    from .aiib_normalizer import normalize_aiib
+    from .iadb_normalizer import normalize_iadb
+except ImportError as e:
+    logger.warning(f"Failed to import some normalizer functions: {e}")
+
 # Export available functions
-__all__ = ['get_normalizer', 'normalize_tender']
+__all__ = [
+    'get_normalizer', 
+    'normalize_tender',
+    'normalize_tedeu',
+    'normalize_ungm',
+    'normalize_samgov',
+    'normalize_wb',
+    'normalize_adb',
+    'normalize_afd',
+    'normalize_afdb',
+    'normalize_aiib',
+    'normalize_iadb'
+]
