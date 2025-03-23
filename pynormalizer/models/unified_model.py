@@ -87,6 +87,7 @@ class UnifiedTender(BaseModel):
     
     # Additional data
     original_language: Optional[str] = None
+    language: Optional[str] = None  # For backward compatibility
     original_data: Optional[str] = None
     documents: Optional[List[Dict[str, Any]]] = None
     keywords: Optional[List[str]] = None
