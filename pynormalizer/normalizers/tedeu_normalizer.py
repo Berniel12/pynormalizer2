@@ -214,9 +214,9 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
                 if not text_field:
                     continue
                     
-                extracted_amount, extracted_currency = extract_financial_info(text_field)
-                if extracted_amount and extracted_currency:
-                    amount = amount or extracted_amount
+                min_amount, max_amount, extracted_currency = extract_financial_info(text_field)
+                if min_amount and extracted_currency:
+                    amount = amount or min_amount
                     currency = currency or extracted_currency
                     break
             

@@ -262,7 +262,7 @@ def extract_financial_info(text: str, currency_hint: Optional[str] = None) -> Tu
                 max_amount = Decimal(match.group(2).replace(',', ''))
                 currency = determine_currency(match.group(0), currency_hint)
                 return min_amount, max_amount, currency
-            except (ValueError, decimal.InvalidOperation):
+            except (ValueError, Decimal.InvalidOperation):
                 continue
 
     # Try standard and scale patterns
@@ -290,7 +290,7 @@ def extract_financial_info(text: str, currency_hint: Optional[str] = None) -> Tu
                     if not detected_currency:
                         detected_currency = determine_currency(match.group(0), currency_hint)
                         
-                except (ValueError, decimal.InvalidOperation):
+                except (ValueError, Decimal.InvalidOperation):
                     continue
 
     if not amounts:

@@ -27,6 +27,7 @@ class UnifiedTender(BaseModel):
     contact_address: Optional[str] = None
     url: Optional[str] = None
     document_links: Optional[Any] = None
+    documents: Optional[Any] = None
     language: Optional[str] = None
     notice_id: Optional[str] = None
     reference_number: Optional[str] = None
