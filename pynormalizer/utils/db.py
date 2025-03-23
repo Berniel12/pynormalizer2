@@ -323,6 +323,12 @@ def save_unified_tender(tender):
                 for doc in document_links:
                     if isinstance(doc, dict) and 'url' in doc and doc['url'] not in doc_urls:
                         record_to_save['document_links'].append(doc)
+
+        # Handle the category column issue - remove if it doesn't exist
+        # Check if the error message suggests missing 'category' column
+        if 'category' in record_to_save:
+            logger.info("Removing 'category' field from record due to potential schema mismatch")
+            record_to_save.pop('category', None)
         
         # Convert any datetime objects to strings and Decimal to float for serialization
         for key, value in record_to_save.items():
@@ -346,6 +352,21 @@ def save_unified_tender(tender):
                 return True
             else:
                 logger.error(f"Error updating unified tender {existing_id}: {response}")
+                if hasattr(response, 'error') and response.error:
+                    # Check if the error is related to missing column
+                    error_message = str(response.error)
+                    if "Could not find the 'category' column" in error_message:
+                        # Try again without the category field if it was accidentally reintroduced
+                        if 'category' in record_to_save:
+                            record_to_save.pop('category', None)
+                            logger.info("Retrying update without category field")
+                            retry_response = client.table("unified_tenders") \
+                                .update(record_to_save) \
+                                .eq("id", existing_id) \
+                                .execute()
+                            if retry_response.data:
+                                logger.info(f"Successfully updated unified tender {existing_id} after removing category field")
+                                return True
                 return False
         else:
             response = client.table("unified_tenders") \
@@ -357,10 +378,49 @@ def save_unified_tender(tender):
                 return True
             else:
                 logger.error(f"Error inserting unified tender: {response}")
+                if hasattr(response, 'error') and response.error:
+                    # Check if the error is related to missing column
+                    error_message = str(response.error)
+                    if "Could not find the 'category' column" in error_message:
+                        # Try again without the category field if it was accidentally reintroduced
+                        if 'category' in record_to_save:
+                            record_to_save.pop('category', None)
+                            logger.info("Retrying insert without category field")
+                            retry_response = client.table("unified_tenders") \
+                                .insert(record_to_save) \
+                                .execute()
+                            if retry_response.data:
+                                logger.info(f"Successfully inserted unified tender {tender.id} after removing category field")
+                                return True
                 return False
     
     except Exception as e:
         logger.error(f"Error saving unified tender to database: {str(e)}")
+        # Check if the error is related to missing column
+        error_message = str(e)
+        if "Could not find the 'category' column" in error_message and 'category' in record_to_save:
+            # Try again without the category field
+            try:
+                record_to_save.pop('category', None)
+                logger.info("Retrying save without category field")
+                
+                # Simplified retry logic
+                if existingIds.data and len(existingIds.data) > 0:
+                    existing_id = existingIds.data[0]['id']
+                    retry_response = client.table("unified_tenders") \
+                        .update(record_to_save) \
+                        .eq("id", existing_id) \
+                        .execute()
+                else:
+                    retry_response = client.table("unified_tenders") \
+                        .insert(record_to_save) \
+                        .execute()
+                
+                if retry_response.data:
+                    logger.info(f"Successfully saved unified tender after removing category field")
+                    return True
+            except Exception as retry_error:
+                logger.error(f"Error retrying save without category field: {str(retry_error)}")
         return False
 
 def upsert_unified_tender(conn, tender):
