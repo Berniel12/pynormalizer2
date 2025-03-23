@@ -471,7 +471,9 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         
         # Add normalized timestamp
         unified.normalized_at = datetime.utcnow()
-        unified.normalized_method = "pynormalizer"
+        
+        # Make sure source is set to tedeu
+        unified.source = "tedeu"
         
         return unified
         

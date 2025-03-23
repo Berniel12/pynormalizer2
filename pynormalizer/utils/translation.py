@@ -321,16 +321,10 @@ def apply_translations(unified_tender: Any, source_language: Optional[str] = Non
             else:
                 fallback_reason[field] = "no-translation"
     
-    # Store fallback reasons in the normalized_method field if available
+    # Store fallback reasons in the fallback_reason field if available
     if hasattr(unified_tender, "fallback_reason") and fallback_reason:
         # Store as a JSON string instead of a dict to avoid serialization issues
         unified_tender.fallback_reason = json.dumps(fallback_reason)
-    
-    if hasattr(unified_tender, "normalized_method") and not getattr(unified_tender, "normalized_method", None):
-        if TRANSLATOR_AVAILABLE:
-            unified_tender.normalized_method = "deep-translator"
-        else:
-            unified_tender.normalized_method = "no-translation"
     
     return unified_tender
 

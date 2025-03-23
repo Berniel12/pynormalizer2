@@ -283,8 +283,7 @@ def normalize_samgov(row: Dict[str, Any]) -> UnifiedTender:
         estimated_cost_max=max_value,
         currency=currency,
         original_data=row,
-        language="en",  # SAM.gov is in English
-        normalized_method="offline-dictionary",
+        language="en"  # SAM.gov is in English
     )
 
     # For SAM.gov, title is already in English

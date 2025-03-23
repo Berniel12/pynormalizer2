@@ -118,8 +118,7 @@ class BaseNormalizer(ABC):
                 currency=currency,
                 procurement_method=safe_get_value(data, 'procurement_method'),
                 language=safe_get_value(data, 'language', 'en'),
-                original_data=data,
-                normalized_method=f"{self.source}_normalizer"
+                original_data=data
             )
             
             # Allow child classes to perform additional processing

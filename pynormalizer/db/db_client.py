@@ -152,6 +152,7 @@ class DBClient:
             'value': 'estimated_value',
             'web_url': 'url',
             'original_language': 'language',
+            'normalized_method': None,  # Skip this field as it doesn't exist in the DB
             'category': None,  # Skip this field as it doesn't exist in the DB
             'industry': None,  # Skip this field as it doesn't exist in the DB
             'cpv_codes': None,  # Skip this field as it doesn't exist in the DB
