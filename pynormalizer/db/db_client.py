@@ -145,17 +145,58 @@ class DBClient:
         Returns:
             True if successful, False otherwise
         """
+        # Map the model fields to database column names
+        field_mapping = {
+            'published_at': 'publication_date',
+            'deadline': 'deadline_date',
+            'value': 'estimated_value',
+            'web_url': 'url',
+            'original_language': 'language',
+            'category': None,  # Skip this field as it doesn't exist in the DB
+            'industry': None,  # Skip this field as it doesn't exist in the DB
+            'cpv_codes': None,  # Skip this field as it doesn't exist in the DB
+            'sectors': None,  # Skip this field as it doesn't exist in the DB
+            'data_source': None,  # Skip this field as it doesn't exist in the DB
+            'data_quality_score': None,  # Skip this field as it doesn't exist in the DB
+            'nuts_codes': None,  # Skip this field as it doesn't exist in the DB
+            'documents': 'document_links',  # Map to document_links
+        }
+        
+        # Create a new dictionary with the mapped fields
+        mapped_data = {}
+        for key, value in tender_data.items():
+            # Skip None values to avoid overwriting existing data with NULL
+            if value is None:
+                continue
+                
+            # Map the field if needed
+            db_field = field_mapping.get(key)
+            
+            # If this field should be skipped (doesn't exist in DB)
+            if db_field is None and key in field_mapping:
+                continue
+                
+            # Use the mapped field name or the original name
+            field_name = db_field if db_field else key
+            
+            # Add to the mapped data
+            mapped_data[field_name] = value
+        
         # Extract fields and values
         fields = []
         values = []
         placeholders = []
         
         # Handle original_data field - ensure it's JSON
-        if 'original_data' in tender_data and isinstance(tender_data['original_data'], dict):
-            tender_data['original_data'] = json.dumps(tender_data['original_data'])
+        if 'original_data' in mapped_data and isinstance(mapped_data['original_data'], dict):
+            mapped_data['original_data'] = json.dumps(mapped_data['original_data'])
+            
+        # Handle document_links field - ensure it's JSON
+        if 'document_links' in mapped_data and isinstance(mapped_data['document_links'], list):
+            mapped_data['document_links'] = json.dumps(mapped_data['document_links'])
         
         # Process each field
-        for i, (key, value) in enumerate(tender_data.items()):
+        for i, (key, value) in enumerate(mapped_data.items()):
             fields.append(key)
             values.append(value)
             placeholders.append(f"%s")
@@ -167,7 +208,7 @@ class DBClient:
             ON CONFLICT (source_table, source_id) 
             DO UPDATE SET 
                 {', '.join([f"{field} = EXCLUDED.{field}" for field in fields if field not in ['source_table', 'source_id']])},
-                updated_at = CURRENT_TIMESTAMP
+                processed_at = CURRENT_TIMESTAMP
         """
         
         try:
