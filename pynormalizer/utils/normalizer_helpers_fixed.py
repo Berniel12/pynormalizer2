@@ -216,7 +216,7 @@ def extract_financial_info(text: str) -> Tuple[Optional[float], Optional[str]]:
         Tuple of (amount as float, currency code)
     """
     if not text:
-        return None, None
+            return None, None
         
     # Define currency symbols and their corresponding codes
     currency_symbols = {
@@ -1079,7 +1079,7 @@ def clean_price(price_value):
         Cleaned price as float or None if invalid
     """
     if price_value is None:
-    return None
+        return None
 
     if isinstance(price_value, (int, float)):
         return float(price_value)
@@ -1266,7 +1266,7 @@ def extract_status(text=None, deadline=None, publication_date=None, description=
                 if status_from_text in ['complete', 'cancelled']:
                     return status_from_text
                 return 'active'
-        else:
+            else:
                 # Deadline has passed, so tender is likely complete unless explicitly cancelled
                 if status_from_text == 'cancelled':
                     return 'cancelled'
@@ -1297,7 +1297,7 @@ def parse_date_string(date_str):
         datetime object or None if parsing fails
     """
     if not date_str or not isinstance(date_str, str):
-    return None
+            return None
 
     # Clean the string
     date_str = date_str.strip()
