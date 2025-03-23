@@ -319,7 +319,7 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
                     break
             
         if amount and currency:
-            unified.estimated_value = amount
+            unified.value = amount
             unified.currency = currency
             log_tender_normalization("tedeu", source_id, {"field": "financial_info", "before": None, "after": f"{amount} {currency}"})
         
@@ -374,14 +374,12 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
                     break
             
         if org_name:
-            unified.organization_name = org_name
+            unified.organization = org_name
             log_tender_normalization("tedeu", source_id, {"field": "organization", "before": None, "after": org_name})
             
-            # Also set in English if language is not English
-            if language and language != 'en':
-                org_name_english, quality = translate_to_english(org_name, language)
-                unified.organization_name_english = org_name_english
-        
+            # No longer need this since organization_name_english doesn't exist in the model
+            # Just add a comment explaining that we're not translating organization name
+
         # Extract and normalize status
         status = None
         
@@ -397,22 +395,22 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             unified.status = status
             log_tender_normalization("tedeu", source_id, {"field": "status", "before": None, "after": status})
         
-        # Set dates
+        # Set dates - use the correct field names from the model
         if 'publication_date' in tender and tender['publication_date']:
-            unified.publication_date = tender['publication_date']
+            unified.published_at = tender['publication_date']
             
         if 'deadline_date' in tender and tender['deadline_date']:
-            unified.deadline_date = tender['deadline_date']
+            unified.deadline = tender['deadline_date']
         else:
             # Try to extract from description
             deadline = extract_deadline(unified.description)
             if deadline:
-                unified.deadline_date = deadline
+                unified.deadline = deadline
                 log_tender_normalization("tedeu", source_id, {"field": "deadline", "before": None, "after": deadline.isoformat()})
         
         # Normalize document links
         if 'links' in tender and tender['links']:
-            unified.document_links = normalize_document_links(tender['links'])
+            unified.documents = normalize_document_links(tender['links'])
         
         # TED.eu specific fields - store in original_data
         original_data = {}
