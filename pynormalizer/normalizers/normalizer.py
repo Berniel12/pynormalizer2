@@ -64,11 +64,32 @@ def normalize_single_tender(
         unified_tender.source_id = source_id
         unified_tender.normalized_at = datetime.now()
         
+        # Handle compatibility with old field names
+        # Convert publication_date to published_at if it exists
+        if hasattr(unified_tender, 'publication_date') and not hasattr(unified_tender, 'published_at'):
+            unified_tender.published_at = getattr(unified_tender, 'publication_date')
+            
+        # Convert deadline_date to deadline if it exists
+        if hasattr(unified_tender, 'deadline_date') and not hasattr(unified_tender, 'deadline'):
+            unified_tender.deadline = getattr(unified_tender, 'deadline_date')
+            
+        # Convert estimated_value to value if it exists
+        if hasattr(unified_tender, 'estimated_value') and not hasattr(unified_tender, 'value'):
+            unified_tender.value = getattr(unified_tender, 'estimated_value')
+            
+        # Convert document_links to documents if it exists
+        if hasattr(unified_tender, 'document_links') and not hasattr(unified_tender, 'documents'):
+            unified_tender.documents = getattr(unified_tender, 'document_links')
+        
         # Convert to dict for validation and storage
         if isinstance(unified_tender, UnifiedTender):
             tender_dict = unified_tender.dict(exclude_none=True)
         else:
             tender_dict = unified_tender
+            
+        # Add processing time
+        if 'processing_time_ms' not in tender_dict:
+            tender_dict['processing_time_ms'] = int((time.time() - start_time) * 1000)
             
         # Save to database
         if db_client:

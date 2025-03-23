@@ -26,9 +26,17 @@ NORMALIZERS: Dict[str, Optional[Callable]] = {
 # Table name mapping
 TABLE_MAPPING = {
     'ted_eu': 'tedeu',
+    'tedeu': 'tedeu',
     'sam_gov': 'samgov',
+    'samgov': 'samgov',
     'afd_tenders': 'afd',
-    'world_bank': 'wb'
+    'afd': 'afd',
+    'world_bank': 'wb',
+    'wb': 'wb',
+    'adb': 'adb',
+    'afdb': 'afdb',
+    'aiib': 'aiib',
+    'iadb': 'iadb'
 }
 
 def get_normalizer(source: str) -> Optional[Callable]:
@@ -168,6 +176,27 @@ def normalize_and_save_tender(tender: Dict[str, Any], source: str, db_client: Op
             unified_tender.normalized_method = f"pynormalizer_{source}"
         if hasattr(unified_tender, 'processing_time_ms'):
             unified_tender.processing_time_ms = processing_time
+            
+        # Make sure source_table is set
+        if not hasattr(unified_tender, 'source_table') or not unified_tender.source_table:
+            unified_tender.source_table = source
+            
+        # Handle compatibility with old field names
+        # Convert publication_date to published_at if it exists
+        if hasattr(unified_tender, 'publication_date') and not hasattr(unified_tender, 'published_at'):
+            unified_tender.published_at = getattr(unified_tender, 'publication_date')
+            
+        # Convert deadline_date to deadline if it exists
+        if hasattr(unified_tender, 'deadline_date') and not hasattr(unified_tender, 'deadline'):
+            unified_tender.deadline = getattr(unified_tender, 'deadline_date')
+            
+        # Convert estimated_value to value if it exists
+        if hasattr(unified_tender, 'estimated_value') and not hasattr(unified_tender, 'value'):
+            unified_tender.value = getattr(unified_tender, 'estimated_value')
+            
+        # Convert document_links to documents if it exists
+        if hasattr(unified_tender, 'document_links') and not hasattr(unified_tender, 'documents'):
+            unified_tender.documents = getattr(unified_tender, 'document_links')
         
         # Log the fields we're about to save to identify any issues
         logger.info(f"Normalized tender fields: {', '.join(unified_tender.dict().keys())}")

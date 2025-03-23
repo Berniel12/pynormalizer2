@@ -59,16 +59,19 @@ class UnifiedTender(BaseModel):
     end_date: Optional[Union[datetime, str]] = None
     
     # Organizational info
-    organization: Optional[str] = None
     organization_name: Optional[str] = None
+    organization_id: Optional[str] = None
     buyer: Optional[str] = None
     project_name: Optional[str] = None
-    contact: Optional[str] = None
+    project_id: Optional[str] = None
+    project_number: Optional[str] = None
+    contact: Optional[Union[str, Dict[str, Any]]] = None
     
     # Location info
     country: Optional[str] = None
     region: Optional[str] = None
     city: Optional[str] = None
+    nuts_codes: Optional[List[str]] = None
     
     # Financial info
     financial_info: Optional[str] = None
@@ -84,11 +87,12 @@ class UnifiedTender(BaseModel):
     # Status info
     status: Optional[TenderStatus] = None
     procurement_method: Optional[ProcurementMethod] = None
+    tender_type: Optional[str] = None
     
     # Additional data
     original_language: Optional[str] = None
     language: Optional[str] = None  # For backward compatibility
-    original_data: Optional[str] = None
+    original_data: Optional[Union[str, Dict[str, Any]]] = None
     documents: Optional[List[Dict[str, Any]]] = None
     keywords: Optional[List[str]] = None
     
@@ -97,7 +101,13 @@ class UnifiedTender(BaseModel):
     funding_source: Optional[str] = None
     data_source: Optional[str] = None
     data_quality_score: Optional[float] = None
-    nuts_codes: Optional[List[str]] = None
+
+    # Processing info
+    normalized_by: Optional[str] = None
+    normalized_method: Optional[str] = None
+    processed_at: Optional[Union[datetime, str]] = None
+    processing_time_ms: Optional[int] = None
+    fallback_reason: Optional[str] = None
 
     class Config:
         use_enum_values = True
@@ -106,7 +116,7 @@ class UnifiedTender(BaseModel):
             datetime: lambda v: v.isoformat() if v else None
         }
 
-    @validator('published_at', 'updated_at', 'deadline', 'normalized_at', 'created_at', 'end_date', pre=True)
+    @validator('published_at', 'updated_at', 'deadline', 'normalized_at', 'created_at', 'end_date', 'processed_at', pre=True)
     def parse_datetime(cls, value):
         if value is None:
             return None
@@ -130,4 +140,20 @@ class UnifiedTender(BaseModel):
                     except (ValueError, TypeError):
                         # As a last resort, return the string
                         return value
-        return value 
+        return value
+
+    @validator('original_data', pre=True)
+    def ensure_json_string(cls, value):
+        """Ensure that original_data is stored as a JSON string."""
+        if value is None:
+            return None
+        if isinstance(value, dict):
+            return json.dumps(value)
+        if isinstance(value, str):
+            try:
+                # Validate it's valid JSON by parsing and re-serializing
+                return json.dumps(json.loads(value))
+            except json.JSONDecodeError:
+                # If it's not valid JSON, store it as-is
+                return value
+        return json.dumps(value) 

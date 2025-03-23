@@ -11,14 +11,26 @@ class DBClient:
     
     def __init__(self, connection_params=None):
         """Initialize the DB client with connection parameters."""
+        # Check for required environment variables
+        required_vars = ['SUPABASE_DB_HOST', 'SUPABASE_DB_USER', 'SUPABASE_DB_PASSWORD', 'SUPABASE_DB_NAME']
+        missing_vars = [var for var in required_vars if not os.environ.get(var)]
+        
+        if missing_vars and not connection_params:
+            missing_str = ', '.join(missing_vars)
+            logger.warning(f"Missing required environment variables: {missing_str}")
+            
         # Use provided connection parameters or get from environment
         self.connection_params = connection_params or {
-            'host': os.environ.get('SUPABASE_DB_HOST'),
+            'host': os.environ.get('SUPABASE_DB_HOST', 'localhost'),
             'port': os.environ.get('SUPABASE_DB_PORT', '5432'),
-            'user': os.environ.get('SUPABASE_DB_USER'),
-            'password': os.environ.get('SUPABASE_DB_PASSWORD'),
-            'dbname': os.environ.get('SUPABASE_DB_NAME')
+            'user': os.environ.get('SUPABASE_DB_USER', 'postgres'),
+            'password': os.environ.get('SUPABASE_DB_PASSWORD', ''),
+            'dbname': os.environ.get('SUPABASE_DB_NAME', 'postgres')
         }
+        
+        # Log connection info (without sensitive data)
+        logger.info(f"Database client initialized with host={self.connection_params['host']}, port={self.connection_params['port']}, user={self.connection_params['user']}, dbname={self.connection_params['dbname']}")
+        
         self.conn = None
         
     def _get_connection(self):
@@ -26,6 +38,7 @@ class DBClient:
         if not self.conn or self.conn.closed:
             try:
                 self.conn = psycopg2.connect(**self.connection_params)
+                logger.info("Successfully connected to the database")
             except Exception as e:
                 logger.error(f"Error connecting to database: {str(e)}")
                 raise
@@ -83,11 +96,13 @@ class DBClient:
         
         # Set default ID column and type if not found
         id_column = 'id'
-        id_type = 'uuid'
+        id_type = 'unknown'
         
         if id_info and len(id_info) > 0:
             id_column = id_info[0]['column_name']
-            id_type = id_info[0]['data_type']
+            id_type = id_info[0]['data_type'].lower()
+            
+        logger.info(f"Table {table} has ID column '{id_column}' of type '{id_type}'")
         
         # Construct the query
         base_query = f"""
@@ -97,19 +112,14 @@ class DBClient:
         
         # Only add skip_normalized condition if requested
         if skip_normalized:
-            # Handle potential type conversion between source table and unified_tenders
-            type_cast = ''
-            if id_type.lower() in ('integer', 'bigint', 'numeric'):
-                # Convert numeric IDs to text for comparison
-                type_cast = '::text'
-            
-            # Add condition to exclude normalized rows
+            # Always cast source_id to text for comparison, regardless of type
+            # This ensures string vs. numeric comparisons work properly
             base_query += f"""
                 WHERE NOT EXISTS (
                     SELECT 1 
                     FROM unified_tenders u 
                     WHERE u.source_table = %s 
-                    AND u.source_id = t.{id_column}{type_cast}
+                    AND u.source_id = t.{id_column}::text
                 )
             """
             params = (table, limit)
@@ -145,34 +155,24 @@ class DBClient:
         Returns:
             True if successful, False otherwise
         """
+        # Ensure source_id is always a string
+        if 'source_id' in tender_data and tender_data['source_id'] is not None:
+            tender_data['source_id'] = str(tender_data['source_id'])
+        
         # Map the model fields to database column names
         field_mapping = {
             # Fields that exist in the DB with different names
-            'published_at': 'publication_date',
-            'deadline': 'deadline_date',
-            'value': 'estimated_value',
-            'web_url': 'url',
-            'original_language': 'language',
-            'organization': 'organization_name',  # Map to organization_name
-            'documents': 'document_links',  # Map to document_links
+            'publication_date': 'published_at',  # Reverse mapping to match our DB schema
+            'deadline_date': 'deadline',  # Reverse mapping to match our DB schema
+            'estimated_value': 'value',  # Reverse mapping to match our DB schema
+            'url': 'source_url',  # Map URL fields appropriately
+            'document_links': 'documents',  # Map document fields
             
-            # Model fields that don't exist in the database schema - skip these
-            'normalized_method': None,
-            'category': None,
-            'industry': None,
-            'cpv_codes': None,
-            'sectors': None,
-            'data_source': None,
-            'data_quality_score': None,
-            'nuts_codes': None,
-            'financial_info': None,
-            'keywords': None,
-            'funding_source': None,
-            'region': None,
-            'contact': None,
-            'end_date': None,
-            'updated_at': None,
-            'created_at': None
+            # Special handling fields
+            'web_url': 'web_url', 
+            
+            # Fields to normalize
+            'language': 'original_language'  # Legacy field mapping
         }
         
         # Create a new dictionary with the mapped fields
@@ -182,28 +182,49 @@ class DBClient:
             if value is None:
                 continue
                 
-            # Check if field should be skipped because it doesn't exist in DB
-            if key in field_mapping and field_mapping[key] is None:
-                continue
-                
-            # Use the mapped field name or the original name
-            field_name = field_mapping.get(key, key)
-            
-            # Add to the mapped data
-            mapped_data[field_name] = value
+            # If the key is in our mapping and needs to be renamed
+            if key in field_mapping:
+                if field_mapping[key] is None:
+                    # Skip fields mapped to None
+                    continue
+                else:
+                    # Use the mapped field name
+                    mapped_field = field_mapping[key]
+                    mapped_data[mapped_field] = value
+            else:
+                # Use the original field name
+                mapped_data[key] = value
         
         # Extract fields and values
         fields = []
         values = []
         placeholders = []
         
-        # Handle original_data field - ensure it's JSON
-        if 'original_data' in mapped_data and isinstance(mapped_data['original_data'], dict):
-            mapped_data['original_data'] = json.dumps(mapped_data['original_data'])
-            
-        # Handle document_links field - ensure it's JSON
-        if 'document_links' in mapped_data and isinstance(mapped_data['document_links'], list):
-            mapped_data['document_links'] = json.dumps(mapped_data['document_links'])
+        # Handle JSONB fields - ensure they're JSON strings
+        jsonb_fields = ['original_data', 'documents', 'contact']
+        for field in jsonb_fields:
+            if field in mapped_data:
+                if isinstance(mapped_data[field], (dict, list)):
+                    mapped_data[field] = json.dumps(mapped_data[field])
+        
+        # Handle array fields - ensure they're proper arrays
+        array_fields = ['cpv_codes', 'nuts_codes', 'sectors', 'keywords']
+        for field in array_fields:
+            if field in mapped_data:
+                # If it's a string, try to parse it as JSON
+                if isinstance(mapped_data[field], str):
+                    try:
+                        # Try to parse as JSON
+                        parsed = json.loads(mapped_data[field])
+                        if isinstance(parsed, list):
+                            mapped_data[field] = parsed
+                    except:
+                        # If not valid JSON, split by commas
+                        mapped_data[field] = [item.strip() for item in mapped_data[field].split(',')]
+                
+                # Ensure it's a valid array
+                if not isinstance(mapped_data[field], list):
+                    mapped_data[field] = [str(mapped_data[field])]
         
         # Process each field
         for i, (key, value) in enumerate(mapped_data.items()):
@@ -218,7 +239,7 @@ class DBClient:
             ON CONFLICT (source_table, source_id) 
             DO UPDATE SET 
                 {', '.join([f"{field} = EXCLUDED.{field}" for field in fields if field not in ['source_table', 'source_id']])},
-                processed_at = CURRENT_TIMESTAMP
+                updated_at = CURRENT_TIMESTAMP
         """
         
         try:

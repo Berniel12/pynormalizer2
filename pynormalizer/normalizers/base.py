@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 from pynormalizer.db.db_client import DBClient
 from pynormalizer.normalizers.normalizer import get_normalizer
+from pynormalizer.normalizers import TABLE_MAPPING
 from pynormalizer.utils.logger import logger
 
 def normalize_all_tenders(
@@ -27,10 +28,6 @@ def normalize_all_tenders(
     """
     start_time = time.time()
     
-    # Set up database client
-    if not db_client:
-        db_client = DBClient()
-    
     # Set up global stats
     stats = {
         "total_processed": 0,
@@ -41,6 +38,19 @@ def normalize_all_tenders(
         "errors": [],
         "time_taken": 0
     }
+    
+    # Set up database client
+    try:
+        if not db_client:
+            db_client = DBClient()
+            
+        # Test connection
+        db_client._get_connection()
+        logger.info("Database connection successful")
+    except Exception as e:
+        logger.error(f"Database connection error: {str(e)}")
+        stats["errors"].append(f"Database connection error: {str(e)}")
+        return stats
 
     # If no tables specified, use all tables with a normalizer
     if tables is None or len(tables) == 0:
@@ -67,12 +77,17 @@ def normalize_all_tenders(
             logger.info(f"Processing table {table} with normalizer {normalizer_id}")
             
             # Get tenders to normalize
-            if process_all:
-                tenders = db_client.fetch_all_rows(table, limit=limit)
-                logger.info(f"Fetched {len(tenders)} tenders from {table} for processing (process_all=True)")
-            else:
-                tenders = db_client.fetch_unnormalized_rows(table, limit=limit, skip_normalized=skip_normalized)
-                logger.info(f"Fetched {len(tenders)} unnormalized tenders from {table}")
+            try:
+                if process_all:
+                    tenders = db_client.fetch_all_rows(table, limit=limit)
+                    logger.info(f"Fetched {len(tenders)} tenders from {table} for processing (process_all=True)")
+                else:
+                    tenders = db_client.fetch_unnormalized_rows(table, limit=limit, skip_normalized=skip_normalized)
+                    logger.info(f"Fetched {len(tenders)} unnormalized tenders from {table}")
+            except Exception as db_error:
+                logger.error(f"Database error fetching tenders from {table}: {str(db_error)}")
+                stats["errors"].append(f"Database error for table {table}: {str(db_error)}")
+                continue
             
             # Set up table stats
             table_stats = {
