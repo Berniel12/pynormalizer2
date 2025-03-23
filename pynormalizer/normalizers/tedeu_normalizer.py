@@ -77,6 +77,73 @@ def extract_tedeu_country(tender: Dict[str, Any]) -> Optional[str]:
     if 'organisation_country' in tender and tender['organisation_country']:
         return tender['organisation_country']
     
+    # Try organization name, which often contains the country
+    if 'organisation_name' in tender and tender['organisation_name']:
+        org_name = tender['organisation_name']
+        
+        # Check for country names in the organization name
+        for country in NUTS_COUNTRY_MAPPING.values():
+            if country.lower() in org_name.lower():
+                return country
+                
+        # Check for common European city names which can identify the country
+        city_country_map = {
+            'Vienna': 'Austria',
+            'Wien': 'Austria', 
+            'Graz': 'Austria',
+            'Salzburg': 'Austria',
+            'Brussels': 'Belgium',
+            'Bruxelles': 'Belgium',
+            'Antwerp': 'Belgium',
+            'Antwerpen': 'Belgium',
+            'Prague': 'Czech Republic',
+            'Praha': 'Czech Republic',
+            'Berlin': 'Germany',
+            'München': 'Germany', 
+            'Frankfurt': 'Germany',
+            'Hamburg': 'Germany',
+            'Köln': 'Germany',
+            'Madrid': 'Spain',
+            'Barcelona': 'Spain',
+            'Valencia': 'Spain',
+            'Paris': 'France',
+            'Lyon': 'France',
+            'Marseille': 'France',
+            'Rome': 'Italy',
+            'Roma': 'Italy',
+            'Milan': 'Italy',
+            'Milano': 'Italy',
+            'Amsterdam': 'Netherlands',
+            'Rotterdam': 'Netherlands',
+            'Warsaw': 'Poland',
+            'Warszawa': 'Poland',
+            'Kraków': 'Poland',
+            'Lisbon': 'Portugal',
+            'Lisboa': 'Portugal',
+            'Stockholm': 'Sweden',
+            'Copenhagen': 'Denmark',
+            'København': 'Denmark',
+            'Helsinki': 'Finland',
+            'Athens': 'Greece',
+            'Athina': 'Greece',
+            'Budapest': 'Hungary',
+            'Dublin': 'Ireland',
+            'Bratislava': 'Slovakia',
+            'Ljubljana': 'Slovenia',
+            'Bucharest': 'Romania',
+            'București': 'Romania',
+            'Ploiesti': 'Romania',
+            'Sofia': 'Bulgaria',
+            'Zagreb': 'Croatia',
+            'Tallinn': 'Estonia',
+            'Riga': 'Latvia',
+            'Vilnius': 'Lithuania'
+        }
+        
+        for city, country in city_country_map.items():
+            if city.lower() in org_name.lower():
+                return country
+    
     # Try NUTS code
     if 'nuts_code' in tender and tender['nuts_code']:
         # Extract country code from NUTS code (first two chars)
@@ -94,6 +161,37 @@ def extract_tedeu_country(tender: Dict[str, Any]) -> Optional[str]:
         if country_code in NUTS_COUNTRY_MAPPING:
             return NUTS_COUNTRY_MAPPING[country_code]
         return country_code
+    
+    # Try to deduce country from language
+    if 'language' in tender and tender['language']:
+        language_map = {
+            'DE': 'Germany',
+            'FR': 'France',
+            'IT': 'Italy', 
+            'ES': 'Spain',
+            'NL': 'Netherlands',
+            'PT': 'Portugal',
+            'DA': 'Denmark',
+            'FI': 'Finland',
+            'SV': 'Sweden',
+            'EL': 'Greece',
+            'CS': 'Czech Republic',
+            'SK': 'Slovakia',
+            'HU': 'Hungary',
+            'PL': 'Poland',
+            'RO': 'Romania',
+            'BG': 'Bulgaria',
+            'HR': 'Croatia',
+            'SL': 'Slovenia',
+            'ET': 'Estonia',
+            'LV': 'Latvia',
+            'LT': 'Lithuania',
+            'MT': 'Malta'
+        }
+        
+        lang_code = tender['language'].upper()
+        if lang_code in language_map:
+            return language_map[lang_code]
     
     # Try from original address or name
     if 'organisation_address' in tender and tender['organisation_address']:
