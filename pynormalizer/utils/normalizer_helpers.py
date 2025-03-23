@@ -344,7 +344,7 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
         language: Language code that might give a clue about country
         
     Returns:
-        Tuple of (normalized_name, iso_code, iso_code_3)
+        Normalized country name as a string (not a tuple)
     """
     if not country_value:
         logger.warning("Empty country value provided")
@@ -383,15 +383,15 @@ def ensure_country(country_value=None, text=None, organization=None, email=None,
                 logger.info(f"Using country '{country_value}' based on language: {language}")
         
         if not country_value:
-            return "Unknown", None, None
+            return "Unknown"
     
     normalized_name, iso_code, iso_code_3, info = normalize_country(country_value)
     
     if not info["valid"]:
         logger.warning(f"Country validation issues: {info['issues']}")
-        return normalized_name or "Unknown", iso_code, iso_code_3
+        return normalized_name or "Unknown"
     
-    return normalized_name, iso_code, iso_code_3
+    return normalized_name
 
 def log_tender_normalization(source_table, source_id, log_data):
     """Log tender normalization process."""
@@ -831,11 +831,11 @@ def extract_location_info(text: str) -> Tuple[Optional[str], Optional[str]]:
         parts = [p.strip() for p in location.split(',')]
         if len(parts) >= 2:
             city, country = parts[0], parts[-1]
-            normalized_country, _, _ = ensure_country(country)
+            normalized_country = ensure_country(country)
             return normalized_country, city
         
         # If only one part, try to identify if it's a country
-        normalized_country, _, _ = ensure_country(location)
+        normalized_country = ensure_country(location)
         if normalized_country != "Unknown":
             return normalized_country, None
         
