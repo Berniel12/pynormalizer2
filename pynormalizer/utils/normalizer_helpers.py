@@ -674,7 +674,7 @@ def extract_organization_and_buyer(text: str, title: Optional[str] = None) -> Tu
     # Extract organization
     for pattern in org_indicators:
         matches = re.search(pattern, full_text, re.IGNORECASE)
-    if matches:
+        if matches:
             organization = matches.group(1).strip()
             break
     
@@ -731,7 +731,7 @@ def determine_normalized_method(row, default=None):
     for field in important_fields:
         if field in row and row[field]:
             method_scores['full'] += 1
-                else:
+        else:
             method_scores['partial'] += 1
     
     # Check additional fields
@@ -752,7 +752,7 @@ def determine_normalized_method(row, default=None):
         return "partial"
     elif method_scores['minimal'] >= 5:
         return "minimal"
-        else:
+    else:
         return default or "unknown"
 
 def clean_date(date_value):
@@ -902,7 +902,7 @@ def extract_procurement_method(text: str) -> Optional[str]:
     
     normalized = None
     for pattern, method in methods.items():
-            if re.search(pattern, text, re.IGNORECASE):
+        if re.search(pattern, text, re.IGNORECASE):
             normalized = method
             logger.info(f"Matched procurement method: {method} from: {pattern}")
             break
