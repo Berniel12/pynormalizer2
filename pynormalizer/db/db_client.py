@@ -152,6 +152,8 @@ class DBClient:
             'value': 'estimated_value',
             'web_url': 'url',
             'original_language': 'language',
+            
+            # Skip fields that don't exist in the database schema
             'normalized_method': None,  # Skip this field as it doesn't exist in the DB
             'category': None,  # Skip this field as it doesn't exist in the DB
             'industry': None,  # Skip this field as it doesn't exist in the DB
@@ -160,6 +162,10 @@ class DBClient:
             'data_source': None,  # Skip this field as it doesn't exist in the DB
             'data_quality_score': None,  # Skip this field as it doesn't exist in the DB
             'nuts_codes': None,  # Skip this field as it doesn't exist in the DB
+            'financial_info': None,  # Skip this field as it doesn't exist in the DB
+            'keywords': None,  # Skip this field as it doesn't exist in the DB
+            'funding_source': None,  # Skip this field as it doesn't exist in the DB
+            'organization': 'organization_name',  # Map to organization_name
             'documents': 'document_links',  # Map to document_links
         }
         

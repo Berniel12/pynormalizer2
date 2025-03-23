@@ -229,10 +229,9 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         
         unified = UnifiedTender(
             id=tender_id,
-            source="tedeu",
+            source_table="tedeu",  # Add source_table which is a required field
             source_id=str(source_id),
             source_url=source_url,
-            source_table="ted_eu",  # Add source_table which is a required field
             title=""  # Add empty string for title as it's required
         )
         
@@ -374,7 +373,7 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
                     break
             
         if org_name:
-            unified.organization = org_name
+            unified.organization_name = org_name
             log_tender_normalization("tedeu", source_id, {"field": "organization", "before": None, "after": org_name})
             
             # No longer need this since organization_name_english doesn't exist in the model
@@ -472,8 +471,8 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         # Add normalized timestamp
         unified.normalized_at = datetime.utcnow()
         
-        # Make sure source is set to tedeu
-        unified.source = "tedeu"
+        # Make sure source_table is set to tedeu
+        unified.source_table = "tedeu"
         
         return unified
         
@@ -483,9 +482,8 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         # Return a minimal unified tender for error cases
         error_tender = UnifiedTender(
             id=str(uuid.uuid4()),
-            source="tedeu",
+            source_table="tedeu",
             source_id=str(tender.get('id', None) or tender.get('publication_number', 'unknown')),
-            source_table="ted_eu",  # Add required source_table field
             title=tender.get('title', "Error in normalization"),
             fallback_reason=f"Error: {str(e)}"
         )
