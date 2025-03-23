@@ -6,6 +6,8 @@ from typing import Dict, Any, Optional, Callable
 import time
 import traceback
 
+from pynormalizer.models.unified_model import UnifiedTender
+
 logger = logging.getLogger(__name__)
 
 # Dictionary to store normalizer functions
