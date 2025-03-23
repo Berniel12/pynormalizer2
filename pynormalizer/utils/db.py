@@ -10,6 +10,7 @@ import logging
 import traceback
 import sys
 from decimal import Decimal
+import re
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -324,11 +325,12 @@ def save_unified_tender(tender):
                     if isinstance(doc, dict) and 'url' in doc and doc['url'] not in doc_urls:
                         record_to_save['document_links'].append(doc)
 
-        # Handle the category column issue - remove if it doesn't exist
-        # Check if the error message suggests missing 'category' column
-        if 'category' in record_to_save:
-            logger.info("Removing 'category' field from record due to potential schema mismatch")
-            record_to_save.pop('category', None)
+        # Handle schema mismatch - remove columns that don't exist in the database
+        # Pre-emptively remove known problematic fields
+        for field in ['category', 'contact']:
+            if field in record_to_save:
+                logger.info(f"Removing '{field}' field from record due to potential schema mismatch")
+                record_to_save.pop(field, None)
         
         # Convert any datetime objects to strings and Decimal to float for serialization
         for key, value in record_to_save.items():
@@ -355,17 +357,19 @@ def save_unified_tender(tender):
                 if hasattr(response, 'error') and response.error:
                     # Check if the error is related to missing column
                     error_message = str(response.error)
-                    if "Could not find the 'category' column" in error_message:
-                        # Try again without the category field if it was accidentally reintroduced
-                        if 'category' in record_to_save:
-                            record_to_save.pop('category', None)
-                            logger.info("Retrying update without category field")
+                    if "Could not find the" in error_message and "column" in error_message:
+                        # Extract the column name from error message
+                        match = re.search(r"Could not find the '([^']+)' column", error_message)
+                        if match and match.group(1) in record_to_save:
+                            column_name = match.group(1)
+                            record_to_save.pop(column_name, None)
+                            logger.info(f"Retrying update without {column_name} field")
                             retry_response = client.table("unified_tenders") \
                                 .update(record_to_save) \
                                 .eq("id", existing_id) \
                                 .execute()
                             if retry_response.data:
-                                logger.info(f"Successfully updated unified tender {existing_id} after removing category field")
+                                logger.info(f"Successfully updated unified tender {existing_id} after removing {column_name} field")
                                 return True
                 return False
         else:
@@ -381,16 +385,18 @@ def save_unified_tender(tender):
                 if hasattr(response, 'error') and response.error:
                     # Check if the error is related to missing column
                     error_message = str(response.error)
-                    if "Could not find the 'category' column" in error_message:
-                        # Try again without the category field if it was accidentally reintroduced
-                        if 'category' in record_to_save:
-                            record_to_save.pop('category', None)
-                            logger.info("Retrying insert without category field")
+                    if "Could not find the" in error_message and "column" in error_message:
+                        # Extract the column name from error message
+                        match = re.search(r"Could not find the '([^']+)' column", error_message)
+                        if match and match.group(1) in record_to_save:
+                            column_name = match.group(1)
+                            record_to_save.pop(column_name, None)
+                            logger.info(f"Retrying insert without {column_name} field")
                             retry_response = client.table("unified_tenders") \
                                 .insert(record_to_save) \
                                 .execute()
                             if retry_response.data:
-                                logger.info(f"Successfully inserted unified tender {tender.id} after removing category field")
+                                logger.info(f"Successfully inserted unified tender {tender.id} after removing {column_name} field")
                                 return True
                 return False
     
@@ -398,29 +404,33 @@ def save_unified_tender(tender):
         logger.error(f"Error saving unified tender to database: {str(e)}")
         # Check if the error is related to missing column
         error_message = str(e)
-        if "Could not find the 'category' column" in error_message and 'category' in record_to_save:
-            # Try again without the category field
-            try:
-                record_to_save.pop('category', None)
-                logger.info("Retrying save without category field")
-                
-                # Simplified retry logic
-                if existingIds.data and len(existingIds.data) > 0:
-                    existing_id = existingIds.data[0]['id']
-                    retry_response = client.table("unified_tenders") \
-                        .update(record_to_save) \
-                        .eq("id", existing_id) \
-                        .execute()
-                else:
-                    retry_response = client.table("unified_tenders") \
-                        .insert(record_to_save) \
-                        .execute()
-                
-                if retry_response.data:
-                    logger.info(f"Successfully saved unified tender after removing category field")
-                    return True
-            except Exception as retry_error:
-                logger.error(f"Error retrying save without category field: {str(retry_error)}")
+        if "Could not find the" in error_message and "column" in error_message:
+            # Extract the column name from error message
+            match = re.search(r"Could not find the '([^']+)' column", error_message)
+            if match and match.group(1) in record_to_save:
+                # Try again without the problematic field
+                try:
+                    column_name = match.group(1)
+                    record_to_save.pop(column_name, None)
+                    logger.info(f"Retrying save without {column_name} field")
+                    
+                    # Simplified retry logic
+                    if existingIds.data and len(existingIds.data) > 0:
+                        existing_id = existingIds.data[0]['id']
+                        retry_response = client.table("unified_tenders") \
+                            .update(record_to_save) \
+                            .eq("id", existing_id) \
+                            .execute()
+                    else:
+                        retry_response = client.table("unified_tenders") \
+                            .insert(record_to_save) \
+                            .execute()
+                    
+                    if retry_response.data:
+                        logger.info(f"Successfully saved unified tender after removing {column_name} field")
+                        return True
+                except Exception as retry_error:
+                    logger.error(f"Error retrying save without problematic field: {str(retry_error)}")
         return False
 
 def upsert_unified_tender(conn, tender):

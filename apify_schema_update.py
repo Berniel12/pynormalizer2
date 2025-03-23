@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     """
-    Add the missing category column to the unified_tenders table through Apify
+    Add the missing columns to the unified_tenders table through Apify
     """
     # Get Supabase credentials from Apify environment
     supabase_url = os.environ.get("SUPABASE_URL")
@@ -21,13 +21,13 @@ def main():
         return
     
     logger.info(f"Using Supabase URL: {supabase_url}")
-    logger.info("Attempting to add category column to unified_tenders table...")
+    logger.info("Attempting to add missing columns to unified_tenders table...")
     
     try:
         # Initialize Supabase client
         supabase: Client = create_client(supabase_url, supabase_key)
         
-        # Check if column exists first
+        # Check if we can connect to the database
         result = supabase.table("unified_tenders").select("id").limit(1).execute()
         if result.error:
             logger.error(f"Error connecting to Supabase: {result.error}")
@@ -44,10 +44,11 @@ def main():
         
         sql_endpoint = f"{supabase_url}/rest/v1/rpc/execute_sql"
         
-        # Add the column if it doesn't exist
+        # Add both columns if they don't exist
         sql = """
         DO $$
         BEGIN
+            -- Add the category column if it doesn't exist
             IF NOT EXISTS (
                 SELECT FROM information_schema.columns 
                 WHERE table_name = 'unified_tenders' 
@@ -57,6 +58,18 @@ def main():
                 RAISE NOTICE 'Added category column';
             ELSE
                 RAISE NOTICE 'Category column already exists';
+            END IF;
+            
+            -- Add the contact column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'contact'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN contact JSONB;
+                RAISE NOTICE 'Added contact column';
+            ELSE
+                RAISE NOTICE 'Contact column already exists';
             END IF;
         END
         $$;
