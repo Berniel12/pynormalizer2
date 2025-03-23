@@ -147,26 +147,32 @@ class DBClient:
         """
         # Map the model fields to database column names
         field_mapping = {
+            # Fields that exist in the DB with different names
             'published_at': 'publication_date',
             'deadline': 'deadline_date',
             'value': 'estimated_value',
             'web_url': 'url',
             'original_language': 'language',
-            
-            # Skip fields that don't exist in the database schema
-            'normalized_method': None,  # Skip this field as it doesn't exist in the DB
-            'category': None,  # Skip this field as it doesn't exist in the DB
-            'industry': None,  # Skip this field as it doesn't exist in the DB
-            'cpv_codes': None,  # Skip this field as it doesn't exist in the DB
-            'sectors': None,  # Skip this field as it doesn't exist in the DB
-            'data_source': None,  # Skip this field as it doesn't exist in the DB
-            'data_quality_score': None,  # Skip this field as it doesn't exist in the DB
-            'nuts_codes': None,  # Skip this field as it doesn't exist in the DB
-            'financial_info': None,  # Skip this field as it doesn't exist in the DB
-            'keywords': None,  # Skip this field as it doesn't exist in the DB
-            'funding_source': None,  # Skip this field as it doesn't exist in the DB
             'organization': 'organization_name',  # Map to organization_name
             'documents': 'document_links',  # Map to document_links
+            
+            # Model fields that don't exist in the database schema - skip these
+            'normalized_method': None,
+            'category': None,
+            'industry': None,
+            'cpv_codes': None,
+            'sectors': None,
+            'data_source': None,
+            'data_quality_score': None,
+            'nuts_codes': None,
+            'financial_info': None,
+            'keywords': None,
+            'funding_source': None,
+            'region': None,
+            'contact': None,
+            'end_date': None,
+            'updated_at': None,
+            'created_at': None
         }
         
         # Create a new dictionary with the mapped fields
@@ -176,15 +182,12 @@ class DBClient:
             if value is None:
                 continue
                 
-            # Map the field if needed
-            db_field = field_mapping.get(key)
-            
-            # If this field should be skipped (doesn't exist in DB)
-            if db_field is None and key in field_mapping:
+            # Check if field should be skipped because it doesn't exist in DB
+            if key in field_mapping and field_mapping[key] is None:
                 continue
                 
             # Use the mapped field name or the original name
-            field_name = db_field if db_field else key
+            field_name = field_mapping.get(key, key)
             
             # Add to the mapped data
             mapped_data[field_name] = value

@@ -3,6 +3,8 @@ Normalizer modules for different tender sources.
 """
 import logging
 from typing import Dict, Any, Optional, Callable
+import time
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -126,3 +128,59 @@ __all__ = [
     'normalize_aiib',
     'normalize_iadb'
 ]
+
+def normalize_and_save_tender(tender: Dict[str, Any], source: str, db_client: Optional[Any] = None, skip_save: bool = False) -> Optional[UnifiedTender]:
+    """
+    Normalize a tender from a specific source and save it to the database.
+    
+    Args:
+        tender: Dictionary with tender data
+        source: Source identifier (e.g., 'dgmarket', 'tedeu')
+        db_client: Database client to save the tender (optional)
+        skip_save: If True, don't save to the database
+        
+    Returns:
+        Normalized UnifiedTender object, or None if normalization failed
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Get the appropriate normalizer function
+    normalizer = get_normalizer(source)
+    
+    if not normalizer:
+        logger.error(f"No normalizer found for source: {source}")
+        return None
+    
+    # Time the normalization process
+    start_time = time.time()
+    
+    try:
+        # Normalize the tender
+        unified_tender = normalizer(tender)
+        
+        # Calculate processing time
+        processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
+        
+        # Set additional metadata
+        if hasattr(unified_tender, 'normalized_method'):
+            unified_tender.normalized_method = f"pynormalizer_{source}"
+        if hasattr(unified_tender, 'processing_time_ms'):
+            unified_tender.processing_time_ms = processing_time
+        
+        # Log the fields we're about to save to identify any issues
+        logger.info(f"Normalized tender fields: {', '.join(unified_tender.dict().keys())}")
+        
+        # Save to database if client provided and not skipping save
+        if db_client and not skip_save:
+            tender_dict = unified_tender.dict(exclude_none=True)
+            success = db_client.save_normalized_tender(tender_dict)
+            
+            if not success:
+                logger.error(f"Failed to save unified tender to database for {source} ID: {unified_tender.source_id}")
+        
+        return unified_tender
+    
+    except Exception as e:
+        logger.error(f"Error normalizing tender from {source}: {str(e)}")
+        logger.error(traceback.format_exc())
+        return None
