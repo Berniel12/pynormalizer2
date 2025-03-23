@@ -9,6 +9,7 @@ import uuid
 import logging
 import traceback
 import sys
+from decimal import Decimal
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -323,10 +324,13 @@ def save_unified_tender(tender):
                     if isinstance(doc, dict) and 'url' in doc and doc['url'] not in doc_urls:
                         record_to_save['document_links'].append(doc)
         
-        # Convert any datetime objects to strings for serialization
+        # Convert any datetime objects to strings and Decimal to float for serialization
         for key, value in record_to_save.items():
             if isinstance(value, datetime):
                 record_to_save[key] = value.isoformat()
+            # Check for Decimal type and convert to float
+            elif isinstance(value, (Decimal)):
+                record_to_save[key] = float(value)
                 
         # If tender exists, update it, otherwise insert it
         if existingIds.data and len(existingIds.data) > 0:
