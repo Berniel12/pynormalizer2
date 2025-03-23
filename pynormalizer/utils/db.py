@@ -357,4 +357,18 @@ def save_unified_tender(tender):
     
     except Exception as e:
         logger.error(f"Error saving unified tender to database: {str(e)}")
-        return False 
+        return False
+
+def upsert_unified_tender(conn, tender):
+    """
+    Compatibility function to handle both connection and client types.
+    Calls save_unified_tender with the tender object.
+    
+    Args:
+        conn: Database connection or client (not used, retained for compatibility)
+        tender: UnifiedTender object to save
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    return save_unified_tender(tender) 
