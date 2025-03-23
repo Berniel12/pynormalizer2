@@ -3,7 +3,8 @@ import re
 import logging
 import traceback
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple, List
+from dateutil import parser as date_parser
 
 from pynormalizer.models.source_models import AIIBTender
 from pynormalizer.models.unified_model import UnifiedTender
@@ -15,18 +16,268 @@ from pynormalizer.utils.normalizer_helpers import (
     extract_financial_info,
     extract_location_info,
     extract_organization,
+    extract_organization_and_buyer,
     extract_procurement_method,
     extract_status,
+    extract_deadline,
+    normalize_title,
+    normalize_description,
     ensure_country,
     determine_normalized_method,
+    clean_price,
+    log_tender_normalization
 )
+
+# Import custom helper functions
+try:
+    from pynormalizer.utils.normalizer_helpers_custom import validate_extracted_data
+except ImportError:
+    # Define a fallback function if the import fails
+    def validate_extracted_data(data):
+        return {'is_valid': True, 'issues': []}
 
 # Get logger
 logger = logging.getLogger(__name__)
 
+# AIIB-specific sector patterns
+SECTOR_PATTERNS = {
+    'energy': [
+        r'energy',
+        r'electricity',
+        r'power',
+        r'renewable',
+        r'solar',
+        r'wind',
+        r'hydropower',
+        r'transmission',
+        r'distribution'
+    ],
+    'transport': [
+        r'transport',
+        r'road[s]?',
+        r'highway[s]?',
+        r'railway[s]?',
+        r'metro',
+        r'airport',
+        r'port[s]?',
+        r'logistics',
+        r'mobility'
+    ],
+    'urban': [
+        r'urban',
+        r'city',
+        r'municipal',
+        r'housing',
+        r'settlement[s]?',
+        r'smart city',
+        r'urban planning',
+        r'urban development'
+    ],
+    'water': [
+        r'water',
+        r'sanitation',
+        r'sewage',
+        r'drainage',
+        r'irrigation',
+        r'water supply',
+        r'wastewater',
+        r'flood control'
+    ],
+    'digital': [
+        r'digital',
+        r'ict',
+        r'broadband',
+        r'telecommunications',
+        r'internet',
+        r'connectivity',
+        r'smart infrastructure'
+    ],
+    'social': [
+        r'health',
+        r'education',
+        r'hospital',
+        r'school',
+        r'social infrastructure',
+        r'community development'
+    ],
+    'sustainable': [
+        r'sustainable',
+        r'green',
+        r'climate',
+        r'environmental',
+        r'resilience',
+        r'adaptation',
+        r'mitigation'
+    ]
+}
+
+def extract_title_and_description(tender: AIIBTender) -> Tuple[str, Optional[str]]:
+    """Extract title and description from project_notice and PDF content."""
+    title = None
+    description = None
+    
+    # First try to extract title from project_notice
+    if tender.project_notice:
+        # Look for common title patterns
+        title_patterns = [
+            # Project name followed by type
+            r'^(.*?(?:Project|Program|Initiative|Development))\s*[-:]\s*(.*)',
+            # Type followed by project name
+            r'^(?:Notice|Tender|RFP|EOI|Procurement)\s*[-:]\s*(.*)',
+            # Simple project name
+            r'^([^-:]+)(?:\s*[-:]\s*(.*))?'
+        ]
+        
+        for pattern in title_patterns:
+            match = re.match(pattern, tender.project_notice, re.IGNORECASE)
+            if match:
+                groups = match.groups()
+                if len(groups) >= 2 and groups[1]:  # If we have both title and description
+                    title = groups[0].strip()
+                    description = groups[1].strip()
+                else:  # If we only have title
+                    title = groups[0].strip()
+                break
+    
+    # If no title found, use project_notice as is
+    if not title:
+        title = tender.project_notice or f"AIIB Tender - {tender.id}"
+    
+    # Try to extract description from PDF content if not already found
+    if not description and tender.pdf_content:
+        # Look for description sections in PDF content
+        desc_patterns = [
+            r'(?:Project|Program)\s+Description[:\n](.*?)(?=\n\s*\n|\Z)',
+            r'(?:Scope|Overview)\s+of\s+(?:Work|Services)[:\n](.*?)(?=\n\s*\n|\Z)',
+            r'Background[:\n](.*?)(?=\n\s*\n|\Z)',
+            r'Introduction[:\n](.*?)(?=\n\s*\n|\Z)'
+        ]
+        
+        for pattern in desc_patterns:
+            match = re.search(pattern, tender.pdf_content, re.IGNORECASE | re.DOTALL)
+            if match:
+                description = match.group(1).strip()
+                # Clean up the description
+                description = re.sub(r'\s+', ' ', description)
+                # Truncate if too long
+                if len(description) > 5000:
+                    description = description[:5000] + "..."
+                break
+    
+    return title, description
+
+def extract_deadline_date(tender: AIIBTender) -> Optional[datetime]:
+    """Extract deadline date from tender data with improved accuracy."""
+    if not tender.pdf_content:
+        return None
+    
+    # Common deadline patterns in AIIB documents
+    deadline_patterns = [
+        r'(?:deadline|due date|closing date|submission deadline|applications? due).*?(\d{1,2}[\s\./\-]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\./\-]+\d{2,4})',
+        r'(?:deadline|due date|closing date|submission deadline|applications? due).*?(\d{1,2}[\s\./\-]+\d{1,2}[\s\./\-]+\d{2,4})',
+        r'(?:deadline|due date|closing date|submission deadline|applications? due).*?(\d{4}[\s\./\-]+\d{1,2}[\s\./\-]+\d{1,2})',
+        r'(?:must be submitted|to be submitted).*?by.*?(\d{1,2}[\s\./\-]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\./\-]+\d{2,4})',
+        r'(?:must be submitted|to be submitted).*?before.*?(\d{1,2}[\s\./\-]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\./\-]+\d{2,4})'
+    ]
+    
+    for pattern in deadline_patterns:
+        matches = re.finditer(pattern, tender.pdf_content, re.IGNORECASE)
+        for match in matches:
+            date_str = match.group(1).strip()
+            
+            # Clean up the date string
+            date_str = re.sub(r'(?:st|nd|rd|th)', '', date_str)  # Remove ordinals
+            date_str = re.sub(r'[,]', '', date_str)  # Remove commas
+            date_str = re.sub(r'[\s\./\-]+', ' ', date_str)  # Normalize separators
+            
+            try:
+                # Try parsing with dateutil first
+                deadline = date_parser.parse(date_str)
+                
+                # Validate the date is reasonable (not in past, not too far in future)
+                now = datetime.now()
+                if now <= deadline <= now.replace(year=now.year + 2):
+                    return deadline
+            except (ValueError, TypeError):
+                continue
+    
+    # Try extracting deadline using helper function
+    return extract_deadline(tender.pdf_content)
+
+def extract_sectors(tender: AIIBTender) -> List[str]:
+    """Extract and categorize sectors with improved accuracy for AIIB context."""
+    sectors = set()
+    
+    # Combine available text sources
+    text_sources = []
+    if tender.project_notice:
+        text_sources.append(tender.project_notice)
+    if tender.pdf_content:
+        text_sources.append(tender.pdf_content)
+    
+    combined_text = ' '.join(text_sources).lower()
+    
+    # Check each sector's patterns
+    for sector, patterns in SECTOR_PATTERNS.items():
+        for pattern in patterns:
+            if re.search(pattern, combined_text, re.IGNORECASE):
+                sectors.add(sector)
+                break
+    
+    return list(sectors)
+
+def normalize_document_links_enhanced(tender: AIIBTender) -> List[Dict[str, str]]:
+    """Enhanced document link normalization for AIIB tenders."""
+    normalized_docs = []
+    
+    # Process main PDF URL if available
+    if tender.pdf_url:
+        normalized = normalize_document_links(tender.pdf_url)
+        if normalized:
+            # Add AIIB-specific metadata
+            for doc in normalized:
+                doc.update({
+                    'source': 'aiib',
+                    'type': 'pdf',
+                    'language': detect_language(tender.pdf_content) if tender.pdf_content else 'en',
+                    'description': 'AIIB Tender Notice'
+                })
+            normalized_docs.extend(normalized)
+    
+    # Extract additional document links from PDF content
+    if tender.pdf_content:
+        # Look for document references in content
+        doc_patterns = [
+            r'(?:download|access|view|obtain)\s+(?:the|detailed)?\s*(?:document|tender|rfp|specification)s?\s+(?:at|from|via|through)?\s*(https?://\S+)',
+            r'(?:document|tender|rfp|specification)s?\s+(?:are|is)\s+available\s+(?:at|from|via|through)?\s*(https?://\S+)',
+            r'(?:please|kindly)\s+(?:visit|check|refer\s+to)\s*(https?://\S+)'
+        ]
+        
+        for pattern in doc_patterns:
+            matches = re.finditer(pattern, tender.pdf_content, re.IGNORECASE)
+            for match in matches:
+                url = match.group(1).strip()
+                if url.endswith(('.', ')', ']', '}')):
+                    url = url[:-1]
+                
+                # Normalize and validate the URL
+                normalized = normalize_document_links(url)
+                if normalized:
+                    normalized_docs.extend(normalized)
+    
+    # Remove duplicates while preserving order
+    seen_urls = set()
+    unique_docs = []
+    for doc in normalized_docs:
+        if doc['url'] not in seen_urls:
+            seen_urls.add(doc['url'])
+            unique_docs.append(doc)
+    
+    return unique_docs
+
 def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
     """
-    Normalize an AIIB (Asian Infrastructure Investment Bank) tender record.
+    Normalize an AIIB tender record with improved extraction and validation.
     
     Args:
         row: Dictionary containing AIIB tender data
@@ -43,344 +294,115 @@ def normalize_aiib(row: Dict[str, Any]) -> UnifiedTender:
             logger.info("AIIB object validated successfully")
         except Exception as e:
             logger.error(f"Failed to validate AIIB tender: {e}")
-            raise ValueError(f"Failed to validate AIIB tender: {e}")
+            return UnifiedTender(
+                title="Validation Error",
+                source="aiib",
+                source_id=str(row.get('id', 'unknown')),
+                fallback_reason=f"Validation error: {str(e)}",
+                original_data=row
+            )
 
-        # Parse date string if present
-        publication_dt = None
-        if aiib_obj.date:
-            try:
-                # Try different date formats
-                date_formats = [
-                    "%Y-%m-%d",
-                    "%d/%m/%Y",
-                    "%m/%d/%Y",
-                    "%B %d, %Y",  # e.g. "January 15, 2023"
-                    "%d %B %Y",   # e.g. "15 January 2023"
-                ]
-                
-                for fmt in date_formats:
-                    try:
-                        publication_dt = datetime.strptime(aiib_obj.date, fmt)
-                        logger.info(f"Successfully parsed date {aiib_obj.date} with format {fmt}")
-                        break
-                    except ValueError:
-                        continue
-            except Exception as e:
-                logger.warning(f"Failed to parse date: {aiib_obj.date}. Error: {e}")
-                # If all parsing attempts fail, leave as None
-                pass
-
-        # If no date from the direct field, try to extract from PDF content
-        if not publication_dt and aiib_obj.pdf_content:
-            # Define common date patterns in text
-            date_patterns = [
-                r'(?:dated|date[d]?:|published on|issued on|release[d]? on)\s+(\d{1,2}[\s\./\-]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s\./\-]+\d{2,4})',
-                r'(?:dated|date[d]?:|published on|issued on|release[d]? on)\s+(\d{1,2}[\s\./\-]+\d{1,2}[\s\./\-]+\d{2,4})',
-                r'(\d{1,2}[\s\./\-]+(?:January|February|March|April|May|June|July|August|September|October|November|December)[\s\./\-]+\d{2,4})',
-                r'((?:January|February|March|April|May|June|July|August|September|October|November|December)[\s\./\-]+\d{1,2}[\s\./\-]+\d{2,4})'
-            ]
-            
-            logger.info("Looking for date patterns in PDF content")
-            
-            for pattern in date_patterns:
-                try:
-                    matches = re.findall(pattern, aiib_obj.pdf_content, re.IGNORECASE)
-                    if matches:
-                        for match in matches:
-                            date_str = match.strip()
-                            logger.info(f"Found potential date: {date_str}")
-                            
-                            # Clean up the date string
-                            date_str = re.sub(r'(?:st|nd|rd|th)', '', date_str)  # Remove ordinals
-                            date_str = re.sub(r'[,]', '', date_str)  # Remove commas
-                            date_str = re.sub(r'[\s\./\-]+', ' ', date_str)  # Normalize separators to spaces
-                            
-                            # Try various date formats
-                            potential_formats = [
-                                "%d %B %Y", "%d %b %Y",
-                                "%B %d %Y", "%b %d %Y",
-                                "%d %m %Y", "%m %d %Y",
-                                "%Y %m %d", "%d %B %y",
-                                "%B %d %y", "%b %d %y"
-                            ]
-                            
-                            for fmt in potential_formats:
-                                try:
-                                    potential_dt = datetime.strptime(date_str, fmt)
-                                    # Sanity check for reasonable publication date (not in future, not too old)
-                                    now = datetime.now()
-                                    ten_years_ago = now.replace(year=now.year - 10)
-                                    if ten_years_ago <= potential_dt <= now:
-                                        publication_dt = potential_dt
-                                        logger.info(f"Successfully parsed date from content: {date_str} → {publication_dt}")
-                                        break
-                                except ValueError:
-                                    continue
-                            
-                            if publication_dt:
-                                break
-                        
-                        if publication_dt:
-                            break
-                except Exception as e:
-                    logger.warning(f"Error extracting date: {e}")
-            
-            if not publication_dt:
-                logger.warning("Could not extract publication date from content")
-        
-        # Use project_notice as the title if available, otherwise use a placeholder
-        title = aiib_obj.project_notice or f"AIIB Tender - {aiib_obj.id}"
-        
-        # Detect language - MOVED UP before country extraction
-        language = "en"  # Default for AIIB
-        if aiib_obj.pdf_content:
-            try:
-                detected = detect_language(aiib_obj.pdf_content)
-                if detected:
-                    language = detected
-                logger.info(f"Detected language: {language}")
-            except Exception as e:
-                logger.warning(f"Language detection failed: {e}")
-        
-        # Extract status from text or dates
-        status = None
-        if aiib_obj.type:
-            status = extract_status(text=aiib_obj.type)
-        
-        # Try to extract status from description if not found
-        if not status and aiib_obj.pdf_content:
-            status = extract_status(description=aiib_obj.pdf_content)
-        
-        # Try to extract organization name from description
-        organization_name = None
-        if aiib_obj.pdf_content:
-            # First, try to extract from the PDF content
-            organization_name = extract_organization(aiib_obj.pdf_content)
-            logger.info(f"Extracted organization name from PDF content: {organization_name}")
-            
-            # If no organization name found, try additional methods
-            if not organization_name and aiib_obj.project_notice:
-                # Extract organization from project notice
-                # Look for common patterns in project titles that might indicate the organization
-                org_patterns = [
-                    r'(?:by|for|with)\s+(?:the\s+)?([A-Za-z\s\(\)&,\.\-\']{5,50})',
-                    r'([A-Za-z\s\(\)&,\.\-\']{5,50})\s+(?:Project|Program|Initiative|Development)'
-                ]
-                
-                for pattern in org_patterns:
-                    matches = re.findall(pattern, aiib_obj.project_notice, re.IGNORECASE)
-                    if matches:
-                        potential_org = matches[0].strip()
-                        # Check if this looks like a valid organization name
-                        if len(potential_org) > 5 and any(keyword in potential_org.lower() for keyword in ['ministry', 'department', 'agency', 'authority', 'bank', 'corporation']):
-                            organization_name = potential_org
-                            logger.info(f"Extracted organization from project notice: {organization_name}")
-                            break
-            
-            # If still no organization name, use a generic AIIB-related name
-            if not organization_name and aiib_obj.member:
-                organization_name = f"Asian Infrastructure Investment Bank - {aiib_obj.member} Project"
-                logger.info(f"Using generic AIIB organization name: {organization_name}")
-        
-        # Try to extract financial information
-        estimated_value = None
-        currency = None
-        if aiib_obj.pdf_content:
-            estimated_value, currency = extract_financial_info(aiib_obj.pdf_content)
-        
-        # DEBUG: Add traceback logging to identify the source of the error
-        logger.info("Starting country extraction process...")
-        
-        # Try to extract country and city - COMPLETELY REWRITTEN for safety
-        country_string = None  # This will hold our final string value for country
-        city = None
-        
-        # DEBUG: Member data
-        logger.info(f"Member value: {aiib_obj.member}, Type: {type(aiib_obj.member).__name__}")
-        
-        # First try to get country from member field - with strict type checking
-        if aiib_obj.member and isinstance(aiib_obj.member, str) and aiib_obj.member.strip():
-            country_string = aiib_obj.member.strip()
-            logger.info(f"Extracted country from member field: {country_string}")
-        
-        # If no country from member field, try to extract from content
-        if not country_string and aiib_obj.pdf_content and isinstance(aiib_obj.pdf_content, str):
-            try:
-                # Extract location info safely
-                logger.info("Attempting to extract location from PDF content...")
-                location_tuple = extract_location_info(aiib_obj.pdf_content)
-                logger.info(f"Location tuple: {location_tuple}, Type: {type(location_tuple).__name__}")
-                
-                # Properly unpack the tuple with type checking
-                if isinstance(location_tuple, tuple) and len(location_tuple) >= 2:
-                    extracted_country, extracted_city = location_tuple
-                    logger.info(f"Unpacked tuple - Country: {extracted_country}, Type: {type(extracted_country).__name__}, City: {extracted_city}, Type: {type(extracted_city).__name__}")
-                    
-                    # Verify extracted country is a valid string
-                    if extracted_country and isinstance(extracted_country, str) and extracted_country.strip():
-                        country_string = extracted_country.strip()
-                        logger.info(f"Set country_string to: {country_string}")
-                    
-                    # Verify extracted city is a valid string
-                    if extracted_city and isinstance(extracted_city, str) and extracted_city.strip():
-                        city = extracted_city.strip()
-                        logger.info(f"Set city to: {city}")
-            except Exception as e:
-                # If extraction fails, keep country_string as None
-                logger.error(f"Location extraction failed: {e}")
-                logger.error(traceback.format_exc())
-                pass
-        
-        logger.info(f"Final country_string before ensure_country: {country_string}, Type: {type(country_string).__name__ if country_string is not None else 'None'}")
-        
-        # DEBUG: Print all parameters being passed to ensure_country
-        logger.info(f"ensure_country parameters:")
-        logger.info(f"- country: {country_string}, Type: {type(country_string).__name__ if country_string is not None else 'None'}")
-        logger.info(f"- text: {aiib_obj.pdf_content[:100] if aiib_obj.pdf_content and isinstance(aiib_obj.pdf_content, str) else None}..., Type: {type(aiib_obj.pdf_content).__name__ if aiib_obj.pdf_content is not None else 'None'}")
-        logger.info(f"- organization: {organization_name}, Type: {type(organization_name).__name__ if organization_name is not None else 'None'}")
-        logger.info(f"- language: {language}, Type: {type(language).__name__ if language is not None else 'None'}")
-        
-        # Ensure we have a country value using our fallback mechanisms
-        # ONLY pass a string to ensure_country, never a tuple
         try:
-            country = ensure_country(
-                country_value=country_string,  # Now guaranteed to be None or a valid string
-                text=aiib_obj.pdf_content if isinstance(aiib_obj.pdf_content, str) else None,
-                organization=organization_name,
-                email=None,  # We don't have email in AIIB data
+            # Extract title and description
+            title, description = extract_title_and_description(aiib_obj)
+            
+            # Detect language
+            language = detect_language(aiib_obj.pdf_content) if aiib_obj.pdf_content else "en"
+            
+            # Initialize unified tender
+            unified = UnifiedTender(
+                source="aiib",
+                source_id=str(aiib_obj.id),
+                title=title,
+                description=description,
                 language=language
             )
-            logger.info(f"ensure_country returned: {country}")
-        except Exception as e:
-            logger.error(f"ensure_country failed with error: {e}")
-            logger.error(traceback.format_exc())
-            # Fall back to a safe value
-            country = "Unknown"
-        
-        # Extract procurement method
-        procurement_method = None
-        if aiib_obj.type:
-            procurement_method = extract_procurement_method(aiib_obj.type)
-        
-        if not procurement_method and aiib_obj.pdf_content:
-            procurement_method = extract_procurement_method(aiib_obj.pdf_content)
             
-        # Extract document links if available
-        document_links = []
-        
-        # First check for direct PDF URL
-        if "pdf" in row and row["pdf"]:
-            pdf_url = row["pdf"]
-            document_links = normalize_document_links(pdf_url)
-        
-        # Create a URL for the AIIB tender
-        url = None
-        
-        # Extract URLs from PDF content using regex
-        if aiib_obj.pdf_content and isinstance(aiib_obj.pdf_content, str):
-            # Define pattern to identify URLs in PDF content
-            url_pattern = re.compile(
-                r'(https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9()@:%_\+.~#?&//=]*)'
-            )
-            urls = url_pattern.findall(aiib_obj.pdf_content)
+            # Apply translations if needed
+            if language != 'en':
+                unified = apply_translations(unified, language)
             
-            # Add extracted URLs to document_links
-            for extracted_url in urls:
-                # Skip if it's already in document_links
-                url_already_included = False
-                for link in document_links:
-                    if isinstance(link, dict) and link.get('url') == extracted_url:
-                        url_already_included = True
-                        break
-                
-                if not url_already_included:
-                    document_links.append({
-                        'url': extracted_url,
-                        'type': 'related',
-                        'language': language,
-                        'description': 'URL extracted from PDF content'
-                    })
+            # Extract deadline date
+            deadline_date = extract_deadline_date(aiib_obj)
+            if deadline_date:
+                unified.deadline_date = deadline_date
             
-            # Use the first URL as the main tender URL if none set yet
-            if not url and urls:
-                url = urls[0]
-        
-        # If no URL found yet, try to create a generic AIIB URL
-        if not url and aiib_obj.project_notice:
-            # Clean project notice to create URL-friendly string
-            project_slug = re.sub(r'[^a-zA-Z0-9]', '-', aiib_obj.project_notice)
-            project_slug = re.sub(r'-+', '-', project_slug).strip('-').lower()
+            # Extract organization information
+            org_name, buyer_info = extract_organization_and_buyer(aiib_obj.pdf_content or '')
+            if org_name:
+                unified.organization_name = org_name
+                if language != 'en':
+                    unified.organization_name_english = translate_to_english(org_name, language)
             
-            # Create AIIB projects URL
-            url = f"https://www.aiib.org/en/projects/details/{project_slug}.html"
+            if buyer_info:
+                unified.buyer = buyer_info
             
-            # Add this URL to document_links if not already included
-            url_already_included = False
-            for link in document_links:
-                if isinstance(link, dict) and link.get('url') == url:
-                    url_already_included = True
-                    break
-            
-            if not url_already_included:
-                document_links.append({
-                    'url': url,
-                    'type': 'main',
-                    'language': 'en',
-                    'description': 'Main project page'
+            # Extract sectors
+            sectors = extract_sectors(aiib_obj)
+            if sectors:
+                unified.sector = sectors[0]  # Primary sector
+                unified.original_data = json.dumps({
+                    **(json.loads(unified.original_data) if unified.original_data else {}),
+                    "all_sectors": sectors
                 })
-        
-        # Track extraction methods used for normalized_method
-        extraction_methods = []
-        if language != "en":
-            extraction_methods.append("translation")
-        if url:
-            extraction_methods.append("pattern")  # URL extraction used patterns
-        if organization_name:
-            extraction_methods.append("pattern")  # Org extraction used patterns
-        if country:
-            extraction_methods.append("dictionary")  # Country normalization used dictionaries
-        
-        # Determine the normalized method based on techniques used
-        # Convert extraction_methods list to a dictionary format that determine_normalized_method expects
-        normalized_method_data = {
-            'source_table': 'aiib',
-            'extraction_methods': extraction_methods
-        }
-        normalized_method = determine_normalized_method(normalized_method_data)
-        
-        # Construct the UnifiedTender
-        unified = UnifiedTender(
-            # Required fields
-            title=title,
-            source_table="aiib",
-            source_id=str(aiib_obj.id),
             
-            # Additional fields
-            description=aiib_obj.pdf_content,  # Using PDF content as description
-            tender_type=aiib_obj.type,
-            status=status,
-            publication_date=publication_dt,
-            country=country,
-            city=city,
-            organization_name=organization_name,
-            sector=aiib_obj.sector,
-            estimated_value=estimated_value,
-            currency=currency,
-            url=url,  # Now including the URL
-            document_links=document_links,
-            procurement_method=procurement_method,
-            language=language,
-            original_data=row,
-            normalized_method=normalized_method,
-        )
-
-        # Use the common apply_translations function for all fields
-        unified = apply_translations(unified, language)
-        
-        logger.info(f"AIIB normalization completed successfully for row ID: {row.get('id', 'unknown')}")
-        return unified
-    
+            # Process document links
+            unified.documents = normalize_document_links_enhanced(aiib_obj)
+            
+            # Extract other information using existing functions
+            if aiib_obj.pdf_content:
+                # Extract financial information
+                amount, currency = extract_financial_info(aiib_obj.pdf_content)
+                if amount and currency:
+                    unified.estimated_value = amount
+                    unified.currency = currency
+                
+                # Extract procurement method
+                method = extract_procurement_method(aiib_obj.pdf_content)
+                if method:
+                    unified.procurement_method = method
+                
+                # Extract status
+                status = extract_status(aiib_obj.pdf_content)
+                if status:
+                    unified.status = status
+            
+            # Validate extracted fields
+            try:
+                validation_results = validate_extracted_data(unified.dict())
+                if not validation_results['is_valid']:
+                    logger.warning(f"Validation issues for tender {aiib_obj.id}: {validation_results['issues']}")
+                    unified.data_quality_issues = json.dumps(validation_results['issues'])
+            except (NameError, ImportError) as e:
+                # Function may not be available, log and continue
+                logger.warning(f"Could not validate extracted data: {str(e)}")
+            
+            # Add normalized timestamp and method
+            unified.normalized_at = datetime.utcnow()
+            unified.normalized_method = "enhanced_aiib_normalizer"
+            
+            return unified
+            
+        except Exception as e:
+            logger.error(f"Error during AIIB normalization: {e}")
+            logger.error(traceback.format_exc())
+            return UnifiedTender(
+                title="Normalization Error",
+                source="aiib",
+                source_id=str(row.get('id', 'unknown')),
+                fallback_reason=f"Normalization error: {str(e)}",
+                original_data=row,
+                normalized_method="error_fallback"
+            )
+            
     except Exception as e:
-        logger.error(f"AIIB normalization failed with error: {e}")
+        logger.error(f"Critical error in AIIB normalizer: {e}")
         logger.error(traceback.format_exc())
-        raise 
+        return UnifiedTender(
+            title="Critical Error",
+            source="aiib",
+            source_id=str(row.get('id', 'unknown')),
+            fallback_reason=f"Critical error: {str(e)}",
+            original_data=row,
+            normalized_method="critical_error"
+        ) 

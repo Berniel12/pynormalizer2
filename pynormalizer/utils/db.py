@@ -283,185 +283,78 @@ def ensure_unique_constraint(conn):
             """)
             print("Added unique constraint on (source_table, source_id)")
 
-def upsert_unified_tender(conn, tender: UnifiedTender):
-    """
-    Insert or update a unified tender record.
-    
-    Args:
-        conn: Database connection or Supabase client
-        tender: UnifiedTender instance
-    """
-    # Convert Pydantic model to dict
-    data = tender.model_dump()
-    
-    # Set normalized_at if not already set
-    if not data.get("normalized_at"):
-        from datetime import datetime
-        data["normalized_at"] = datetime.utcnow()
-    
-    # Check if using Supabase
-    if SUPABASE_AVAILABLE and isinstance(conn, Client):
-        # Remove fields that don't exist in the database schema
-        if 'tags' in data:
-            del data['tags']
+def save_unified_tender(tender):
+    """Save a unified tender to the database."""
+    try:
+        client = get_supabase_client()
         
-        # Generate a UUID for the id field if it's not set
-        if not data.get("id"):
-            data["id"] = str(uuid.uuid4())
+        # If client is None, log error and return
+        if not client:
+            logger.error("Could not get Supabase client")
+            return False
             
-        # Convert datetime objects to ISO format strings for JSON serialization
-        data_json_safe = json.loads(json.dumps(data, cls=DateTimeEncoder))
-        
-        # First check if a record with this source_table and source_id already exists
-        source_table = data.get("source_table")
-        source_id = data.get("source_id")
-        
-        if source_table and source_id:
-            # Query to check if the record already exists
-            existing_record = conn.table("unified_tenders").select("id").eq("source_table", source_table).eq("source_id", source_id).execute()
+        # Check if tender already exists
+        existingIds = client.table("unified_tenders") \
+            .select("id") \
+            .eq("source_table", tender.source_table) \
+            .eq("source_id", tender.source_id) \
+            .execute()
             
-            if existing_record and existing_record.data and len(existing_record.data) > 0:
-                # Record exists, update it
-                record_id = existing_record.data[0]["id"]
-                response = conn.table("unified_tenders").update(data_json_safe).eq("id", record_id).execute()
+        record_to_save = tender.dict()
+        
+        # Handle the documents column issue - remove if it doesn't exist in the database schema
+        # This is a temporary fix until the database schema is updated
+        if 'documents' in record_to_save:
+            document_links = record_to_save.pop('documents')
+            # If document_links exists and we have a structure, add the URLs to document_links
+            if document_links and isinstance(document_links, list) and 'document_links' in record_to_save:
+                if not record_to_save['document_links']:
+                    record_to_save['document_links'] = []
+                    
+                # Add document URLs to document_links if they're not already there
+                doc_urls = set()
+                if isinstance(record_to_save['document_links'], list):
+                    for link in record_to_save['document_links']:
+                        if isinstance(link, dict) and 'url' in link:
+                            doc_urls.add(link['url'])
+                
+                # Add new document URLs
+                for doc in document_links:
+                    if isinstance(doc, dict) and 'url' in doc and doc['url'] not in doc_urls:
+                        record_to_save['document_links'].append(doc)
+        
+        # Convert any datetime objects to strings for serialization
+        for key, value in record_to_save.items():
+            if isinstance(value, datetime):
+                record_to_save[key] = value.isoformat()
+                
+        # If tender exists, update it, otherwise insert it
+        if existingIds.data and len(existingIds.data) > 0:
+            existing_id = existingIds.data[0]['id']
+            
+            response = client.table("unified_tenders") \
+                .update(record_to_save) \
+                .eq("id", existing_id) \
+                .execute()
+                
+            if response.data:
+                logger.info(f"Updated unified tender {existing_id} in the database")
+                return True
             else:
-                # Record doesn't exist, insert a new one
-                response = conn.table("unified_tenders").insert(data_json_safe).execute()
+                logger.error(f"Error updating unified tender {existing_id}: {response}")
+                return False
         else:
-            # Missing source_table or source_id, just insert
-            response = conn.table("unified_tenders").insert(data_json_safe).execute()
-        
-        return response
+            response = client.table("unified_tenders") \
+                .insert(record_to_save) \
+                .execute()
+                
+            if response.data:
+                logger.info(f"Inserted unified tender {tender.id} into the database")
+                return True
+            else:
+                logger.error(f"Error inserting unified tender: {response}")
+                return False
     
-    # Otherwise use direct PostgreSQL connection
-    # We'll explicitly list all columns used in insert
-    insert_sql = """
-    INSERT INTO unified_tenders (
-        title,
-        description,
-        tender_type,
-        status,
-        publication_date,
-        deadline_date,
-        country,
-        city,
-        organization_name,
-        organization_id,
-        buyer,
-        project_name,
-        project_id,
-        project_number,
-        sector,
-        estimated_value,
-        currency,
-        contact_name,
-        contact_email,
-        contact_phone,
-        contact_address,
-        url,
-        document_links,
-        language,
-        notice_id,
-        reference_number,
-        procurement_method,
-        original_data,
-        source_table,
-        source_id,
-        normalized_by,
-        title_english,
-        description_english,
-        organization_name_english,
-        buyer_english,
-        project_name_english,
-        normalized_at,
-        fallback_reason,
-        normalized_method,
-        processing_time_ms
-    )
-    VALUES (
-        %(title)s,
-        %(description)s,
-        %(tender_type)s,
-        %(status)s,
-        %(publication_date)s,
-        %(deadline_date)s,
-        %(country)s,
-        %(city)s,
-        %(organization_name)s,
-        %(organization_id)s,
-        %(buyer)s,
-        %(project_name)s,
-        %(project_id)s,
-        %(project_number)s,
-        %(sector)s,
-        %(estimated_value)s,
-        %(currency)s,
-        %(contact_name)s,
-        %(contact_email)s,
-        %(contact_phone)s,
-        %(contact_address)s,
-        %(url)s,
-        %(document_links)s,
-        %(language)s,
-        %(notice_id)s,
-        %(reference_number)s,
-        %(procurement_method)s,
-        %(original_data)s,
-        %(source_table)s,
-        %(source_id)s,
-        %(normalized_by)s,
-        %(title_english)s,
-        %(description_english)s,
-        %(organization_name_english)s,
-        %(buyer_english)s,
-        %(project_name_english)s,
-        %(normalized_at)s,
-        %(fallback_reason)s,
-        %(normalized_method)s,
-        %(processing_time_ms)s
-    )
-    ON CONFLICT (source_table, source_id)
-    DO UPDATE SET
-        title = EXCLUDED.title,
-        description = EXCLUDED.description,
-        tender_type = EXCLUDED.tender_type,
-        status = EXCLUDED.status,
-        publication_date = EXCLUDED.publication_date,
-        deadline_date = EXCLUDED.deadline_date,
-        country = EXCLUDED.country,
-        city = EXCLUDED.city,
-        organization_name = EXCLUDED.organization_name,
-        organization_id = EXCLUDED.organization_id,
-        buyer = EXCLUDED.buyer,
-        project_name = EXCLUDED.project_name,
-        project_id = EXCLUDED.project_id,
-        project_number = EXCLUDED.project_number,
-        sector = EXCLUDED.sector,
-        estimated_value = EXCLUDED.estimated_value,
-        currency = EXCLUDED.currency,
-        contact_name = EXCLUDED.contact_name,
-        contact_email = EXCLUDED.contact_email,
-        contact_phone = EXCLUDED.contact_phone,
-        contact_address = EXCLUDED.contact_address,
-        url = EXCLUDED.url,
-        document_links = EXCLUDED.document_links,
-        language = EXCLUDED.language,
-        notice_id = EXCLUDED.notice_id,
-        reference_number = EXCLUDED.reference_number,
-        procurement_method = EXCLUDED.procurement_method,
-        original_data = EXCLUDED.original_data,
-        normalized_by = EXCLUDED.normalized_by,
-        title_english = EXCLUDED.title_english,
-        description_english = EXCLUDED.description_english,
-        organization_name_english = EXCLUDED.organization_name_english,
-        buyer_english = EXCLUDED.buyer_english,
-        project_name_english = EXCLUDED.project_name_english,
-        normalized_at = EXCLUDED.normalized_at,
-        fallback_reason = EXCLUDED.fallback_reason,
-        normalized_method = EXCLUDED.normalized_method,
-        processing_time_ms = EXCLUDED.processing_time_ms
-    ;
-    """
-
-    with conn.cursor() as cur:
-        cur.execute(insert_sql, data) 
+    except Exception as e:
+        logger.error(f"Error saving unified tender to database: {str(e)}")
+        return False 

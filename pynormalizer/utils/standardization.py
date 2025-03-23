@@ -493,88 +493,56 @@ def extract_organization_name(text: str) -> Optional[str]:
     
     return None
 
-def validate_translation_quality(original: str, translated: str, language: str) -> Dict[str, Any]:
+def validate_translation_quality(original, translated):
     """
     Validate the quality of translation.
     
     Args:
         original: Original text
         translated: Translated text
-        language: Source language code
         
     Returns:
-        Dictionary with validation info
+        Dictionary with validation results
     """
     if not original or not translated:
-        return {
-            "valid": False,
-            "confidence": 0.0,
-            "issues": ["Missing original or translated text"]
-        }
+        return {"valid": False, "issues": ["Missing original or translated text"]}
+    
+    # Handle tuple inputs (from translate_to_english function)
+    if isinstance(original, tuple) and len(original) > 0:
+        original = original[0]
+        
+    if isinstance(translated, tuple) and len(translated) > 0:
+        translated = translated[0]
+        
+    # Convert to string if needed
+    original = str(original) if original is not None else ""
+    translated = str(translated) if translated is not None else ""
     
     issues = []
     
-    # Check for unchanged text (indicating failed translation)
+    # Check if translation is unchanged
     if original.lower() == translated.lower():
-        issues.append("Translation is identical to original")
-        return {
-            "valid": False,
-            "confidence": 0.0,
-            "issues": issues
-        }
+        issues.append("Translation unchanged")
     
-    # Check for reasonable length ratio
-    # Different languages have different typical expansion/contraction ratios
-    expansion_ratios = {
-        'fr': (0.8, 1.3),  # French typically expands 10-30% from English
-        'es': (0.8, 1.4),  # Spanish can expand up to 30-40%
-        'de': (0.7, 1.5),  # German can expand up to 40-50%
-        'it': (0.9, 1.3),  # Italian typically expands 15-30%
-        'pt': (0.8, 1.3),  # Portuguese similar to Spanish
-        'ru': (0.7, 1.3),  # Russian can be shorter or longer
-        'zh': (0.6, 0.8),  # Chinese is typically 30-40% shorter
-        'ja': (0.6, 0.8),  # Japanese is typically 30-40% shorter
-        'ar': (0.6, 1.2)   # Arabic can vary widely
-    }
+    # Check translation length (should be similar to original in most cases)
+    orig_length = len(original)
+    trans_length = len(translated)
+    ratio = trans_length / max(1, orig_length)
     
-    # Default ratio if language not specified
-    min_ratio, max_ratio = expansion_ratios.get(language, (0.5, 2.0))
+    if ratio < 0.5 or ratio > 2.0:
+        issues.append(f"Translation length ratio suspicious: {ratio:.2f}")
     
-    length_ratio = len(translated) / len(original) if len(original) > 0 else 0
+    # Check for inconsistent placeholders
+    orig_placeholders = re.findall(r'\{[^}]+\}|\$\w+|\%\w+', original)
+    trans_placeholders = re.findall(r'\{[^}]+\}|\$\w+|\%\w+', translated)
     
-    if length_ratio < min_ratio:
-        issues.append(f"Translation is too short ({length_ratio:.2f}x)")
-    elif length_ratio > max_ratio:
-        issues.append(f"Translation is too long ({length_ratio:.2f}x)")
-    
-    # Check for untranslated fragments (for non-Latin script languages)
-    if language in ['zh', 'ja', 'ko', 'ru', 'ar', 'th']:
-        latin_char_ratio_original = sum(1 for c in original if ord('a') <= ord(c.lower()) <= ord('z')) / len(original) if len(original) > 0 else 0
-        latin_char_ratio_translated = sum(1 for c in translated if ord('a') <= ord(c.lower()) <= ord('z')) / len(translated) if len(translated) > 0 else 0
-        
-        if latin_char_ratio_original > 0.7 and latin_char_ratio_translated < 0.3:
-            issues.append("Possible mistranslation: script change from Latin to non-Latin")
-        elif latin_char_ratio_original < 0.3 and latin_char_ratio_translated < 0.7:
-            issues.append("Possible untranslated content: non-Latin script not converted")
-    
-    # Calculate confidence score
-    confidence = 1.0
-    
-    # Deduct for each issue
-    confidence -= len(issues) * 0.2
-    
-    # Adjust for length ratio
-    if min_ratio <= length_ratio <= max_ratio:
-        # Ideal ratio is around 1.0 for most language pairs
-        confidence += 0.2 * (1.0 - abs(1.0 - length_ratio))
-    
-    # Ensure bounds
-    confidence = max(0.0, min(1.0, confidence))
+    if len(orig_placeholders) != len(trans_placeholders):
+        issues.append("Translation has different number of placeholders")
     
     return {
         "valid": len(issues) == 0,
-        "confidence": confidence,
-        "issues": issues
+        "issues": issues,
+        "score": 1.0 - (0.2 * len(issues))
     }
 
 def calculate_data_quality_score(tender: Dict[str, Any]) -> Dict[str, Any]:
@@ -631,10 +599,9 @@ def calculate_data_quality_score(tender: Dict[str, Any]) -> Dict[str, Any]:
             if tender.get(orig_field) and tender.get(trans_field):
                 validation = validate_translation_quality(
                     tender[orig_field],
-                    tender[trans_field],
-                    tender['language']
+                    tender[trans_field]
                 )
-                translation_scores.append(validation["confidence"])
+                translation_scores.append(validation["score"])
         
         scores["translation"] = sum(translation_scores) / len(translation_scores) if translation_scores else 0.0
     else:

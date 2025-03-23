@@ -175,54 +175,41 @@ def fix_character_encoding(text: Optional[str]) -> Optional[str]:
     
     return text
 
-def translate_to_english(text: str, source_lang: Optional[str] = None) -> Tuple[Optional[str], float]:
+def translate_to_english(text, source_language=None):
     """
-    Translate text to English with quality score.
-    Falls back to original text if translation fails.
-    
-    Args:
-        text: Text to translate
-        source_lang: Source language code (if known)
-        
-    Returns:
-        Tuple of (translated_text, quality_score)
-        quality_score ranges from 0.0 to 1.0
+    Translate text to English using deep-translator.
     """
     if not text:
-        return None, 0.0
-        
+        return text, 0.0
+    
+    # Map language codes to supported formats
+    language_mapping = {
+        'LAV': 'lv',  # Latvian
+        'ENG': 'en',  # English
+        'FIN': 'fi',  # Finnish
+        'RON': 'ro',  # Romanian
+        'FRA': 'fr',  # French
+        'SWE': 'sv',  # Swedish
+        'POL': 'pl',  # Polish
+        'ITA': 'it',  # Italian
+    }
+    
+    # If source language is provided, map it to supported code
+    if source_language and source_language in language_mapping:
+        source_language = language_mapping[source_language]
+    
+    # If English or already in English, return as is
+    if source_language == 'en' or source_language == 'ENG':
+        return text, 1.0
+    
     try:
-        # Detect language if not provided
-        if not source_lang:
-            source_lang = detect_language_with_fallback(text)
-            
-        # Skip translation if already English
-        if source_lang == 'en':
-            TRANSLATION_STATS["already_english"] += 1
-            return text, 1.0
-            
-        if TRANSLATOR_AVAILABLE:
-            translator = GoogleTranslator(source=source_lang, target='en')
-            translated = translator.translate(text)
-            
-            # Calculate quality score based on success
-            quality = 1.0 if translated and translated != text else 0.0
-            
-            # Update stats
-            TRANSLATION_STATS["total_requests"] += 1
-            if quality > 0:
-                TRANSLATION_STATS["success"] += 1
-            else:
-                TRANSLATION_STATS["failed"] += 1
-            
-            return translated, quality
-        else:
-            logger.warning("Translation skipped: translator not available")
-            return text, 0.0
-            
+        # Try using Google Translate
+        translator = GoogleTranslator(source=source_language, target='en')
+        translated = translator.translate(text)
+        return translated, 0.8
     except Exception as e:
-        logger.error(f"Translation error: {str(e)}")
-        TRANSLATION_STATS["failed"] += 1
+        logger.error(f"Translation error: {source_language} --> {str(e)}")
+        # Return original text as fallback for unsupported languages
         return text, 0.0
 
 def get_translation_stats() -> Dict[str, Any]:

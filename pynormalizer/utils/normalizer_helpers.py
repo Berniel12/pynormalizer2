@@ -7,7 +7,7 @@ import re
 from typing import Any, Dict, Optional, Tuple, List, Union
 from datetime import datetime, date, timezone
 import traceback
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import pytz
 from dateutil import parser as date_parser
 
@@ -262,7 +262,7 @@ def extract_financial_info(text: str, currency_hint: Optional[str] = None) -> Tu
                 max_amount = Decimal(match.group(2).replace(',', ''))
                 currency = determine_currency(match.group(0), currency_hint)
                 return min_amount, max_amount, currency
-            except (ValueError, Decimal.InvalidOperation):
+            except (ValueError, InvalidOperation):
                 continue
 
     # Try standard and scale patterns
@@ -290,7 +290,7 @@ def extract_financial_info(text: str, currency_hint: Optional[str] = None) -> Tu
                     if not detected_currency:
                         detected_currency = determine_currency(match.group(0), currency_hint)
                         
-                except (ValueError, Decimal.InvalidOperation):
+                except (ValueError, InvalidOperation):
                     continue
 
     if not amounts:

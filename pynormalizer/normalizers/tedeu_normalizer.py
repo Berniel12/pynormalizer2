@@ -281,8 +281,8 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             
             # Also set in English if language is not English
             if language and language != 'en':
-                org_english = translate_to_english(org_name, language)
-                unified.organization_name_english = org_english
+                org_name_english, quality = translate_to_english(org_name, language)
+                unified.organization_name_english = org_name_english
         
         # Extract and normalize status
         status = None
@@ -314,7 +314,7 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         
         # Normalize document links
         if 'links' in tender and tender['links']:
-            unified.documents = normalize_document_links(tender['links'])
+            unified.document_links = normalize_document_links(tender['links'])
         
         # TED.eu specific fields - store in original_data
         original_data = {}

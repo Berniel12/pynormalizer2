@@ -14,6 +14,7 @@ _normalize_all_tenders = None
 _normalize_tedeu = None
 _normalize_tender = None
 _get_normalizer = None
+_normalize_afdb = None
 
 def _lazy_import(module_name, attr_name):
     """Lazily import a module attribute to avoid circular dependencies."""
@@ -78,6 +79,20 @@ def normalize_tedeu(*args, **kwargs):
     
     return _normalize_tedeu(*args, **kwargs)
 
+def normalize_afdb(*args, **kwargs):
+    """Lazy-loaded function to normalize afdb tenders."""
+    global _normalize_afdb
+    
+    if _normalize_afdb is None:
+        try:
+            from .normalizers.afdb_normalizer import normalize_afdb as func
+            _normalize_afdb = func
+        except ImportError as e:
+            logger.error(f"Error importing normalize_afdb: {e}")
+            raise ImportError(f"Failed to import normalize_afdb: {e}")
+    
+    return _normalize_afdb(*args, **kwargs)
+
 def get_normalizer(*args, **kwargs):
     """Lazy-loaded function to get a normalizer."""
     global _get_normalizer
@@ -97,6 +112,7 @@ __all__ = [
     'normalize',
     'normalize_all_tenders',
     'normalize_tedeu',
+    'normalize_afdb',
     'normalize',
     'get_normalizer'
 ]
