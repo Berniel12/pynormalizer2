@@ -188,7 +188,7 @@ def main():
         # Set up the tables to process
         tables = []
         if args.tables:
-            tables = [t.strip() for t in args.tables.split(',')]
+            tables = args.tables
         
         # If process_all is specified, set tables to None to process all tables
         if args.process_all:
@@ -311,7 +311,7 @@ def main():
             # Execute normalization with progress callback
             logger.info(f"Starting normalization with Tables: {', '.join(tables) if tables else 'ALL'} (skip_normalized={skip_normalized})")
             results = normalize_all_tenders(
-                db_config,
+                db_config={},
                 tables=tables,  # None means all tables
                 batch_size=args.batch_size,
                 limit_per_table=limit_per_table,
