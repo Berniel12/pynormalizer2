@@ -134,7 +134,8 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             source="tedeu",
             source_id=str(source_id),
             source_url=source_url,
-            source_table="ted_eu"  # Add source_table which is a required field
+            source_table="ted_eu",  # Add source_table which is a required field
+            title=""  # Add empty string for title as it's required
         )
         
         # Get summary as description (TED.eu uses summary, not description)
