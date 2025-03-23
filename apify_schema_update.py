@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     """
-    Add the missing columns to the unified_tenders table through Apify
+    Add all missing columns to the unified_tenders table through Apify
     """
     # Get Supabase credentials from Apify environment
     supabase_url = os.environ.get("SUPABASE_URL")
@@ -44,7 +44,7 @@ def main():
         
         sql_endpoint = f"{supabase_url}/rest/v1/rpc/execute_sql"
         
-        # Add both columns if they don't exist
+        # Add all missing columns
         sql = """
         DO $$
         BEGIN
@@ -70,6 +70,222 @@ def main():
                 RAISE NOTICE 'Added contact column';
             ELSE
                 RAISE NOTICE 'Contact column already exists';
+            END IF;
+            
+            -- Add the published_at column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'published_at'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN published_at TIMESTAMP WITH TIME ZONE;
+                RAISE NOTICE 'Added published_at column';
+            ELSE
+                RAISE NOTICE 'published_at column already exists';
+            END IF;
+            
+            -- Add the updated_at column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'updated_at'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE;
+                RAISE NOTICE 'Added updated_at column';
+            ELSE
+                RAISE NOTICE 'updated_at column already exists';
+            END IF;
+            
+            -- Add the created_at column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'created_at'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN created_at TIMESTAMP WITH TIME ZONE;
+                RAISE NOTICE 'Added created_at column';
+            ELSE
+                RAISE NOTICE 'created_at column already exists';
+            END IF;
+            
+            -- Add the end_date column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'end_date'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN end_date TIMESTAMP WITH TIME ZONE;
+                RAISE NOTICE 'Added end_date column';
+            ELSE
+                RAISE NOTICE 'end_date column already exists';
+            END IF;
+            
+            -- Add the region column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'region'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN region TEXT;
+                RAISE NOTICE 'Added region column';
+            ELSE
+                RAISE NOTICE 'region column already exists';
+            END IF;
+            
+            -- Add the value column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'value'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN value NUMERIC;
+                RAISE NOTICE 'Added value column';
+            ELSE
+                RAISE NOTICE 'value column already exists';
+            END IF;
+            
+            -- Add the industry column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'industry'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN industry TEXT;
+                RAISE NOTICE 'Added industry column';
+            ELSE
+                RAISE NOTICE 'industry column already exists';
+            END IF;
+            
+            -- Add the cpv_codes column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'cpv_codes'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN cpv_codes TEXT[];
+                RAISE NOTICE 'Added cpv_codes column';
+            ELSE
+                RAISE NOTICE 'cpv_codes column already exists';
+            END IF;
+            
+            -- Add the sectors column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'sectors'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN sectors TEXT[];
+                RAISE NOTICE 'Added sectors column';
+            ELSE
+                RAISE NOTICE 'sectors column already exists';
+            END IF;
+            
+            -- Add the original_language column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'original_language'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN original_language TEXT;
+                RAISE NOTICE 'Added original_language column';
+            ELSE
+                RAISE NOTICE 'original_language column already exists';
+            END IF;
+            
+            -- Add the documents column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'documents'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN documents JSONB;
+                RAISE NOTICE 'Added documents column';
+            ELSE
+                RAISE NOTICE 'documents column already exists';
+            END IF;
+            
+            -- Add the keywords column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'keywords'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN keywords TEXT[];
+                RAISE NOTICE 'Added keywords column';
+            ELSE
+                RAISE NOTICE 'keywords column already exists';
+            END IF;
+            
+            -- Add the web_url column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'web_url'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN web_url TEXT;
+                RAISE NOTICE 'Added web_url column';
+            ELSE
+                RAISE NOTICE 'web_url column already exists';
+            END IF;
+            
+            -- Add the funding_source column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'funding_source'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN funding_source TEXT;
+                RAISE NOTICE 'Added funding_source column';
+            ELSE
+                RAISE NOTICE 'funding_source column already exists';
+            END IF;
+            
+            -- Add the data_source column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'data_source'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN data_source TEXT;
+                RAISE NOTICE 'Added data_source column';
+            ELSE
+                RAISE NOTICE 'data_source column already exists';
+            END IF;
+            
+            -- Add the data_quality_score column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'data_quality_score'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN data_quality_score NUMERIC;
+                RAISE NOTICE 'Added data_quality_score column';
+            ELSE
+                RAISE NOTICE 'data_quality_score column already exists';
+            END IF;
+            
+            -- Add the nuts_codes column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'nuts_codes'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN nuts_codes TEXT[];
+                RAISE NOTICE 'Added nuts_codes column';
+            ELSE
+                RAISE NOTICE 'nuts_codes column already exists';
+            END IF;
+            
+            -- Add the source_url column if it doesn't exist
+            IF NOT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'unified_tenders' 
+                AND column_name = 'source_url'
+            ) THEN
+                ALTER TABLE unified_tenders ADD COLUMN source_url TEXT;
+                RAISE NOTICE 'Added source_url column';
+            ELSE
+                RAISE NOTICE 'source_url column already exists';
             END IF;
         END
         $$;
