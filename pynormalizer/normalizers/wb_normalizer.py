@@ -245,14 +245,14 @@ def normalize_wb(tender: WBTender) -> UnifiedTender:
             
             # Title translation
             if unified.title:
-                title_english = translate_to_english(unified.title, language)
+                title_english, quality = translate_to_english(unified.title, language)
                 unified.title_english = title_english
                 translations["title"] = title_english
                 log_tender_normalization("worldbank", source_id, {"field": "title_translation", "before": unified.title, "after": unified.title_english})
             
             # Description translation
             if unified.description:
-                desc_english = translate_to_english(unified.description, language)
+                desc_english, quality = translate_to_english(unified.description, language)
                 unified.description_english = desc_english
                 translations["description"] = desc_english
                 log_tender_normalization("worldbank", source_id, {"field": "description_translation", "before": unified.description, "after": unified.description_english})

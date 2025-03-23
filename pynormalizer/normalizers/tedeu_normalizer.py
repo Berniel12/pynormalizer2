@@ -17,8 +17,8 @@ from pynormalizer.utils.translation import (
     apply_translations
 )
 from pynormalizer.utils.normalizer_helpers import (
-    normalize_document_links,
-    extract_financial_info,
+    normalize_document_links, 
+    extract_financial_info, 
     extract_location_info,
     extract_organization,
     extract_procurement_method,
@@ -162,14 +162,14 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
             
             # Title translation
             if unified.title:
-                title_english = translate_to_english(unified.title, language)
+                title_english, quality = translate_to_english(unified.title, language)
                 unified.title_english = title_english
                 translations["title"] = title_english
                 log_tender_normalization("tedeu", source_id, {"field": "title_translation", "before": unified.title, "after": unified.title_english})
             
             # Description translation
             if unified.description:
-                desc_english = translate_to_english(unified.description, language)
+                desc_english, quality = translate_to_english(unified.description, language)
                 unified.description_english = desc_english
                 translations["description"] = desc_english
                 log_tender_normalization("tedeu", source_id, {"field": "description_translation", "before": unified.description, "after": unified.description_english})
