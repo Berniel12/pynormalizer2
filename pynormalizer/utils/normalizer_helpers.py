@@ -644,7 +644,7 @@ def normalize_value(value: float, currency: str = None) -> Tuple[float, str]:
                 currency = standard_code
                 break
     
-                            return value, currency
+    return value, currency
 
 def extract_organization_and_buyer(text: str, title: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
     """Extract organization and buyer information from text."""
@@ -674,7 +674,7 @@ def extract_organization_and_buyer(text: str, title: Optional[str] = None) -> Tu
     # Extract organization
     for pattern in org_indicators:
         matches = re.search(pattern, full_text, re.IGNORECASE)
-        if matches:
+    if matches:
             organization = matches.group(1).strip()
             break
     
@@ -731,7 +731,7 @@ def determine_normalized_method(row, default=None):
     for field in important_fields:
         if field in row and row[field]:
             method_scores['full'] += 1
-        else:
+                else:
             method_scores['partial'] += 1
     
     # Check additional fields
@@ -752,7 +752,7 @@ def determine_normalized_method(row, default=None):
         return "partial"
     elif method_scores['minimal'] >= 5:
         return "minimal"
-    else:
+        else:
         return default or "unknown"
 
 def clean_date(date_value):
