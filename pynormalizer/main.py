@@ -159,11 +159,17 @@ def normalize_all_tenders(db_config: Dict[str, Any],
     # Ensure unique constraint exists
     ensure_unique_constraint(conn)
     
+    # If tables is None, use all available source tables
+    if tables is None:
+        # Get all tables from TABLE_MAPPING and ensure we include their source table names
+        tables = list(set(list(TABLE_MAPPING.keys()) + list(TABLE_MAPPING.values())))
+        logger.info(f"No tables specified, processing all available tables: {', '.join(tables)}")
+    
     # Process each table
     results = {}
     total_start_time = time.time()
     
-    for table_name in (tables or []):
+    for table_name in tables:
         logger.info(f"Processing table: {table_name}")
         start_time = time.time()
         

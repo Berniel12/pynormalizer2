@@ -216,7 +216,7 @@ def fetch_unnormalized_rows(conn, table_name: str, skip_normalized: bool = True,
                 # Fetch unnormalized records
                 query = f"""
                     SELECT * FROM {table_name} 
-                    WHERE id::text NOT IN %s
+                    WHERE CAST(id AS TEXT) NOT IN %s
                     {f'LIMIT {limit}' if limit else ''}
                 """
                 with conn.cursor() as cur:

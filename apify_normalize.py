@@ -185,15 +185,23 @@ def main():
     args = parser.parse_args()
     
     try:
-        # Check if Supabase environment variables are set
-        if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_KEY"):
-            logger.error("Supabase environment variables not set. Please set SUPABASE_URL and SUPABASE_KEY.")
-            return
+        # Set up the tables to process
+        tables = []
+        if args.tables:
+            tables = [t.strip() for t in args.tables.split(',')]
+        
+        # If process_all is specified, set tables to None to process all tables
+        if args.process_all:
+            tables = None  # Use None to indicate all tables
+        
+        # If tables list is empty, set to None to process all tables
+        if tables is not None and len(tables) == 0:
+            tables = None
+            logger.info("No specific tables provided, will process all tables")
         
         # Check for Apify environment variables
         apify_input = os.environ.get("APIFY_INPUT_JSON")
         test_mode = args.test
-        tables = args.tables
         limit_per_table = args.limit
         max_runtime = args.max_runtime
         skip_normalized = not args.process_all  # Skip by default unless process-all is specified

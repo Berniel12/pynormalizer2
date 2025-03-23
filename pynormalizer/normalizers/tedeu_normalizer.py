@@ -98,14 +98,14 @@ def extract_tedeu_country(tender: Dict[str, Any]) -> Optional[str]:
     # Try from original address or name
     if 'organisation_address' in tender and tender['organisation_address']:
         # Extract from address
-        country, _ = extract_location_info(tender['organisation_address'])
+        country, _, _ = extract_location_info(tender['organisation_address'])
         if country:
             return country
     
     # Try from summary
     if 'summary' in tender and tender['summary']:
         # Extract from summary
-        country, _ = extract_location_info(tender['summary'])
+        country, _, _ = extract_location_info(tender['summary'])
         if country:
             return country
     
@@ -181,7 +181,7 @@ def normalize_tedeu(tender: Dict[str, Any]) -> UnifiedTender:
         country_name = ensure_country(country_value=country)
         unified.country = country_name
         if country_name == "Unknown":
-            extracted_country, city = extract_location_info(unified.description)
+            extracted_country, _, city = extract_location_info(unified.description)
             if extracted_country:
                 unified.country = extracted_country
                 log_tender_normalization("tedeu", source_id, {"field": "extracted_country", "before": None, "after": unified.country})

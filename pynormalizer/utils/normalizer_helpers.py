@@ -807,18 +807,18 @@ def clean_date(date_value):
     
     return None
 
-def extract_location_info(text: str) -> Tuple[Optional[str], Optional[str]]:
+def extract_location_info(text: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    Extract country and city information from text.
+    Extract country, state/region, and city information from text.
     
     Args:
         text: Text to extract from
         
     Returns:
-        Tuple of (country, city)
+        Tuple of (country, state, city)
     """
     if not text:
-        return None, None
+        return None, None, None
     
     # Try to find location after prepositions
     match = LOCATION_PATTERN.search(text)
@@ -828,22 +828,26 @@ def extract_location_info(text: str) -> Tuple[Optional[str], Optional[str]]:
         location = re.sub(r'[^\w\s,]', '', location)
         location = re.sub(r'\s+', ' ', location).strip()
         
-        # Split into city and country if comma present
+        # Split into city, state, and country if multiple commas present
         parts = [p.strip() for p in location.split(',')]
-        if len(parts) >= 2:
+        if len(parts) >= 3:
+            city, state, country = parts[0], parts[1], parts[-1]
+            normalized_country = ensure_country(country)
+            return normalized_country, state, city
+        elif len(parts) == 2:
             city, country = parts[0], parts[-1]
             normalized_country = ensure_country(country)
-            return normalized_country, city
+            return normalized_country, None, city
         
         # If only one part, try to identify if it's a country
         normalized_country = ensure_country(location)
         if normalized_country != "Unknown":
-            return normalized_country, None
+            return normalized_country, None, None
         
         # If not identified as country, assume it's a city
-        return None, location
+        return None, None, location
     
-    return None, None
+    return None, None, None
 
 def extract_organization(text: str) -> Optional[str]:
     """
@@ -1123,24 +1127,6 @@ def extract_organization_info(text: str, contact_info: Optional[Dict] = None,
         buyer = organization_name
         
     return organization_name, buyer
-
-def extract_location_info(text: str, country_hint: Optional[str] = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """
-    Extract location information (country, state/region, city).
-    """
-    country = country_hint
-    state = None
-    city = None
-    
-    # Common city/state patterns
-    city_state_pattern = r'(?:in|at|near|from)\s+([A-Za-z\s]+?)(?:,\s*([A-Za-z\s]+))(?:\s|$)'
-    
-    match = re.search(city_state_pattern, text, re.IGNORECASE)
-    if match:
-        city = match.group(1).strip()
-        state = match.group(2).strip()
-        
-    return country, state, city
 
 def safe_get_value(data: Dict[str, Any], key: str, default: Any = None) -> Any:
     """
