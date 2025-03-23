@@ -241,24 +241,18 @@ def normalize_wb(tender: WBTender) -> UnifiedTender:
         if language and language != 'en':
             logger.info(f"Detected non-English language: {language}")
             # Apply translations for key fields
-            translations = {}
             
             # Title translation
             if unified.title:
                 title_english, quality = translate_to_english(unified.title, language)
                 unified.title_english = title_english
-                translations["title"] = title_english
                 log_tender_normalization("worldbank", source_id, {"field": "title_translation", "before": unified.title, "after": unified.title_english})
             
             # Description translation
             if unified.description:
                 desc_english, quality = translate_to_english(unified.description, language)
                 unified.description_english = desc_english
-                translations["description"] = desc_english
                 log_tender_normalization("worldbank", source_id, {"field": "description_translation", "before": unified.description, "after": unified.description_english})
-                
-            # Store translations for later reference
-            unified.translations = json.dumps(translations)
         else:
             # For English content, copy the fields directly
             unified.title_english = unified.title
@@ -266,13 +260,9 @@ def normalize_wb(tender: WBTender) -> UnifiedTender:
         
         # Extract and normalize country
         country = safe_get_attr(tender, 'country', None)
-        country_name, country_code, country_code_3 = ensure_country(country_value=country)
+        country_name = ensure_country(country_value=country)
         unified.country = country_name
-        if country_code:
-            unified.country_code = country_code
-        if country_code_3:
-            unified.country_code_3 = country_code_3
-            
+        
         log_tender_normalization("worldbank", source_id, {"field": "country", "before": country, "after": unified.country})
         
         # Extract additional location info if needed

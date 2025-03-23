@@ -320,13 +320,8 @@ def normalize_afd(row: Dict[str, Any]) -> UnifiedTender:
             currency=currency,
             procurement_method=procurement_method,
             original_data=row,
-            normalized_method="pynormalizer",
-            translations=json.dumps({"detected_languages": languages}) if len(languages) > 1 else None
+            normalized_method="pynormalizer"
         )
-        
-        # Apply translations for multi-language content
-        if len(languages) > 1:
-            unified = apply_translations(unified, primary_language)
         
         return unified
         

@@ -328,31 +328,25 @@ def normalize_afdb(tender: AFDBTender) -> UnifiedTender:
         if language and language != 'en':
             logger.info(f"Detected non-English language: {language}")
             # Apply translations for key fields
-            translations = {}
             
             # Title translation
             if unified.title:
                 title_english, quality = translate_to_english(unified.title, language)
                 unified.title_english = title_english
-                translations["title"] = title_english
                 log_tender_normalization(tender_id, "title_translation", unified.title, unified.title_english)
             
             # Description translation
             if unified.description:
                 desc_english, quality = translate_to_english(unified.description, language)
                 unified.description_english = desc_english
-                translations["description"] = desc_english
                 log_tender_normalization(tender_id, "description_translation", unified.description, unified.description_english)
-                
-            # Store translations for later reference
-            unified.translations = json.dumps(translations)
         else:
             # For English content, copy the fields directly
             unified.title_english = unified.title
             unified.description_english = unified.description
         
         # Extract and normalize country with improved validation
-        country_name, country_code, country_code_3 = ensure_country(tender.country)
+        country_name = ensure_country(tender.country)
         unified.country = country_name
         log_tender_normalization(tender_id, "country", tender.country, unified.country)
         
