@@ -322,8 +322,8 @@ def normalize_wb(tender: WBTender) -> UnifiedTender:
         
         # Extract organization information
         org_name = None
-        
-        # Try direct fields first
+    
+    # Try direct fields first
         if hasattr(tender, 'borrower') and tender.borrower:
             org_name = tender.borrower
         elif hasattr(tender, 'organization') and tender.organization:
@@ -414,7 +414,7 @@ def normalize_wb(tender: WBTender) -> UnifiedTender:
             source="worldbank",
             source_id=safe_get_attr(tender, 'id', "unknown"),
             source_table="wb_tenders",  # Add required source_table field
-            title=safe_get_attr(tender, 'title', "Error in normalization"),
+            title=safe_get_attr(tender, 'title', "World Bank Tender Error"),  # Ensure title is never empty
             fallback_reason=f"Error: {str(e)}"
         )
         return error_tender

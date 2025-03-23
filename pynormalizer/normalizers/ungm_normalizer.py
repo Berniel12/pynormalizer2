@@ -191,6 +191,35 @@ class UNGMNormalizer(BaseNormalizer):
     def __init__(self):
         super().__init__('ungm')
 
+    def _normalize_text_field(self, field_name: str, value: Optional[str]) -> str:
+        """
+        Normalize a text field by cleaning and validating it.
+        
+        Args:
+            field_name: Name of the field being normalized
+            value: Text value to normalize
+            
+        Returns:
+            Normalized text value with proper encoding and sanitized content
+        """
+        if not value:
+            self.logger.warning(f"Empty {field_name} field")
+            return ""
+            
+        # Clean up text
+        clean_value = value.strip()
+        
+        # Check for encoding issues
+        if detect_encoding_issues(clean_value):
+            self.logger.warning(f"Possible encoding issues in {field_name}: {clean_value}")
+            # Try to fix encoding issues
+            clean_value = normalize_text(clean_value)
+            
+        # Log the normalization
+        log_before_after(field_name, value, clean_value)
+        
+        return clean_value
+        
     def _validate_input(self, data: Dict[str, Any]) -> bool:
         """
         Validate UNGM tender data with enhanced error checking.
