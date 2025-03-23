@@ -45,5 +45,4 @@ class UnifiedTender(BaseModel):
     normalized_at: Optional[datetime] = None
     fallback_reason: Optional[str] = None
     normalized_method: Optional[str] = None
-    processing_time_ms: Optional[int] = None
-    tags: Optional[List[str]] = None 
+    processing_time_ms: Optional[int] = None 
