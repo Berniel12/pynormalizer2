@@ -232,6 +232,11 @@ def main():
             except Exception as e:
                 logger.error(f"Error parsing Apify input: {e}")
         
+        # If no tables were specified, use all available tables
+        if not tables:
+            tables = ['ted_eu', 'ungm', 'sam_gov', 'afd_tenders', 'world_bank', 'adb', 'iadb', 'aiib', 'afdb']
+            logger.info(f"No specific tables provided, using all available tables: {', '.join(tables)}")
+        
         # Log start with mode based on settings
         mode = "TEST MODE" if test_mode else "PRODUCTION MODE"
         logger.info(f"Starting normalization process in {mode} using Supabase")
